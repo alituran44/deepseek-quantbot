@@ -1,3 +1,4 @@
+import json
 import time
 import threading
 import requests
@@ -55,11 +56,41 @@ class BotOrchestrator:
         self._cached_binance_acc: Dict[str, Any] = {}
 
         # Son analiz önbelleği (Web paneli için)
-        self.latest_analyses: Dict[str, Dict[str, Any]] = {}
-        self.last_scan_time: Optional[str] = None
+        self.latest_analyses_file = config.DATA_DIR / "latest_analyses.json"
+        self.latest_analyses: Dict[str, Dict[str, Any]] = self._load_latest_analyses()
+        self.last_scan_time: Optional[str] = datetime.now().strftime("%Y-%m-%d %H:%M:%S") if self.latest_analyses else None
         self.is_scanning: bool = False
         self._scanner_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+
+    def _load_latest_analyses(self) -> Dict[str, Any]:
+        """Kayıtlı analizleri diskten yükler."""
+        if not self.latest_analyses_file.exists():
+            repo_file = config.BASE_DIR / "data_storage" / "latest_analyses.json"
+            if repo_file.exists() and repo_file.resolve() != self.latest_analyses_file.resolve():
+                try:
+                    import shutil
+                    self.latest_analyses_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(repo_file, self.latest_analyses_file)
+                except Exception:
+                    pass
+
+        if self.latest_analyses_file.exists():
+            try:
+                with open(self.latest_analyses_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"[BotOrchestrator] Analizler yüklenemedi: {e}")
+        return {}
+
+    def _save_latest_analyses(self):
+        """Analizleri diske kalıcı kaydeder."""
+        try:
+            self.latest_analyses_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.latest_analyses_file, "w", encoding="utf-8") as f:
+                json.dump(self.latest_analyses, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"[BotOrchestrator] Analizler kaydedilemedi: {e}")
 
     def get_usd_try_rate(self) -> float:
         """Canlı USDT/TRY kurunu Binance API üzerinden çeker (60 sn önbellekli)."""
@@ -67,15 +98,17 @@ class BotOrchestrator:
         now = time.time()
         if now - self._usd_try_cache_time < 60.0:
             return self._usd_try_rate
-        try:
-            r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=USDTTRY", timeout=3)
-            if r.ok:
-                px = float(r.json().get("price", 48.09))
-                if px > 0:
-                    self._usd_try_rate = px
-                    self._usd_try_cache_time = now
-        except Exception:
-            pass
+        for base in ["https://data-api.binance.vision/api/v3", "https://api.binance.com/api/v3"]:
+            try:
+                r = requests.get(f"{base}/ticker/price?symbol=USDTTRY", timeout=4)
+                if r.ok:
+                    px = float(r.json().get("price", 48.09))
+                    if px > 0:
+                        self._usd_try_rate = px
+                        self._usd_try_cache_time = now
+                        return px
+            except Exception:
+                continue
         return self._usd_try_rate
 
     def get_registered_exchanges(self) -> List[Dict[str, Any]]:
@@ -376,7 +409,51 @@ class BotOrchestrator:
         }
 
         self.latest_analyses[symbol] = analysis_payload
+        self._save_latest_analyses()
         return analysis_payload
+
+    def run_quick_scan(self, symbols: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Serverless ortamlar ve hızlı dashboard talepleri için
+        sepet varlıklarını paralel olarak analiz eder, risk onaylı işlemleri yürütür.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        
+        target_symbols = list(symbols) if symbols else ["BTCUSDT", "ETHUSDT", "SOLUSDT", "NEARUSDT", "SUIUSDT"]
+        # Açık pozisyonları da öncelikli olarak ekle
+        for p in self.wallet.open_positions:
+            s_sym = p.get("symbol", "")
+            if s_sym and s_sym not in target_symbols:
+                target_symbols.append(s_sym)
+
+        target_symbols = target_symbols[:6]
+        
+        results = {}
+        current_prices = {}
+        with ThreadPoolExecutor(max_workers=min(len(target_symbols), 5)) as executor:
+            scanned = list(executor.map(self.scan_asset, target_symbols))
+
+        for res in scanned:
+            sym = res.get("symbol")
+            if sym:
+                results[sym] = res
+                if "current_price" in res and res["current_price"] > 0:
+                    current_prices[sym] = res["current_price"]
+
+        closed_trades = []
+        if current_prices:
+            closed_trades = self.wallet.check_and_update_prices(current_prices)
+            for ct in closed_trades:
+                self.notifier.notify_trade_closed(ct)
+
+        self.last_scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._save_latest_analyses()
+        return {
+            "status": "SUCCESS",
+            "scanned_count": len(results),
+            "closed_trades_count": len(closed_trades),
+            "timestamp": self.last_scan_time
+        }
 
     def run_full_scan(self) -> Dict[str, Any]:
         """Kullanıcının sahip olduğu varlıklar + Kripto sepetini tarar."""

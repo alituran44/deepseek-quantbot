@@ -11,7 +11,8 @@ tests/
 tests/**
 scratch/
 scratch/**
-data_storage/*.json
+# data_storage initial state is bundled for cold start
+!data_storage/*.json
 !data_storage/.gitkeep
 *.log
 .git/

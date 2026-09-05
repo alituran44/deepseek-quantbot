@@ -1,0 +1,21 @@
+{
+  "ZECUSDT": {
+    "symbol": "ZECUSDT",
+    "asset": "ZEC",
+    "exchanges": [
+      "Binance",
+      "MEXC",
+      "OKX"
+    ],
+    "tracked_at": "2026-09-05 01:21:52",
+    "initial_price": 1022.7,
+    "current_price": 1022.74,
+    "pnl_pct": 0.0,
+    "target_price": 1104.516,
+    "stop_price": 961.338,
+    "target_gain_pct": 8.0,
+    "breakout_score": 97.0,
+    "status": "TAKİPTE",
+    "thesis": "Günlük tepe bölgesinde konsolide oluyor • $434.3M güçlü kurumsal hacim • Binance/MEXC/OKX arbitraj/likidite desteği"
+  }
+}

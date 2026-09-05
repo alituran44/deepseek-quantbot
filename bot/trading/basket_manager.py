@@ -84,13 +84,16 @@ class BasketManager:
         target_pct = config.BASKET_SECTORS.get(sec, {}).get("target_pct", 25.0)
         max_sector_pct = target_pct + 10.0 # En fazla %10 esneme toleransı
         
-        max_budget = current_balance * (max_sector_pct / 100.0)
-        
         current_invested = sum(
             p.get("position_value", 0.0) 
             for p in open_positions 
             if cls.get_symbol_sector(p["symbol"]) == sec
         )
-        
+        total_open_val = sum(p.get("position_value", 0.0) for p in open_positions)
+        total_equity = current_balance + total_open_val
+        if total_equity <= 0:
+            total_equity = config.INITIAL_BALANCE
+            
+        max_budget = total_equity * (max_sector_pct / 100.0)
         headroom = max_budget - current_invested
-        return max(0.0, headroom)
+        return max(0.0, min(current_balance, headroom))

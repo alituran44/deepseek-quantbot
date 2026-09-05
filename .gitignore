@@ -43,6 +43,9 @@ deepseek-harness/
 
 # Runtime storage & logs
 data_storage/*.json
+!data_storage/portfolio.json
+!data_storage/latest_analyses.json
+!data_storage/radar_watchlist.json
 !data_storage/.gitkeep
 *.log
 scratch/

@@ -1,0 +1,694 @@
+{
+  "NEARUSDT": {
+    "symbol": "NEARUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "AI_DEPIN",
+    "timestamp": "2026-09-05 22:15:14",
+    "current_price": 2.229,
+    "change_24h": 9.857,
+    "is_owned": true,
+    "owned_units": 902.056024,
+    "owned_val": 2007.07,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 2.229,
+      "rsi": 49.3,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": 0.0376,
+        "signal": 0.0476,
+        "histogram": -0.01,
+        "cross": "BEARISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 2.2,
+        "ema_50": 2.12,
+        "ema_200": 2.05,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 2.28,
+        "middle": 2.23,
+        "lower": 2.18,
+        "position": "MIDDLE"
+      },
+      "volatility": {
+        "atr": 0.05,
+        "atr_percent": 2.24,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 1.91,
+        "resistance": 2.29
+      },
+      "scores": {
+        "bullish_score": 2,
+        "bearish_score": 3
+      },
+      "summary": "BEARISH",
+      "change_24h": 9.857
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "SELL",
+      "confidence": 0.74,
+      "entry_price": 2.229,
+      "stop_loss": 2.29,
+      "take_profit": 2.06,
+      "risk_reward_ratio": "1:2.8",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: NEARUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
+      "reasoning_points": [
+        "Trend Yapısı: BEARISH - RSI (49.3) güç kaybına işaret ediyor",
+        "Direnç Reddi: 2.29 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $2.29"
+      ],
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "NEARUSDT",
+      "hyperliquid": {
+        "asset": "NEAR",
+        "oracle_price": 2.22897,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 58370999.0,
+        "open_interest_usd": 130107205.64,
+        "day_volume_usd": 60503652.67,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635713
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "Risk onaylandı",
+      "order_params": {
+        "action": "SELL",
+        "entry_price": 2.229,
+        "stop_loss": 2.29,
+        "take_profit": 2.06,
+        "units": 297.036332,
+        "position_value_usd": 662.09,
+        "risk_amount_usd": 18.12,
+        "risk_reward_ratio": 2.77
+      }
+    },
+    "trade_executed": null
+  },
+  "ETHUSDT": {
+    "symbol": "ETHUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "CORE",
+    "timestamp": "2026-09-05 22:15:14",
+    "current_price": 2478.33,
+    "change_24h": 0.981,
+    "is_owned": true,
+    "owned_units": 0.433703,
+    "owned_val": 1075.35,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 2478.33,
+      "rsi": 75.6,
+      "rsi_status": "OVERBOUGHT (>70)",
+      "macd": {
+        "macd": 2.9795,
+        "signal": -0.762,
+        "histogram": 3.7415,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 2464.49,
+        "ema_50": 2461.31,
+        "ema_200": 2452.68,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 2479.38,
+        "middle": 2459.26,
+        "lower": 2439.13,
+        "position": "NEAR_UPPER"
+      },
+      "volatility": {
+        "atr": 6.99,
+        "atr_percent": 0.28,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 2431.61,
+        "resistance": 2485.34
+      },
+      "scores": {
+        "bullish_score": 4,
+        "bearish_score": 2
+      },
+      "summary": "BULLISH",
+      "change_24h": 0.981
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.78,
+      "entry_price": 2478.33,
+      "stop_loss": 2423.81,
+      "take_profit": 2652.79,
+      "risk_reward_ratio": "1:3.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: ETHUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend BULLISH - RSI 14 Seviyesi 75.6",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $2423.81 seviyesinde sınırlandırıldı, hedef 1:3.2 getiri oranı ile $2652.79",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "ETHUSDT",
+      "hyperliquid": {
+        "asset": "ETH",
+        "oracle_price": 2478.24,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 903246.983,
+        "open_interest_usd": 2238462803.15,
+        "day_volume_usd": 347892189.77,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635713
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "Risk onaylandı",
+      "order_params": {
+        "action": "BUY",
+        "entry_price": 2478.33,
+        "stop_loss": 2423.81,
+        "take_profit": 2652.79,
+        "units": 0.267153,
+        "position_value_usd": 662.09,
+        "risk_amount_usd": 14.57,
+        "risk_reward_ratio": 3.2
+      }
+    },
+    "trade_executed": null
+  },
+  "SOLUSDT": {
+    "symbol": "SOLUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "LAYER1",
+    "timestamp": "2026-09-05 22:15:15",
+    "current_price": 103.84,
+    "change_24h": 2.084,
+    "is_owned": true,
+    "owned_units": 6.214715,
+    "owned_val": 645.21,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 103.84,
+      "rsi": 71.84,
+      "rsi_status": "OVERBOUGHT (>70)",
+      "macd": {
+        "macd": 0.3868,
+        "signal": 0.192,
+        "histogram": 0.1948,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 102.92,
+        "ema_50": 102.53,
+        "ema_200": 102.05,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 104.14,
+        "middle": 102.64,
+        "lower": 101.14,
+        "position": "NEAR_UPPER"
+      },
+      "volatility": {
+        "atr": 0.54,
+        "atr_percent": 0.52,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 100.31,
+        "resistance": 104.37
+      },
+      "scores": {
+        "bullish_score": 4,
+        "bearish_score": 2
+      },
+      "summary": "BULLISH",
+      "change_24h": 2.084
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.78,
+      "entry_price": 103.84,
+      "stop_loss": 101.56,
+      "take_profit": 111.14,
+      "risk_reward_ratio": "1:3.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: SOLUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend BULLISH - RSI 14 Seviyesi 71.8",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $101.56 seviyesinde sınırlandırıldı, hedef 1:3.2 getiri oranı ile $111.14",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "SOLUSDT",
+      "hyperliquid": {
+        "asset": "SOL",
+        "oracle_price": 103.8327,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 5753112.46,
+        "open_interest_usd": 597361200.13,
+        "day_volume_usd": 77211882.51,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635713
+      }
+    },
+    "risk_validation": {
+      "passed": false,
+      "reason": "Sepet sektörü bütçe limitine ulaştı (Kalan: $0.00)",
+      "order_params": {}
+    },
+    "trade_executed": null
+  },
+  "XRPUSDT": {
+    "symbol": "XRPUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "DEFI_MOMENTUM",
+    "timestamp": "2026-09-05 22:15:15",
+    "current_price": 1.4194,
+    "change_24h": 1.386,
+    "is_owned": true,
+    "owned_units": 466.460465,
+    "owned_val": 662.09,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 1.4194,
+      "rsi": 69.26,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": 0.0024,
+        "signal": 0.0001,
+        "histogram": 0.0024,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 1.41,
+        "ema_50": 1.41,
+        "ema_200": 1.4,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 1.43,
+        "middle": 1.41,
+        "lower": 1.39,
+        "position": "NEAR_UPPER"
+      },
+      "volatility": {
+        "atr": 0.01,
+        "atr_percent": 0.7,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 1.38,
+        "resistance": 1.43
+      },
+      "scores": {
+        "bullish_score": 3,
+        "bearish_score": 0
+      },
+      "summary": "STRONG_BULLISH",
+      "change_24h": 1.386
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.88,
+      "entry_price": 1.4194,
+      "stop_loss": 1.39,
+      "take_profit": 1.51,
+      "risk_reward_ratio": "1:3.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: XRPUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend STRONG_BULLISH - RSI 14 Seviyesi 69.3",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $1.39 seviyesinde sınırlandırıldı, hedef 1:3.2 getiri oranı ile $1.51",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "XRPUSDT",
+      "hyperliquid": {
+        "asset": "XRP",
+        "oracle_price": 1.4194,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 166634472.0,
+        "open_interest_usd": 236520969.56,
+        "day_volume_usd": 27368843.43,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635713
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "Risk onaylandı",
+      "order_params": {
+        "action": "BUY",
+        "entry_price": 1.4194,
+        "stop_loss": 1.39,
+        "take_profit": 1.51,
+        "units": 466.460465,
+        "position_value_usd": 662.09,
+        "risk_amount_usd": 13.71,
+        "risk_reward_ratio": 3.08
+      }
+    },
+    "trade_executed": {
+      "id": "298ddd94",
+      "symbol": "XRPUSDT",
+      "exchange": "Paper",
+      "action": "BUY",
+      "entry_price": 1.4194,
+      "current_price": 1.4194,
+      "stop_loss": 1.39,
+      "take_profit": 1.51,
+      "units": 466.460465,
+      "position_value": 662.09,
+      "unrealized_pnl": 0.0,
+      "unrealized_pnl_pct": 0.0,
+      "open_time": "2026-09-05 22:15:15",
+      "thesis": "Finans Uzmanı Değerlendirmesi: XRPUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor."
+    }
+  },
+  "BTCUSDT": {
+    "symbol": "BTCUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "CORE",
+    "timestamp": "2026-09-05 22:15:15",
+    "current_price": 79953.74,
+    "change_24h": 0.311,
+    "is_owned": true,
+    "owned_units": 0.010245,
+    "owned_val": 819.11,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 79953.74,
+      "rsi": 69.43,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": 35.8579,
+        "signal": -22.8744,
+        "histogram": 58.7322,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 79806.79,
+        "ema_50": 79675.5,
+        "ema_200": 79209.09,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 80052.37,
+        "middle": 79704.79,
+        "lower": 79357.21,
+        "position": "NEAR_LOWER"
+      },
+      "volatility": {
+        "atr": 157.1,
+        "atr_percent": 0.2,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 78660.0,
+        "resistance": 80200.0
+      },
+      "scores": {
+        "bullish_score": 5,
+        "bearish_score": 0
+      },
+      "summary": "STRONG_BULLISH",
+      "change_24h": 0.311
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.88,
+      "entry_price": 79953.74,
+      "stop_loss": 78194.76,
+      "take_profit": 85582.48,
+      "risk_reward_ratio": "1:3.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: BTCUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend STRONG_BULLISH - RSI 14 Seviyesi 69.4",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $78194.76 seviyesinde sınırlandırıldı, hedef 1:3.2 getiri oranı ile $85582.48",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "BTCUSDT",
+      "hyperliquid": {
+        "asset": "BTC",
+        "oracle_price": 79953.7,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 35974.48768,
+        "open_interest_usd": 2876293395.62,
+        "day_volume_usd": 873951276.39,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635714
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "Risk onaylandı",
+      "order_params": {
+        "action": "BUY",
+        "entry_price": 79953.74,
+        "stop_loss": 78194.76,
+        "take_profit": 85582.48,
+        "units": 0.009774,
+        "position_value_usd": 781.48,
+        "risk_amount_usd": 17.19,
+        "risk_reward_ratio": 3.2
+      }
+    },
+    "trade_executed": null
+  },
+  "SUIUSDT": {
+    "symbol": "SUIUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "LAYER1",
+    "timestamp": "2026-09-05 22:15:18",
+    "current_price": 0.8054,
+    "change_24h": 6.69,
+    "is_owned": true,
+    "owned_units": 2250.018644,
+    "owned_val": 1810.82,
+    "wallet_type": "Sanal Kasa",
+    "indicators": {
+      "current_price": 0.8054,
+      "rsi": 74.18,
+      "rsi_status": "OVERBOUGHT (>70)",
+      "macd": {
+        "macd": 0.0101,
+        "signal": 0.0082,
+        "histogram": 0.0018,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 0.79,
+        "ema_50": 0.78,
+        "ema_200": 0.76,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 0.82,
+        "middle": 0.79,
+        "lower": 0.75,
+        "position": "MIDDLE"
+      },
+      "volatility": {
+        "atr": 0.01,
+        "atr_percent": 1.24,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 0.74,
+        "resistance": 0.81
+      },
+      "scores": {
+        "bullish_score": 4,
+        "bearish_score": 2
+      },
+      "summary": "BULLISH",
+      "change_24h": 6.69
+    },
+    "sentiment": {
+      "value": 73,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788566400"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.78,
+      "entry_price": 0.8054,
+      "stop_loss": 0.7877,
+      "take_profit": 0.862,
+      "risk_reward_ratio": "1:3.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: SUIUSDT için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, 1:3.2 Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend BULLISH - RSI 14 Seviyesi 74.2",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $0.7877 seviyesinde sınırlandırıldı, hedef 1:3.2 getiri oranı ile $0.862",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "SUIUSDT",
+      "hyperliquid": {
+        "asset": "SUI",
+        "oracle_price": 0.80505,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 44080759.6,
+        "open_interest_usd": 35487215.52,
+        "day_volume_usd": 10856039.66,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 99.16,
+        "us_10y_yield": 4.78,
+        "fed_rate": 4.5,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": false,
+        "last_updated": 1788635714
+      }
+    },
+    "risk_validation": {
+      "passed": false,
+      "reason": "Sepet sektörü bütçe limitine ulaştı (Kalan: $0.00)",
+      "order_params": {}
+    },
+    "trade_executed": null
+  }
+}

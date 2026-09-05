@@ -93,8 +93,12 @@ async def trigger_scan(req: ScanRequest, bg_tasks: BackgroundTasks):
         res = orchestrator.scan_asset(req.symbol)
         return JSONResponse(content=res)
     else:
-        bg_tasks.add_task(orchestrator.run_full_scan)
-        return JSONResponse(content={"status": "STARTED", "message": "Piyasa taraması arka planda başlatıldı."})
+        if os.getenv("VERCEL"):
+            res = orchestrator.run_quick_scan()
+            return JSONResponse(content=res)
+        else:
+            bg_tasks.add_task(orchestrator.run_full_scan)
+            return JSONResponse(content={"status": "STARTED", "message": "Piyasa taraması arka planda başlatıldı."})
 
 @app.post("/api/trade/close")
 async def close_trade(req: CloseTradeRequest):

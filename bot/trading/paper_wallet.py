@@ -16,6 +16,16 @@ class PaperWallet:
 
     def _load_state(self) -> Dict[str, Any]:
         """Kayıtlı durumu dosyadan okur veya başlangıç durumunu oluşturur."""
+        if not self.storage_file.exists():
+            repo_file = config.BASE_DIR / "data_storage" / "portfolio.json"
+            if repo_file.exists() and repo_file.resolve() != self.storage_file.resolve():
+                try:
+                    import shutil
+                    self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(repo_file, self.storage_file)
+                except Exception as e:
+                    print(f"[PaperWallet] Başlangıç portföy dosyası kopyalanamadı: {e}")
+
         if self.storage_file.exists():
             try:
                 with open(self.storage_file, "r", encoding="utf-8") as f:

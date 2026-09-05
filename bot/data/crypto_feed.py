@@ -7,7 +7,13 @@ class CryptoFeed:
     Binance Public REST API üzerinden Kripto verisi çeker.
     API anahtarı gerektirmez.
     """
-    BASE_URL = "https://api.binance.com/api/v3"
+    BASE_URLS = [
+        "https://data-api.binance.vision/api/v3",
+        "https://api.binance.com/api/v3",
+        "https://api1.binance.com/api/v3",
+        "https://api.binance.us/api/v3"
+    ]
+    BASE_URL = BASE_URLS[0]
     _cache = {}
     _cache_time = {}
 
@@ -23,41 +29,48 @@ class CryptoFeed:
         if "BINANCE" in cls._cache and (now - cls._cache_time.get("BINANCE", 0) < 30.0):
             return cls._cache["BINANCE"]
 
-        url = f"{cls.BASE_URL}/ticker/24hr"
-        try:
-            resp = requests.get(url, timeout=12)
-            resp.raise_for_status()
-            tickers = resp.json()
-            blacklist = ["USDCUSDT", "FDUSDUSDT", "TUSDUSDT", "EURUSDT", "USD1USDT", "RLUSDUSDT", "UUSDT"]
-            valid = []
-            for t in tickers:
-                sym = t.get("symbol", "")
-                px = float(t.get("lastPrice", 0.0))
-                vol = float(t.get("quoteVolume", 0.0))
-                if (
-                    sym.endswith("USDT")
-                    and sym not in blacklist
-                    and px > 0.0
-                    and vol > 1000.0  # Aktif ve likit çiftler
-                    and not any(x in sym for x in ["UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT"])
-                ):
-                    valid.append({
-                        "exchange": "Binance",
-                        "symbol": sym,
-                        "asset": sym.replace("USDT", ""),
-                        "price": px,
-                        "change_24h": round(float(t.get("priceChangePercent", 0.0)), 2),
-                        "volume_usd": round(vol, 2),
-                        "high_24h": float(t.get("highPrice", 0.0)),
-                        "low_24h": float(t.get("lowPrice", 0.0))
-                    })
-            valid.sort(key=lambda x: x["volume_usd"], reverse=True)
-            cls._cache["BINANCE"] = valid
-            cls._cache_time["BINANCE"] = now
-            return valid
-        except Exception as e:
-            print(f"[CryptoFeed] Binance tickerları alınamadı: {e}")
-            return cls._cache.get("BINANCE", [])
+        blacklist = ["USDCUSDT", "FDUSDUSDT", "TUSDUSDT", "EURUSDT", "USD1USDT", "RLUSDUSDT", "UUSDT"]
+        
+        for base in cls.BASE_URLS:
+            try:
+                url = f"{base}/ticker/24hr"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    tickers = resp.json()
+                    if isinstance(tickers, list) and len(tickers) > 0:
+                        valid = []
+                        for t in tickers:
+                            sym = t.get("symbol", "")
+                            px = float(t.get("lastPrice", 0.0))
+                            vol = float(t.get("quoteVolume", 0.0))
+                            if (
+                                sym.endswith("USDT")
+                                and sym not in blacklist
+                                and px > 0.0
+                                and vol > 1000.0
+                                and not any(x in sym for x in ["UPUSDT", "DOWNUSDT", "BULLUSDT", "BEARUSDT"])
+                            ):
+                                valid.append({
+                                    "exchange": "Binance",
+                                    "symbol": sym,
+                                    "asset": sym.replace("USDT", ""),
+                                    "price": px,
+                                    "change_24h": round(float(t.get("priceChangePercent", 0.0)), 2),
+                                    "volume_usd": round(vol, 2),
+                                    "high_24h": float(t.get("highPrice", 0.0)),
+                                    "low_24h": float(t.get("lowPrice", 0.0))
+                                })
+                        if valid:
+                            valid.sort(key=lambda x: x["volume_usd"], reverse=True)
+                            cls._cache["BINANCE"] = valid
+                            cls._cache_time["BINANCE"] = now
+                            return valid
+            except Exception as e:
+                print(f"[CryptoFeed] {base} ticker hatası: {e}")
+                continue
+
+        print("[CryptoFeed] Binance aynaları yanıt vermedi, MEXC yedeğine geçiliyor...")
+        return cls.get_all_mexc_market_tickers()
 
     @classmethod
     def get_all_okx_market_tickers(cls) -> list:
@@ -166,22 +179,46 @@ class CryptoFeed:
     @classmethod
     def get_ticker_24h(cls, symbol: str = "BTCUSDT") -> Dict[str, Any]:
         """24 saatlik fiyat değişimi, en yüksek, en düşük ve hacim verisi."""
-        url = f"{cls.BASE_URL}/ticker/24hr?symbol={symbol}"
+        for base in cls.BASE_URLS:
+            try:
+                url = f"{base}/ticker/24hr?symbol={symbol}"
+                resp = requests.get(url, timeout=8)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    px = float(data.get("lastPrice", 0))
+                    if px > 0:
+                        return {
+                            "symbol": symbol,
+                            "price": px,
+                            "change_24h": float(data.get("priceChangePercent", 0)),
+                            "high_24h": float(data.get("highPrice", 0)),
+                            "low_24h": float(data.get("lowPrice", 0)),
+                            "volume_24h": float(data.get("volume", 0)),
+                            "quote_volume_24h": float(data.get("quoteVolume", 0)),
+                        }
+            except Exception:
+                continue
+
+        # Fallback to MEXC
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()
-            return {
-                "symbol": symbol,
-                "price": float(data.get("lastPrice", 0)),
-                "change_24h": float(data.get("priceChangePercent", 0)),
-                "high_24h": float(data.get("highPrice", 0)),
-                "low_24h": float(data.get("lowPrice", 0)),
-                "volume_24h": float(data.get("volume", 0)),
-                "quote_volume_24h": float(data.get("quoteVolume", 0)),
-            }
+            mexc_url = f"https://api.mexc.com/api/v3/ticker/24hr?symbol={symbol}"
+            resp = requests.get(mexc_url, timeout=8)
+            if resp.status_code == 200:
+                data = resp.json()
+                pct_raw = float(data.get("priceChangePercent", 0.0))
+                return {
+                    "symbol": symbol,
+                    "price": float(data.get("lastPrice", 0)),
+                    "change_24h": round(pct_raw * 100.0, 2),
+                    "high_24h": float(data.get("highPrice", 0)),
+                    "low_24h": float(data.get("lowPrice", 0)),
+                    "volume_24h": float(data.get("volume", 0)),
+                    "quote_volume_24h": float(data.get("quoteVolume", 0)),
+                }
         except Exception as e:
             return {"symbol": symbol, "error": str(e), "price": 0.0, "change_24h": 0.0}
+
+        return {"symbol": symbol, "error": "Veri sağlayıcılarına ulaşılamadı", "price": 0.0, "change_24h": 0.0}
 
     @classmethod
     def get_klines(cls, symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 100) -> pd.DataFrame:
@@ -189,46 +226,64 @@ class CryptoFeed:
         Mum verilerini (Open, High, Low, Close, Volume) çeker.
         interval: 15m, 1h, 4h, 1d vb.
         """
-        url = f"{cls.BASE_URL}/klines?symbol={symbol}&interval={interval}&limit={limit}"
+        for base in cls.BASE_URLS:
+            try:
+                url = f"{base}/klines?symbol={symbol}&interval={interval}&limit={limit}"
+                resp = requests.get(url, timeout=8)
+                if resp.status_code == 200:
+                    raw = resp.json()
+                    if isinstance(raw, list) and len(raw) > 0:
+                        df = pd.DataFrame(raw, columns=[
+                            "open_time", "open", "high", "low", "close", "volume",
+                            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+                        ])
+                        df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms")
+                        for col in ["open", "high", "low", "close", "volume"]:
+                            df[col] = df[col].astype(float)
+                        return df[["timestamp", "open", "high", "low", "close", "volume"]]
+            except Exception:
+                continue
+
+        # Fallback to MEXC klines
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            raw = resp.json()
-            
-            # Binance Klines Format:
-            # [ [Open time, Open, High, Low, Close, Volume, Close time, ...], ... ]
-            df = pd.DataFrame(raw, columns=[
-                "open_time", "open", "high", "low", "close", "volume",
-                "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
-            ])
-            
-            df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms")
-            for col in ["open", "high", "low", "close", "volume"]:
-                df[col] = df[col].astype(float)
-                
-            return df[["timestamp", "open", "high", "low", "close", "volume"]]
+            mexc_url = f"https://api.mexc.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+            resp = requests.get(mexc_url, timeout=8)
+            if resp.status_code == 200:
+                raw = resp.json()
+                if isinstance(raw, list) and len(raw) > 0:
+                    df = pd.DataFrame(raw, columns=[
+                        "open_time", "open", "high", "low", "close", "volume",
+                        "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+                    ])
+                    df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms")
+                    for col in ["open", "high", "low", "close", "volume"]:
+                        df[col] = df[col].astype(float)
+                    return df[["timestamp", "open", "high", "low", "close", "volume"]]
         except Exception as e:
-            print(f"[CryptoFeed] Hata ({symbol}): {e}")
-            return pd.DataFrame()
+            print(f"[CryptoFeed] Fallback MEXC Klines hatası ({symbol}): {e}")
+
+        return pd.DataFrame()
 
     @classmethod
     def get_top_volume_symbols(cls, limit: int = 15) -> list:
         """Piyasadaki en yüksek 24s hacimli USDT çiftlerini dinamik olarak getirir."""
-        url = f"{cls.BASE_URL}/ticker/24hr"
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            tickers = resp.json()
-            # Stabil coinler ve kaldıraçlı tokenları ele
-            blacklist = ["USDCUSDT", "FDUSDUSDT", "TUSDUSDT", "EURUSDT", "USD1USDT", "RLUSDUSDT", "UUSDT"]
-            valid = [
-                t for t in tickers 
-                if t['symbol'].endswith('USDT') 
-                and t['symbol'] not in blacklist
-                and not any(x in t['symbol'] for x in ['UPUSDT', 'DOWNUSDT', 'BULLUSDT', 'BEARUSDT'])
-            ]
-            valid.sort(key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
-            return [t['symbol'] for t in valid[:limit]]
-        except Exception as e:
-            print(f"[CryptoFeed] Hacim liderleri çekilemedi: {e}")
-            return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT", "DOGEUSDT"]
+        for base in cls.BASE_URLS:
+            try:
+                url = f"{base}/ticker/24hr"
+                resp = requests.get(url, timeout=8)
+                if resp.status_code == 200:
+                    tickers = resp.json()
+                    blacklist = ["USDCUSDT", "FDUSDUSDT", "TUSDUSDT", "EURUSDT", "USD1USDT", "RLUSDUSDT", "UUSDT"]
+                    valid = [
+                        t for t in tickers 
+                        if t['symbol'].endswith('USDT') 
+                        and t['symbol'] not in blacklist
+                        and not any(x in t['symbol'] for x in ['UPUSDT', 'DOWNUSDT', 'BULLUSDT', 'BEARUSDT'])
+                    ]
+                    valid.sort(key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
+                    if valid:
+                        return [t['symbol'] for t in valid[:limit]]
+            except Exception:
+                continue
+
+        return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT", "DOGEUSDT", "NEARUSDT", "SUIUSDT"]
