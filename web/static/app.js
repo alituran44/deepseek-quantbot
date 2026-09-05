@@ -242,12 +242,21 @@ function renderDashboard(data) {
 
   if (banner && bannerTitle && bannerDesc && bannerActionBtn) {
     if (isLive) {
-      banner.style.borderLeftColor = 'var(--profit)';
-      bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
-      bannerIcon.style.color = 'var(--profit)';
-      bannerIcon.textContent = '⚡';
-      bannerTitle.textContent = `Canlı Çoklu Borsa Modu Aktif (${exLabel} - Serbest: $${cashUsd.toFixed(2)} USDT)`;
-      bannerDesc.textContent = `Bot kayıtlı borsa API'leriniz (Binance, MEXC, OKX) üzerinden serbest USDT bakiyesiyle akıllı pozisyon almaktadır. Sanal öğrenme moduna dönmek için butona tıklayabilirsiniz.`;
+      if (cashUsd < 5.0) {
+        banner.style.borderLeftColor = 'var(--warning)';
+        bannerIcon.style.background = 'rgba(234, 179, 8, 0.15)';
+        bannerIcon.style.color = 'var(--warning)';
+        bannerIcon.textContent = '⚠️';
+        bannerTitle.textContent = `Canlı Mod Aktif - Yetersiz Bakiye ($${cashUsd.toFixed(2)} USDT)`;
+        bannerDesc.innerHTML = `Bağlı borsalarınızda (Binance, OKX, MEXC) kullanılabilir serbest nakit <strong>$0.00 USDT</strong> olduğu için gerçek al-sat emirleri verilememektedir (Borsaların min. işlem limiti 5-10 USDT'dir). Gerçek işlem için hesabınıza USDT aktarabilir veya <strong>Sanala Dön (10.000$ Demo)</strong> butonuna tıklayabilirsiniz.`;
+      } else {
+        banner.style.borderLeftColor = 'var(--profit)';
+        bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
+        bannerIcon.style.color = 'var(--profit)';
+        bannerIcon.textContent = '⚡';
+        bannerTitle.textContent = `Canlı Çoklu Borsa Modu Aktif (${exLabel} - Serbest: $${cashUsd.toFixed(2)} USDT)`;
+        bannerDesc.textContent = `Bot kayıtlı borsa API'leriniz (Binance, MEXC, OKX) üzerinden serbest USDT bakiyesiyle akıllı pozisyon almaktadır. Sanal öğrenme moduna dönmek için butona tıklayabilirsiniz.`;
+      }
       bannerActionBtn.textContent = 'Sanala Dön (Öğrenme) 🧪';
       bannerActionBtn.style.borderColor = 'var(--profit)';
     } else {
