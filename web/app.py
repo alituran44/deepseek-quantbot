@@ -1,4 +1,6 @@
 import os
+import hmac
+import hashlib
 from pathlib import Path
 from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -18,14 +20,71 @@ templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 # Statik dosyaları bağla
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
+def get_expected_token() -> str:
+    """HMAC-SHA256 ile ADMIN_PIN tabanlı güvenli oturum tokeni üretir."""
+    pin = getattr(config, "ADMIN_PIN", "1923").strip()
+    return hmac.new(pin.encode("utf-8"), b"quant_shield_session_v1", hashlib.sha256).hexdigest()
+
+def is_request_authenticated(request: Request) -> bool:
+    """İsteğin geçerli bir oturum tokeni (Header veya Cookie) taşıyıp taşımadığını doğrular."""
+    pin = getattr(config, "ADMIN_PIN", "1923").strip()
+    if not pin:
+        return True
+
+    expected = get_expected_token()
+
+    # 1. Authorization: Bearer <token>
+    auth_hdr = request.headers.get("Authorization", "")
+    if auth_hdr.startswith("Bearer "):
+        token = auth_hdr[7:].strip()
+        if hmac.compare_digest(token, expected):
+            return True
+
+    # 2. X-Admin-Token header
+    x_token = request.headers.get("X-Admin-Token", "").strip()
+    if x_token and hmac.compare_digest(x_token, expected):
+        return True
+
+    # 3. quant_admin_token cookie
+    cookie_token = request.cookies.get("quant_admin_token", "").strip()
+    if cookie_token and hmac.compare_digest(cookie_token, expected):
+        return True
+
+    return False
+
 @app.middleware("http")
-async def add_no_cache_headers(request, call_next):
+async def security_and_cache_middleware(request: Request, call_next):
+    """Yetkilendirme kalkanı ve önbellek kontrol middleware'i."""
+    path = request.url.path
+
+    # Herkese açık rotalar
+    is_public = (
+        path == "/" or
+        path.startswith("/static") or
+        path.startswith("/api/auth") or
+        path == "/favicon.ico"
+    )
+
+    # Vercel Cron için /api/scan istisnası
+    if path == "/api/scan" and (request.headers.get("x-vercel-cron") or request.headers.get("X-Vercel-Cron")):
+        is_public = True
+
+    if not is_public and path.startswith("/api"):
+        if not is_request_authenticated(request):
+            return JSONResponse(
+                status_code=401,
+                content={"status": "UNAUTHORIZED", "message": "Yetkisiz erişim. Lütfen PIN kodunuzu girin."}
+            )
+
     response = await call_next(request)
-    if request.url.path.startswith("/static") or request.url.path == "/":
+    if path.startswith("/static") or path == "/":
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
     return response
+
+class AuthLoginRequest(BaseModel):
+    pin: str
 
 class ScanRequest(BaseModel):
     symbol: Optional[str] = None
@@ -49,6 +108,7 @@ class ConfigUpdateRequest(BaseModel):
     trading_mode: Optional[str] = None
     trading_exchange: Optional[str] = None
     ai_risk_profile: Optional[str] = None
+    admin_pin: Optional[str] = None
     telegram_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
     binance_api_key: Optional[str] = None
@@ -75,11 +135,59 @@ def shutdown_event():
     if not os.getenv("VERCEL"):
         orchestrator.stop_background_scanner()
 
+@app.post("/api/auth/login")
+async def auth_login(req: AuthLoginRequest):
+    """Kullanıcının girdiği 4 haneli PIN kodunu doğrular ve güvenli oturum tokeni döner."""
+    pin = (req.pin or "").strip()
+    expected_pin = getattr(config, "ADMIN_PIN", "1923").strip()
+    
+    if not expected_pin or pin == expected_pin:
+        token = get_expected_token()
+        resp = JSONResponse(content={"status": "SUCCESS", "message": "Oturum başarıyla açıldı.", "token": token})
+        resp.set_cookie(
+            key="quant_admin_token",
+            value=token,
+            max_age=7 * 24 * 3600,
+            httponly=False,
+            samesite="lax",
+            path="/"
+        )
+        return resp
+    return JSONResponse(status_code=401, content={"status": "ERROR", "message": "Hatalı PIN kodu! Lütfen tekrar deneyin."})
+
+@app.get("/api/auth/check")
+def auth_check(request: Request):
+    """Mevcut oturumun geçerli olup olmadığını kontrol eder."""
+    return JSONResponse(content={"authenticated": is_request_authenticated(request)})
+
+@app.post("/api/auth/logout")
+def auth_logout():
+    """Oturumu sonlandırır ve kilit ekranına döndürür."""
+    resp = JSONResponse(content={"status": "SUCCESS", "message": "Oturum kilitlendi."})
+    resp.delete_cookie(key="quant_admin_token", path="/")
+    return resp
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     """Ana Dashboard Sayfası."""
-    state = orchestrator.get_dashboard_state()
-    return templates.TemplateResponse(request=request, name="index.html", context={"state": state})
+    is_auth = is_request_authenticated(request)
+    if is_auth:
+        state = orchestrator.get_dashboard_state()
+        state["is_locked"] = False
+    else:
+        # Kilitliyken hassas portföy ve bakiye bilgilerini HTML içine gömme
+        state = {
+            "is_locked": True,
+            "last_scan_time": "",
+            "trading_mode": config.TRADING_MODE,
+            "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
+            "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
+            "wallet": {"total_equity": 0.0, "cash_balance": 0.0, "open_positions": [], "is_live": False},
+            "master_treasury": {"total_usd": 0.0, "cash_usd": 0.0, "binance": {}, "okx": {}, "mexc": {}},
+            "watchlist": [],
+            "radar_watchlist": []
+        }
+    return templates.TemplateResponse(request=request, name="index.html", context={"state": state, "is_authenticated": is_auth})
 
 @app.get("/api/state")
 def get_state():
@@ -167,9 +275,25 @@ async def execute_manual_order(req: ManualOrderRequest):
             return JSONResponse(status_code=404, content={"status": "ERROR", "message": f"{sym} için açık sanal pozisyon bulunamadı."})
 
 @app.post("/api/mode/toggle")
-async def toggle_mode():
-    """Sanal Kasa (PAPER) ile Canlı Kripto (LIVE) arasında tek tıkla geçiş yapar."""
-    config.TRADING_MODE = "LIVE" if config.TRADING_MODE == "PAPER" else "PAPER"
+async def toggle_mode(request: Request):
+    """Sanal Kasa (PAPER) ile Canlı Kripto (LIVE) arasında tek tıkla anında geçiş yapar."""
+    target_mode = None
+    try:
+        body = await request.json()
+        target_mode = body.get("trading_mode")
+    except Exception:
+        pass
+
+    if target_mode in ["LIVE", "PAPER"]:
+        config.TRADING_MODE = target_mode
+    else:
+        config.TRADING_MODE = "LIVE" if config.TRADING_MODE == "PAPER" else "PAPER"
+
+    try:
+        update_env_file({"TRADING_MODE": config.TRADING_MODE})
+    except Exception:
+        pass
+
     return JSONResponse(content={"status": "SUCCESS", "trading_mode": config.TRADING_MODE})
 
 @app.post("/api/exchange/select")
@@ -287,13 +411,19 @@ def get_config():
         "fred_masked_key": masked_fred,
         "telegram_configured": bool(config.TELEGRAM_BOT_TOKEN),
         "telegram_token_set": bool(config.TELEGRAM_BOT_TOKEN),
-        "telegram_chat_id_set": bool(config.TELEGRAM_CHAT_ID)
+        "telegram_chat_id_set": bool(config.TELEGRAM_CHAT_ID),
+        "admin_pin_configured": bool(config.ADMIN_PIN),
+        "admin_pin_masked": "●●●●" if config.ADMIN_PIN else "Tanımlı Değil"
     })
 
 @app.post("/api/config/update")
 async def update_settings(req: ConfigUpdateRequest):
     """API anahtarları ve ayarları canlı günceller ve .env dosyasına kalıcı yazar."""
     env_updates = {}
+
+    if req.admin_pin is not None and req.admin_pin.strip():
+        config.ADMIN_PIN = req.admin_pin.strip()
+        env_updates["ADMIN_PIN"] = config.ADMIN_PIN
 
     if req.deepseek_api_key is not None and req.deepseek_api_key.strip():
         config.DEEPSEEK_API_KEY = req.deepseek_api_key.strip()

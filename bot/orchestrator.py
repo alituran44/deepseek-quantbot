@@ -539,14 +539,45 @@ class BotOrchestrator:
         usd_try = self.get_usd_try_rate()
         
         now = time.time()
-        if (now - self._exchange_cache_time > 10.0):
-            binance_acc = {}
-            if self.binance_executor.enabled:
-                binance_acc = self.binance_executor.get_account_balances()
-            self._cached_binance_acc = binance_acc
-            self._cached_binance_summary = self.binance_executor.get_real_portfolio_summary()
-            self._cached_okx_summary = self.okx_executor.get_real_portfolio_summary()
-            self._cached_mexc_summary = self.mexc_executor.get_real_portfolio_summary()
+        if (now - self._exchange_cache_time > 45.0):
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _fetch_binance():
+                if not self.binance_executor.enabled:
+                    return {}, {}
+                b_sum = self.binance_executor.get_real_portfolio_summary()
+                b_acc = {
+                    "success": True,
+                    "free_usdt": b_sum.get("free_usdt", 0.0),
+                    "can_trade": True if b_sum.get("open_positions") or not b_sum.get("error") else False,
+                    "assets": {a["asset"]: {"free": a.get("free", 0), "locked": a.get("locked", 0), "total": a.get("units", 0)} for a in b_sum.get("live_assets", [])}
+                }
+                return b_acc, b_sum
+
+            def _fetch_okx():
+                return self.okx_executor.get_real_portfolio_summary() if self.okx_executor.configured else {}
+
+            def _fetch_mexc():
+                return self.mexc_executor.get_real_portfolio_summary() if self.mexc_executor.configured else {}
+
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                f_bin = executor.submit(_fetch_binance)
+                f_okx = executor.submit(_fetch_okx)
+                f_mexc = executor.submit(_fetch_mexc)
+
+                try:
+                    self._cached_binance_acc, self._cached_binance_summary = f_bin.result(timeout=7)
+                except Exception:
+                    pass
+                try:
+                    self._cached_okx_summary = f_okx.result(timeout=7)
+                except Exception:
+                    pass
+                try:
+                    self._cached_mexc_summary = f_mexc.result(timeout=7)
+                except Exception:
+                    pass
+
             self._exchange_cache_time = now
 
         binance_acc = self._cached_binance_acc

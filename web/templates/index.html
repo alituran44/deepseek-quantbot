@@ -77,6 +77,14 @@
         </svg>
         Ayarlar
       </button>
+
+      <button id="btn-lock-header" class="btn btn-secondary" onclick="lockDashboard()" title="Paneli Kilitle" style="display: inline-flex; align-items: center; gap: 6px; border-color: rgba(239, 68, 68, 0.3); color: var(--loss);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Kilitle</span>
+      </button>
     </div>
   </header>
 
@@ -908,6 +916,21 @@
           <input type="text" id="input-tg-chat" class="form-input" placeholder="987654321" value="">
         </div>
 
+        <!-- Yönetici PIN Kodu (Erişim Kilidi) -->
+        <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">🔒 Yönetici PIN Kodu (Erişim Kilidi)</span>
+            <span id="badge-admin-pin-status" class="indicator-pill" style="color: var(--profit);">✅ Aktif (1923)</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Yeni 4 Haneli PIN Kodu</label>
+            <input type="password" id="input-admin-pin" class="form-input" placeholder="●●●● (Değiştirmek için yeni PIN girin)" maxlength="8">
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              Panele ve al-sat emirlerine yetkisiz kişilerin erişimini engeller. Boş bırakırsanız mevcut PIN korunur.
+            </div>
+          </div>
+        </div>
+
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
           <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">İptal</button>
           <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
@@ -916,6 +939,44 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.11.0_{{ state.last_scan_time | default('1') | replace(' ', '_') | replace(':', '_') }}"></script>
+  <!-- Obsidian Güvenlik Kalkanı & PIN Kilit Ekranı -->
+  <div id="lock-screen-overlay" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(8, 10, 15, 0.96); backdrop-filter: blur(20px); align-items: center; justify-content: center; flex-direction: column;">
+    <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 16px; width: 360px; max-width: 90vw; padding: 32px 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); text-align: center;">
+      <!-- Shield Lock SVG Icon -->
+      <div style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 14px; background: rgba(2, 132, 199, 0.12); border: 1px solid rgba(2, 132, 199, 0.3); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <rect x="9" y="10" width="6" height="5" rx="1"></rect>
+          <path d="M10 10V8a2 2 0 0 1 4 0v2"></path>
+        </svg>
+      </div>
+      
+      <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em;">Erişim Kilidi</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 24px;">DeepSeek Quant Dashboard'a erişmek için 4 haneli PIN kodunuzu girin.</div>
+      
+      <!-- PIN Input -->
+      <div id="pin-container" style="display: flex; justify-content: center; gap: 12px; margin-bottom: 16px;">
+        <input type="password" id="pin-input-field" maxlength="4" autofocus inputmode="numeric" pattern="[0-9]*" 
+               style="letter-spacing: 12px; font-size: 26px; text-align: center; width: 200px; height: 50px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; color: var(--text-primary); font-family: var(--font-mono); outline: none; transition: all 0.2s;"
+               placeholder="••••" onkeydown="if(event.key==='Enter') submitPin()">
+      </div>
+
+      <div id="pin-error-msg" style="font-size: 12px; color: var(--loss); min-height: 18px; margin-bottom: 16px; font-weight: 600;"></div>
+
+      <button id="btn-unlock" class="btn btn-primary" onclick="submitPin()" style="width: 100%; height: 44px; font-size: 14px; font-weight: 600; border-radius: 10px; justify-content: center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+        </svg>
+        Kilidi Aç
+      </button>
+
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 16px;">
+        Varsayılan PIN: <span style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 600;">1923</span> (Ayarlardan değiştirilebilir)
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=2.12.0_{{ state.last_scan_time | default('1') | replace(' ', '_') | replace(':', '_') }}"></script>
 </body>
 </html>

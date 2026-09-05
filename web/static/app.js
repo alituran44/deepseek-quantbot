@@ -1,5 +1,153 @@
 // DeepSeek-QuantBot Kripto Sepet Client Application
 
+// --- Global Yetkilendirme & Kalkan Koruması (Admin Shield) ---
+const _originalFetch = window.fetch;
+window.fetch = async function (resource, init = {}) {
+  init = init || {};
+  init.headers = init.headers || {};
+  const token = localStorage.getItem('quant_admin_token');
+  if (token) {
+    if (init.headers instanceof Headers) {
+      if (!init.headers.has('Authorization')) init.headers.set('Authorization', 'Bearer ' + token);
+      if (!init.headers.has('X-Admin-Token')) init.headers.set('X-Admin-Token', token);
+    } else if (Array.isArray(init.headers)) {
+      init.headers.push(['Authorization', 'Bearer ' + token]);
+      init.headers.push(['X-Admin-Token', token]);
+    } else {
+      if (!init.headers['Authorization']) init.headers['Authorization'] = 'Bearer ' + token;
+      if (!init.headers['X-Admin-Token']) init.headers['X-Admin-Token'] = token;
+    }
+  }
+  const response = await _originalFetch(resource, init);
+  if (response.status === 401 && typeof resource === 'string' && !resource.includes('/api/auth/')) {
+    showLockScreen();
+  }
+  return response;
+};
+
+function showLockScreen(errorMessage = '') {
+  const overlay = document.getElementById('lock-screen-overlay');
+  const btnLockHeader = document.getElementById('btn-lock-header');
+  const errorMsg = document.getElementById('pin-error-msg');
+  const pinInput = document.getElementById('pin-input-field');
+
+  if (overlay) overlay.style.display = 'flex';
+  if (btnLockHeader) btnLockHeader.style.display = 'none';
+  if (errorMsg) errorMsg.textContent = errorMessage;
+  if (pinInput) {
+    pinInput.value = '';
+    setTimeout(() => pinInput.focus(), 150);
+  }
+}
+
+function hideLockScreen() {
+  const overlay = document.getElementById('lock-screen-overlay');
+  const btnLockHeader = document.getElementById('btn-lock-header');
+  const errorMsg = document.getElementById('pin-error-msg');
+
+  if (overlay) overlay.style.display = 'none';
+  if (btnLockHeader) btnLockHeader.style.display = 'inline-flex';
+  if (errorMsg) errorMsg.textContent = '';
+}
+
+async function submitPin() {
+  const pinInput = document.getElementById('pin-input-field');
+  const errorMsg = document.getElementById('pin-error-msg');
+  const pinBtn = document.getElementById('btn-unlock');
+  const pinContainer = document.getElementById('pin-container');
+  const pin = (pinInput ? pinInput.value : '').trim();
+
+  if (!pin) {
+    if (errorMsg) errorMsg.textContent = 'Lütfen PIN kodunuzu girin.';
+    if (pinInput) pinInput.focus();
+    return;
+  }
+
+  if (pinBtn) {
+    pinBtn.disabled = true;
+    pinBtn.innerHTML = 'Doğrulanıyor...';
+  }
+
+  try {
+    const res = await _originalFetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pin })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.status === 'SUCCESS' && data.token) {
+      localStorage.setItem('quant_admin_token', data.token);
+      hideLockScreen();
+      fetchState();
+      loadAllMarketCoins();
+      if (typeof fetchRadarData === 'function') fetchRadarData();
+    } else {
+      if (errorMsg) errorMsg.textContent = data.message || 'Hatalı PIN kodu!';
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
+      if (pinContainer) {
+        pinContainer.style.transform = 'translateX(-10px)';
+        setTimeout(() => { pinContainer.style.transform = 'translateX(10px)'; }, 80);
+        setTimeout(() => { pinContainer.style.transform = 'translateX(-6px)'; }, 160);
+        setTimeout(() => { pinContainer.style.transform = 'translateX(6px)'; }, 240);
+        setTimeout(() => { pinContainer.style.transform = 'translateX(0)'; }, 320);
+      }
+    }
+  } catch (err) {
+    if (errorMsg) errorMsg.textContent = 'Bağlantı hatası: ' + err.message;
+  } finally {
+    if (pinBtn) {
+      pinBtn.disabled = false;
+      pinBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+        </svg>
+        Kilidi Aç`;
+    }
+  }
+}
+
+async function lockDashboard() {
+  try {
+    await _originalFetch('/api/auth/logout', { method: 'POST' });
+  } catch (e) {}
+  localStorage.removeItem('quant_admin_token');
+  showLockScreen('Oturum kilitlendi.');
+}
+
+async function checkInitialAuth() {
+  const token = localStorage.getItem('quant_admin_token');
+  if (!token) {
+    showLockScreen();
+    return false;
+  }
+  try {
+    const res = await _originalFetch('/api/auth/check', {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'X-Admin-Token': token
+      }
+    });
+    const data = await res.json();
+    if (data.authenticated) {
+      hideLockScreen();
+      return true;
+    } else {
+      localStorage.removeItem('quant_admin_token');
+      showLockScreen();
+      return false;
+    }
+  } catch (err) {
+    showLockScreen();
+    return false;
+  }
+}
+
 let currentAnalyses = [];
 let currentSignalFilter = 'ALL';
 let currentModalSymbol = '';
@@ -384,18 +532,6 @@ function renderDashboard(data) {
   // 8. Çoklu Borsa Yükseliş Radarı
   if (data.breakout_radar) {
     renderBreakoutRadar(data.breakout_radar);
-  }
-}
-
-async function toggleTradingMode() {
-  try {
-    const res = await fetch('/api/mode/toggle', { method: 'POST' });
-    const data = await res.json();
-    if (data.status === 'SUCCESS') {
-      fetchState();
-    }
-  } catch (err) {
-    alert('Mod değiştirilirken hata: ' + err);
   }
 }
 
@@ -865,28 +1001,72 @@ async function closePosition(posId, currentPx) {
   }
 }
 
+function applyModeUIToDOM(mode) {
+  currentTradingMode = mode;
+  const isLive = mode === 'LIVE';
+
+  // 1. Header Butonu
+  const btnToggle = document.getElementById('btn-mode-toggle');
+  const modeText = document.getElementById('mode-text');
+  const modeDot = document.getElementById('mode-dot');
+  if (modeText) modeText.textContent = isLive ? 'Canlı Mod (Binance)' : 'Sanal Mod ($10K)';
+  if (modeDot) modeDot.style.background = isLive ? 'var(--profit)' : 'var(--warning)';
+  if (btnToggle) btnToggle.style.borderColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+
+  // 2. Banner
+  const banner = document.getElementById('mode-banner');
+  const bannerIcon = document.getElementById('banner-icon');
+  const bannerTitle = document.getElementById('banner-title');
+  const bannerDesc = document.getElementById('banner-desc');
+  const bannerActionBtn = document.getElementById('banner-action-btn');
+
+  if (banner) banner.style.borderLeftColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+  if (bannerIcon) {
+    bannerIcon.textContent = isLive ? '⚡' : '🧪';
+    bannerIcon.style.background = isLive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)';
+    bannerIcon.style.color = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+  }
+  if (bannerTitle) bannerTitle.textContent = isLive ? 'Canlı Kripto Modu Aktif (Binance & Çoklu Borsa)' : 'Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)';
+  if (bannerDesc) bannerDesc.textContent = isLive ? 'Bot gerçek borsa hesap bakiyeniz üzerinden canlı emirler yönetir.' : 'Bot canlı piyasa mumları üzerinde $10,000 sanal kasa ile stratejilerini test eder.';
+  if (bannerActionBtn) {
+    bannerActionBtn.textContent = isLive ? 'Sanal Moda Geç 🧪' : 'Canlı Moda Geç ⚡';
+    bannerActionBtn.style.borderColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+  }
+
+  // 3. Kasa etiketleri
+  const mEquityLabel = document.getElementById('m-equity-label');
+  const mCashLabel = document.getElementById('m-cash-label');
+  const posCardTitle = document.getElementById('pos-card-title');
+  if (mEquityLabel) mEquityLabel.textContent = isLive ? 'Konsolide Canlı Kasa' : 'Konsolide Ana Kasa';
+  if (mCashLabel) mCashLabel.textContent = isLive ? 'Kullanılabilir Boşta Nakit' : 'Kullanılabilir Boşta Nakit';
+  if (posCardTitle) posCardTitle.textContent = isLive ? 'Canlı Borsa Varlıkları (Spot Cüzdanı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
+}
+
 async function toggleTradingMode() {
   const newMode = currentTradingMode === 'LIVE' ? 'PAPER' : 'LIVE';
-  if (newMode === 'LIVE') {
-    if (!confirm('⚡ Canlı Kripto Moduna geçmek üzeresiniz. Bot doğrudan Binance bakiyeniz ile gerçek kripto al-sat emirleri verecektir. Devam etmek istiyor musunuz?')) {
-      return;
-    }
-  }
+  const prevMode = currentTradingMode;
+
+  // 1. İyimser anında UI güncellemesi (0.01 sn tepki süresi!)
+  applyModeUIToDOM(newMode);
+
+  // 2. Arka planda ultra-hızlı API çağrısı
   try {
-    const res = await fetch('/api/config/update', {
+    const res = await fetch('/api/mode/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ trading_mode: newMode })
     });
     const data = await res.json();
-    if (res.ok && data.status === 'SUCCESS') {
-      currentTradingMode = newMode;
-      fetchState();
-    } else {
+    if (!res.ok || data.status !== 'SUCCESS') {
+      applyModeUIToDOM(prevMode);
       alert('Mod değiştirilemedi: ' + (data.message || 'Bilinmeyen hata'));
+      return;
     }
+    // Arka planda bakiye ve verileri sessizce güncelle
+    fetchState();
   } catch (err) {
-    alert('Hata: ' + err.message);
+    applyModeUIToDOM(prevMode);
+    console.error('Mod değiştirme hatası:', err);
   }
 }
 
@@ -1070,6 +1250,18 @@ async function openSettingsModal() {
         if (curFred) curFred.textContent = 'Canlı Açık DXY/Tahvil Akışı (Anahtarsız)';
         if (inFredKey) { inFredKey.value = ''; inFredKey.placeholder = '32 karakterlik FRED API Key (Boş bırakırsanız açık DXY/Tahvil akışı çalışır)'; }
       }
+
+      // Yönetici PIN Kodu
+      const badgePin = document.getElementById('badge-admin-pin-status');
+      const inPin = document.getElementById('input-admin-pin');
+      if (badgePin) {
+        badgePin.textContent = c.admin_pin_configured ? '✅ Aktif' : 'Tanımlı Değil';
+        badgePin.style.color = c.admin_pin_configured ? 'var(--profit)' : 'var(--warning)';
+      }
+      if (inPin) {
+        inPin.value = '';
+        inPin.placeholder = c.admin_pin_masked ? (c.admin_pin_masked + ' (Değiştirmek için yeni PIN girin)') : 'Yeni PIN...';
+      }
     }
   } catch (err) {
     console.error('Ayarlar yüklenemedi:', err);
@@ -1233,6 +1425,10 @@ async function saveSettings(e) {
   if (coingeckoKey) payload.coingecko_api_key = coingeckoKey;
   if (fredKey) payload.fred_api_key = fredKey;
 
+  const inPinEl = document.getElementById('input-admin-pin');
+  const adminPinVal = inPinEl ? inPinEl.value.trim() : '';
+  if (adminPinVal) payload.admin_pin = adminPinVal;
+
   try {
     const res = await fetch('/api/config/update', {
       method: 'POST',
@@ -1241,6 +1437,17 @@ async function saveSettings(e) {
     });
     const data = await res.json();
     if (res.ok && data.status === 'SUCCESS') {
+      if (adminPinVal) {
+        try {
+          const authRes = await _originalFetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: adminPinVal })
+          });
+          const authData = await authRes.json();
+          if (authData.token) localStorage.setItem('quant_admin_token', authData.token);
+        } catch (e) {}
+      }
       if (statusMsg) {
         statusMsg.style.background = 'rgba(16, 185, 129, 0.15)';
         statusMsg.style.border = '1px solid var(--profit)';
@@ -1685,10 +1892,16 @@ window.scanBreakoutRadar = scanBreakoutRadar;
 window.filterRadar = filterRadar;
 window.toggleTrackRadarCoin = toggleTrackRadarCoin;
 window.quickTradeRadar = quickTradeRadar;
+window.submitPin = submitPin;
+window.lockDashboard = lockDashboard;
 
 // Başlatıcı
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
+
+  // Güvenlik Kalkanı & Oturum Kontrolü
+  const isAuth = await checkInitialAuth();
+
   const btnSettings = document.getElementById('btn-settings-header');
   if (btnSettings) {
     btnSettings.addEventListener('click', (e) => {
@@ -1696,13 +1909,27 @@ document.addEventListener('DOMContentLoaded', () => {
       openSettingsModal();
     });
   }
-  fetchState();
-  loadAllMarketCoins();
-  setInterval(fetchState, 8000);
-  setInterval(loadAllMarketCoins, 30000);
+
+  if (isAuth) {
+    fetchState();
+    loadAllMarketCoins();
+  }
+
+  setInterval(() => {
+    if (localStorage.getItem('quant_admin_token')) {
+      fetchState();
+    }
+  }, 8000);
+
+  setInterval(() => {
+    if (localStorage.getItem('quant_admin_token')) {
+      loadAllMarketCoins();
+    }
+  }, 30000);
 
   // Sayfa açıkken her 90 saniyede bir otonom sepet taraması ve dengelemesi yap
   setInterval(async () => {
+    if (!localStorage.getItem('quant_admin_token')) return;
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',

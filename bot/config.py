@@ -24,6 +24,9 @@ class Config:
     # DSH (DeepSeek Harness) Home directory
     DSH_HOME = os.getenv("DSH_HOME", "/tmp/.dsh_home" if os.getenv("VERCEL") else str(BASE_DIR / ".dsh_home")).strip()
     
+    # Security / Admin Shield
+    ADMIN_PIN = os.getenv("ADMIN_PIN", "1923").strip()
+
     # Trading Configuration
     TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper()
     TRADING_EXCHANGE = os.getenv("TRADING_EXCHANGE", "AUTO").upper() # AUTO, BINANCE, MEXC, OKX
