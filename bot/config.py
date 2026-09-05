@@ -37,13 +37,13 @@ class Config:
     BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "false").lower() in ["true", "1", "yes"]
 
     # OKX Live Exchange Configuration
-    OKX_API_KEY = os.getenv("OKX_API_KEY", "3ca2fd53-e50e-433e-baa6-9f71fa3081b5").strip()
-    OKX_SECRET_KEY = os.getenv("OKX_SECRET_KEY", "15A64D5AFF4F3E4B995D945B59D20597").strip()
+    OKX_API_KEY = os.getenv("OKX_API_KEY", "").strip()
+    OKX_SECRET_KEY = os.getenv("OKX_SECRET_KEY", "").strip()
     OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "").strip()
 
     # MEXC Live Exchange Configuration
-    MEXC_API_KEY = os.getenv("MEXC_API_KEY", "mx0vglDl9kY9ZGYyJE").strip()
-    MEXC_SECRET_KEY = os.getenv("MEXC_SECRET_KEY", "a16e66b1e5d546bbb72ebcb51e092a2c").strip()
+    MEXC_API_KEY = os.getenv("MEXC_API_KEY", "").strip()
+    MEXC_SECRET_KEY = os.getenv("MEXC_SECRET_KEY", "").strip()
     
     # 4 Kritik İstihbarat & Alfa API Yapılandırması
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()

@@ -270,30 +270,24 @@ def get_config():
         "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
         "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 5.0),
         "binance_configured": bool(config.BINANCE_API_KEY),
-        "binance_api_key": config.BINANCE_API_KEY or "",
         "binance_masked_key": masked_binance,
         "binance_secret_set": bool(config.BINANCE_SECRET_KEY),
         "okx_configured": bool(config.OKX_API_KEY),
-        "okx_api_key": config.OKX_API_KEY or "",
         "okx_masked_key": masked_okx,
         "okx_secret_set": bool(config.OKX_SECRET_KEY),
         "okx_has_passphrase": bool(config.OKX_PASSPHRASE),
         "mexc_configured": bool(config.MEXC_API_KEY),
-        "mexc_api_key": config.MEXC_API_KEY or "",
         "mexc_masked_key": masked_mexc,
         "mexc_secret_set": bool(config.MEXC_SECRET_KEY),
         "groq_configured": bool(getattr(config, "GROQ_API_KEY", "")),
-        "groq_api_key": getattr(config, "GROQ_API_KEY", "") or "",
         "groq_masked_key": masked_groq,
         "coingecko_configured": bool(getattr(config, "COINGECKO_API_KEY", "")),
-        "coingecko_api_key": getattr(config, "COINGECKO_API_KEY", "") or "",
         "coingecko_masked_key": masked_cg,
         "fred_configured": bool(getattr(config, "FRED_API_KEY", "")),
-        "fred_api_key": getattr(config, "FRED_API_KEY", "") or "",
         "fred_masked_key": masked_fred,
         "telegram_configured": bool(config.TELEGRAM_BOT_TOKEN),
-        "telegram_token": config.TELEGRAM_BOT_TOKEN or "",
-        "telegram_chat_id": config.TELEGRAM_CHAT_ID or ""
+        "telegram_token_set": bool(config.TELEGRAM_BOT_TOKEN),
+        "telegram_chat_id_set": bool(config.TELEGRAM_CHAT_ID)
     })
 
 @app.post("/api/config/update")

@@ -963,12 +963,17 @@ async function openSettingsModal() {
       const curBin = document.getElementById('current-binance-key');
       const inBinKey = document.getElementById('input-binance-key');
       const inBinSec = document.getElementById('input-binance-secret');
-      const hasBin = c.binance_configured || Boolean(c.binance_api_key);
+      const hasBin = Boolean(c.binance_configured);
       if (hasBin) {
         if (badgeBin) { badgeBin.textContent = '✅ Doğrulandı (Spot Yetkili)'; badgeBin.style.color = 'var(--profit)'; }
         if (curBin) curBin.textContent = c.binance_masked_key || 'Kayıtlı';
-        if (inBinKey) inBinKey.value = c.binance_api_key || '';
+        if (inBinKey) { inBinKey.value = ''; inBinKey.placeholder = c.binance_masked_key ? (c.binance_masked_key + ' (Kayıtlı - değiştirmek için yeni girin)') : 'Binance API Key...'; }
         if (inBinSec) { inBinSec.value = ''; inBinSec.placeholder = '●●●●●●●● (Kayıtlı - değiştirmek için yeni girin)'; }
+      } else {
+        if (badgeBin) { badgeBin.textContent = 'Tanımlı Değil'; badgeBin.style.color = 'var(--loss)'; }
+        if (curBin) curBin.textContent = 'Girilmedi';
+        if (inBinKey) { inBinKey.value = ''; inBinKey.placeholder = 'Binance API Key...'; }
+        if (inBinSec) { inBinSec.value = ''; inBinSec.placeholder = 'Binance Secret Key...'; }
       }
 
       // OKX
@@ -977,13 +982,17 @@ async function openSettingsModal() {
       const inOkxKey = document.getElementById('input-okx-key');
       const inOkxSec = document.getElementById('input-okx-secret');
       const inOkxPass = document.getElementById('input-okx-passphrase');
-      const hasOkx = c.okx_configured || Boolean(c.okx_api_key);
+      const hasOkx = Boolean(c.okx_configured);
       if (hasOkx) {
         if (badgeOkx) { badgeOkx.textContent = '✅ Kayıtlı'; badgeOkx.style.color = 'var(--profit)'; }
-        if (inOkxKey) inOkxKey.value = c.okx_api_key || '';
+        if (inOkxKey) { inOkxKey.value = ''; inOkxKey.placeholder = c.okx_masked_key ? (c.okx_masked_key + ' (Kayıtlı - değiştirmek için yeni girin)') : 'OKX API Key...'; }
         if (inOkxSec) { inOkxSec.value = ''; inOkxSec.placeholder = '●●●●●●●● (Kayıtlı - değiştirmek için yeni girin)'; }
+      } else {
+        if (badgeOkx) { badgeOkx.textContent = 'Tanımlı Değil'; badgeOkx.style.color = 'var(--loss)'; }
+        if (inOkxKey) { inOkxKey.value = ''; inOkxKey.placeholder = 'OKX API Key...'; }
+        if (inOkxSec) { inOkxSec.value = ''; inOkxSec.placeholder = 'OKX Secret Key...'; }
       }
-      const hasPass = c.okx_has_passphrase || c.okx_passphrase_set;
+      const hasPass = Boolean(c.okx_has_passphrase);
       if (hasPass) {
         if (badgeOkxPass) { badgeOkxPass.textContent = '✅ Doğrulandı'; badgeOkxPass.style.color = 'var(--profit)'; }
         if (inOkxPass) { inOkxPass.value = ''; inOkxPass.placeholder = '●●●●●●●● (Kayıtlı - değiştirmek için yeni girin)'; }
@@ -996,11 +1005,15 @@ async function openSettingsModal() {
       const badgeMexc = document.getElementById('badge-mexc-status');
       const inMexcKey = document.getElementById('input-mexc-key');
       const inMexcSec = document.getElementById('input-mexc-secret');
-      const hasMexc = c.mexc_configured || Boolean(c.mexc_api_key);
+      const hasMexc = Boolean(c.mexc_configured);
       if (hasMexc) {
         if (badgeMexc) { badgeMexc.textContent = '✅ Kayıtlı & Bağlı'; badgeMexc.style.color = '#10b981'; }
-        if (inMexcKey) inMexcKey.value = c.mexc_api_key || '';
+        if (inMexcKey) { inMexcKey.value = ''; inMexcKey.placeholder = c.mexc_masked_key ? (c.mexc_masked_key + ' (Kayıtlı - değiştirmek için yeni girin)') : 'MEXC API Key...'; }
         if (inMexcSec) { inMexcSec.value = ''; inMexcSec.placeholder = '●●●●●●●● (Kayıtlı - değiştirmek için yeni girin)'; }
+      } else {
+        if (badgeMexc) { badgeMexc.textContent = 'Tanımlı Değil'; badgeMexc.style.color = 'var(--loss)'; }
+        if (inMexcKey) { inMexcKey.value = ''; inMexcKey.placeholder = 'MEXC API Key...'; }
+        if (inMexcSec) { inMexcSec.value = ''; inMexcSec.placeholder = 'MEXC Secret Key...'; }
       }
 
       // Telegram
