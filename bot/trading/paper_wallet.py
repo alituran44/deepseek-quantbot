@@ -38,8 +38,12 @@ class PaperWallet:
         if state is not None:
             self.state = state
         self.state["last_updated"] = datetime.now().isoformat()
-        with open(self.storage_file, "w", encoding="utf-8") as f:
-            json.dump(self.state, f, indent=2, ensure_ascii=False)
+        try:
+            self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_file, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"[PaperWallet] Durum kaydedilemedi: {e}")
 
     @property
     def cash_balance(self) -> float:

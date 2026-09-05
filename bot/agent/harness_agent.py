@@ -19,7 +19,10 @@ class DeepSeekQuantAgent:
         self.groq_api_key = getattr(config, "GROQ_API_KEY", "").strip()
         self.model = config.DEEPSEEK_MODEL or "deepseek-reasoner"
         self.dsh_home = Path(config.DSH_HOME)
-        self.dsh_home.mkdir(parents=True, exist_ok=True)
+        try:
+            self.dsh_home.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
         
     def analyze_market(
         self, 

@@ -65,13 +65,15 @@ class ConfigUpdateRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    """Uygulama açılışında arka plan tarayıcısını tetikler."""
-    orchestrator.start_background_scanner()
+    """Uygulama açılışında arka plan tarayıcısını tetikler (Serverless harici ortamlarda)."""
+    if not os.getenv("VERCEL"):
+        orchestrator.start_background_scanner()
 
 @app.on_event("shutdown")
 def shutdown_event():
     """Uygulama kapanışında tarayıcıyı nazikçe durdurur."""
-    orchestrator.stop_background_scanner()
+    if not os.getenv("VERCEL"):
+        orchestrator.stop_background_scanner()
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):

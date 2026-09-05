@@ -10,8 +10,11 @@ load_dotenv(BASE_DIR / ".env")
 
 class Config:
     BASE_DIR = BASE_DIR
-    DATA_DIR = BASE_DIR / "data_storage"
-    DATA_DIR.mkdir(exist_ok=True)
+    DATA_DIR = Path("/tmp/data_storage") if os.getenv("VERCEL") else (BASE_DIR / "data_storage")
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     
     # DeepSeek Configuration
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
@@ -19,7 +22,7 @@ class Config:
     DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip()
     
     # DSH (DeepSeek Harness) Home directory
-    DSH_HOME = os.getenv("DSH_HOME", str(BASE_DIR / ".dsh_home")).strip()
+    DSH_HOME = os.getenv("DSH_HOME", "/tmp/.dsh_home" if os.getenv("VERCEL") else str(BASE_DIR / ".dsh_home")).strip()
     
     # Trading Configuration
     TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper()

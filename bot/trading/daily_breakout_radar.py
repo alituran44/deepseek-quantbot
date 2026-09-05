@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from bot.data.crypto_feed import CryptoFeed
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data_storage"
+DATA_DIR = Path("/tmp/data_storage") if os.getenv("VERCEL") else (Path(__file__).resolve().parent.parent.parent / "data_storage")
 WATCHLIST_FILE = DATA_DIR / "radar_watchlist.json"
 
 class DailyBreakoutRadar:
@@ -50,6 +50,7 @@ class DailyBreakoutRadar:
     def save_watchlist(self):
         """Takip listesini diske kalıcı kaydeder."""
         try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
             with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.watchlist, f, indent=2, ensure_ascii=False)
         except Exception as e:
