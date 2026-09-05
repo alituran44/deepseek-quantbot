@@ -1,0 +1,22 @@
+# Ignore local build artifacts and large repositories
+deepseek-harness/
+deepseek-harness/**
+.dsh_home/
+.dsh_home/**
+.venv/
+.venv/**
+venv/
+venv/**
+tests/
+tests/**
+scratch/
+scratch/**
+data_storage/*.json
+!data_storage/.gitkeep
+*.log
+.git/
+.git/**
+.github/
+.github/**
+.env*
+!.env.example
