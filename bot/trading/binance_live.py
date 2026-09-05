@@ -43,31 +43,47 @@ class BinanceLiveExecutor:
         if not self.enabled and signed:
             return False, {"error": "Binance API Key ve Secret Key tanımlı değil."}
 
-        url = f"{self.base_url}{endpoint}"
-        headers = {"X-MBX-APIKEY": self.api_key} if self.api_key else {}
         params = params or {}
-
         if signed:
             params["timestamp"] = self._get_timestamp()
-            params["recvWindow"] = 5000
+            params["recvWindow"] = 60000
             params["signature"] = self._sign(params)
 
-        try:
-            if method.upper() == "GET":
-                resp = requests.get(url, headers=headers, params=params, timeout=10)
-            elif method.upper() == "POST":
-                resp = requests.post(url, headers=headers, params=params, timeout=10)
-            elif method.upper() == "DELETE":
-                resp = requests.delete(url, headers=headers, params=params, timeout=10)
-            else:
-                return False, {"error": f"Desteklenmeyen metod: {method}"}
+        urls = [f"{self.base_url}{endpoint}"]
+        if not self.testnet:
+            fallback_domains = ["https://api1.binance.com", "https://api2.binance.com", "https://api3.binance.com", "https://api4.binance.com"]
+            for dom in fallback_domains:
+                fb_url = f"{dom}{endpoint}"
+                if fb_url not in urls:
+                    urls.append(fb_url)
 
-            data = resp.json()
-            if resp.status_code >= 400:
-                return False, data
-            return True, data
-        except Exception as e:
-            return False, {"error": str(e)}
+        headers = {"X-MBX-APIKEY": self.api_key} if self.api_key else {}
+        last_error = None
+
+        for target_url in urls:
+            try:
+                if method.upper() == "GET":
+                    resp = requests.get(target_url, headers=headers, params=params, timeout=10)
+                elif method.upper() == "POST":
+                    resp = requests.post(target_url, headers=headers, params=params, timeout=10)
+                elif method.upper() == "DELETE":
+                    resp = requests.delete(target_url, headers=headers, params=params, timeout=10)
+                else:
+                    return False, {"error": f"Desteklenmeyen metod: {method}"}
+
+                if resp.status_code == 451:
+                    last_error = {"error": "HTTP 451: Coğrafi kısıtlama (Binance US Geoblock)."}
+                    continue
+
+                data = resp.json()
+                if resp.status_code >= 400:
+                    return False, data
+                return True, data
+            except Exception as e:
+                last_error = {"error": str(e)}
+                continue
+
+        return False, last_error or {"error": "Tüm Binance API uç noktalarına erişim başarısız."}
 
     def get_account_balances(self) -> Dict[str, Any]:
         """
