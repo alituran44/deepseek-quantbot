@@ -98,6 +98,7 @@ class ManualOrderRequest(BaseModel):
     action: str  # BUY veya SELL
     amount_usd: float
     exchange: Optional[str] = "AUTO"
+    mode: Optional[str] = None  # LIVE veya PAPER
 
 class SingleCoinAnalysisRequest(BaseModel):
     symbol: str
@@ -231,14 +232,65 @@ async def execute_manual_order(req: ManualOrderRequest):
     sym = req.symbol.strip().upper()
     action = req.action.strip().upper()
     req_exchange = (req.exchange or "AUTO").strip().upper()
+    order_mode = (req.mode or config.TRADING_MODE or "PAPER").strip().upper()
+    if order_mode not in ["LIVE", "PAPER"]:
+        order_mode = config.TRADING_MODE or "PAPER"
+
     ticker = orchestrator.crypto_feed.get_ticker_24h(sym)
     px = ticker.get("price", 0.0)
     if px <= 0:
         return JSONResponse(status_code=400, content={"status": "ERROR", "message": f"{sym} için güncel fiyat alınamadı."})
         
-    units = req.amount_usd / px
-    
-    if config.TRADING_MODE == "LIVE":
+    units = req.amount_usd / px if px > 0 else 0.0
+    clean_sym = sym.replace("USDT", "")
+
+    if order_mode == "LIVE":
+        # 1. Borsa API ve Doğrulama Kontrolleri
+        if req_exchange in ["BINANCE", "AUTO"]:
+            if not orchestrator.binance_executor.enabled:
+                return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance API anahtarlarınız tanımlı değil veya doğrulanamadı. Lütfen Ayarlar sekmesinden API anahtarlarınızı kontrol edin."})
+            
+            b_bal = orchestrator.binance_executor.get_account_balances()
+            if not b_bal.get("success"):
+                return JSONResponse(status_code=400, content={"status": "ERROR", "message": f"Binance hesabına bağlanılamadı: {b_bal.get('error', 'Erişim hatası')}"})
+
+            if action == "BUY":
+                if req.amount_usd < 5.0:
+                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance spot piyasasında minimum işlem tutarı $5.00 USDT'dir."})
+                free_usdt = float(b_bal.get("free_usdt", 0.0))
+                if free_usdt < req.amount_usd:
+                    return JSONResponse(status_code=400, content={
+                        "status": "ERROR", 
+                        "message": f"Binance hesabınızda serbest USDT bakiyesi yetersiz! (Mevcut: ${free_usdt:.2f} USDT, İstenen: ${req.amount_usd:.2f} USDT). Canlı alım yapabilmek için lütfen Binance hesabınıza USDT yatırın veya Sanal Kasa sekmesini kullanın."
+                    })
+
+            elif action == "SELL":
+                assets = b_bal.get("assets", {})
+                coin_info = assets.get(clean_sym, {})
+                free_coin = float(coin_info.get("free", 0.0))
+                if free_coin <= 0:
+                    return JSONResponse(status_code=400, content={
+                        "status": "ERROR", 
+                        "message": f"Binance cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym}). Canlı satış yapabilmek için önce bu coine sahip olmalısınız."
+                    })
+
+                # Miktar hesabı
+                if req.amount_usd > 0:
+                    calc_units = req.amount_usd / px
+                    units = min(calc_units, free_coin)
+                else:
+                    units = free_coin
+
+                est_usd = units * px
+                if est_usd < 5.0 and (free_coin * px) < 5.0:
+                    return JSONResponse(status_code=400, content={
+                        "status": "ERROR", 
+                        "message": f"Binance cüzdanınızdaki {clean_sym} bakiyesinin toplam değeri (${free_coin * px:.2f}), Binance minimum emir tutarı ($5.00) altında olduğu için emir iletilemiyor."
+                    })
+                elif est_usd < 5.0:
+                    units = min(free_coin, 5.5 / px)
+
+        # Canlı Emri Gerçekleştir
         ok, res, used_ex = orchestrator.execute_live_order(
             symbol=sym,
             action=action,
@@ -247,15 +299,31 @@ async def execute_manual_order(req: ManualOrderRequest):
             stop_loss=px * 0.95,
             take_profit=px * 1.10,
             preferred_exchange=req_exchange,
-            thesis=f"[KULLANICI MANUEL EMİR - {req_exchange}]"
+            thesis=f"[KULLANICI MANUEL CANLI EMİR - {req_exchange}]"
         )
         if ok:
-            return JSONResponse(content={"status": "SUCCESS", "message": f"{used_ex} Canlı {action} Emri Başarıyla İletildi! ({units:.4f} {sym})", "order": res, "exchange": used_ex})
+            action_tr = "Alım" if action == "BUY" else "Satım"
+            return JSONResponse(content={
+                "status": "SUCCESS", 
+                "message": f"⚡ {used_ex} Canlı {action_tr} Emri Gerçekleşti! ({units:.4f} {clean_sym} - ~${units * px:.2f})", 
+                "order": res, 
+                "exchange": used_ex
+            })
         else:
-            return JSONResponse(status_code=400, content={"status": "ERROR", "message": f"{used_ex} Canlı İşlem Hatası: {res.get('msg', str(res))}"})
+            return JSONResponse(status_code=400, content={
+                "status": "ERROR", 
+                "message": f"❌ {used_ex} Canlı İşlem Hatası: {res.get('msg', str(res))}"
+            })
     else:
         # Sanal Kasa İşlemi
         if action == "BUY":
+            cash = orchestrator.wallet.cash_balance
+            if req.amount_usd > cash:
+                return JSONResponse(status_code=400, content={
+                    "status": "ERROR", 
+                    "message": f"Sanal kasanızda yetersiz nakit bakiye! (Mevcut: ${cash:.2f}, İstenen: ${req.amount_usd:.2f})"
+                })
+
             trade = orchestrator.wallet.open_position(
                 symbol=sym,
                 action="BUY",
@@ -263,16 +331,30 @@ async def execute_manual_order(req: ManualOrderRequest):
                 stop_loss=px * 0.95,
                 take_profit=px * 1.10,
                 units=units,
-                thesis=f"[KULLANICI KARTINDAN MANUEL ALIM - {req_exchange}]",
-                exchange=req_exchange if req_exchange != "AUTO" else "Paper"
+                thesis=f"[KULLANICI KARTINDAN MANUEL SANAL ALIM - {req_exchange}]",
+                exchange="Paper"
             )
-            return JSONResponse(content={"status": "SUCCESS", "message": f"Sanal Alım Yapıldı ({units:.4f} {sym})", "trade": trade})
+            return JSONResponse(content={
+                "status": "SUCCESS", 
+                "message": f"🧪 Sanal Alım Yapıldı: {units:.4f} {sym} (~${req.amount_usd:.2f}) sanal kasanıza eklendi.", 
+                "trade": trade
+            })
         else:
-            pos = next((p for p in orchestrator.wallet.open_positions if p["symbol"] == sym), None)
+            pos = next((p for p in orchestrator.wallet.open_positions if p.get("symbol") in [sym, clean_sym, f"{clean_sym}USDT"]), None)
             if pos:
                 closed = orchestrator.wallet.close_position(pos["id"], px, exit_reason="MANUAL_CARD_SELL")
-                return JSONResponse(content={"status": "SUCCESS", "message": f"Sanal Satım Tamamlandı ({sym})", "trade": closed})
-            return JSONResponse(status_code=404, content={"status": "ERROR", "message": f"{sym} için açık sanal pozisyon bulunamadı."})
+                pnl = closed.get("pnl_usd", 0.0) if closed else 0.0
+                pnl_pct = closed.get("pnl_pct", 0.0) if closed else 0.0
+                pnl_sign = "+" if pnl >= 0 else ""
+                return JSONResponse(content={
+                    "status": "SUCCESS", 
+                    "message": f"🧪 Sanal Satım Tamamlandı: {sym} pozisyonu kapatıldı (Realize K/Z: {pnl_sign}${pnl:.2f} | {pnl_sign}%{pnl_pct:.2f})", 
+                    "trade": closed
+                })
+            return JSONResponse(status_code=400, content={
+                "status": "ERROR", 
+                "message": f"ℹ️ Sanal kasanızda satılacak açık {sym} pozisyonu bulunmuyor. Satış yapabilmek için önce 'Hızlı Al' yapmalısınız."
+            })
 
 @app.post("/api/mode/toggle")
 async def toggle_mode(request: Request):

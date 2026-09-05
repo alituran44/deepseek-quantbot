@@ -161,7 +161,7 @@ class BotOrchestrator:
             if not found:
                 return None, pref, 0.0, f"Seçilen {pref} borsasının API anahtarları tanımlı veya aktif değil."
             if required_amount_usd > 0 and found["free_usdt"] < required_amount_usd:
-                return found["executor"], found["id"], found["free_usdt"], f"{pref} borsasında yetersiz USDT bakiyesi (Mevcut: ${found['free_usdt']:.2f}, Gerekli: ${required_amount_usd:.2f})"
+                return None, found["id"], found["free_usdt"], f"{pref} borsasında yetersiz USDT bakiyesi (Mevcut: ${found['free_usdt']:.2f}, Gerekli: ${required_amount_usd:.2f})"
             return found["executor"], found["id"], found["free_usdt"], "OK"
 
         # AUTO: Akıllı Çoklu Borsa Seçimi
@@ -172,7 +172,7 @@ class BotOrchestrator:
 
         best = max(registered, key=lambda x: x["free_usdt"])
         if required_amount_usd > 0 and best["free_usdt"] < required_amount_usd:
-            return best["executor"], best["id"], best["free_usdt"], f"Kayıtlı borsalarda yetersiz USDT (En yüksek: {best['id']} ${best['free_usdt']:.2f})"
+            return None, best["id"], best["free_usdt"], f"Kayıtlı borsalarda yetersiz USDT (En yüksek: {best['id']} ${best['free_usdt']:.2f})"
         return best["executor"], best["id"], best["free_usdt"], "OK"
 
     def execute_live_order(
@@ -231,6 +231,11 @@ class BotOrchestrator:
                         exchange=ex_id,
                         is_live_record=True
                     )
+                elif action == "SELL":
+                    clean = symbol.replace("USDT", "")
+                    pos = next((p for p in self.wallet.open_positions if p.get("symbol") in [symbol, clean, f"{clean}USDT"]), None)
+                    if pos:
+                        self.wallet.close_position(pos["id"], entry_price, exit_reason=f"CANLI_SATIS_{ex_id}")
                 return True, order_res, ex_id
             else:
                 return False, order_res, ex_id

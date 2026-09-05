@@ -659,34 +659,71 @@
         </div>
 
         <!-- Hızlı Alım / Satım Bölümü -->
-        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-top: 16px;">
-          <div style="font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between;">
-            <span>Manuel Al / Sat Emri İlet</span>
-            <span id="modal-mode-badge" style="font-size: 11px; color: var(--accent-cyan); font-weight: 600;">Sanal Kasa</span>
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 18px; margin-top: 16px;">
+          <!-- Kart Başlığı ve Mod Seçici -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.3px;">⚡ Manuel Al / Sat Terminali</span>
+              <span id="modal-mode-badge" class="indicator-pill" style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); border: 1px solid var(--accent-cyan); padding: 2px 8px; border-radius: 4px;">🧪 Sanal Kasa</span>
+            </div>
+            <!-- Mod Seçim Düğmeleri (Segmented Control) -->
+            <div style="display: inline-flex; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 2px; gap: 2px;">
+              <button id="modal-btn-mode-paper" type="button" class="btn" style="padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 4px; border: none; background: var(--accent-cyan); color: #000; cursor: pointer;" onclick="setModalTradeMode('PAPER')">
+                🧪 Sanal Kasa
+              </button>
+              <button id="modal-btn-mode-live" type="button" class="btn" style="padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 4px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer;" onclick="setModalTradeMode('LIVE')">
+                ⚡ Canlı Borsa
+              </button>
+            </div>
           </div>
+
+          <!-- Bakiye ve Varlık Durum Bilgi Kutusu -->
+          <div id="modal-balance-bar" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+              <span>Kullanılabilir Bakiye: <strong id="modal-free-cash" style="color: var(--text-primary); font-family: var(--font-mono); font-weight: 700;">$0.00</strong></span>
+              <span>Cüzdandaki Miktar: <strong id="modal-owned-qty" style="color: var(--accent-cyan); font-family: var(--font-mono); font-weight: 700;">0.00</strong></span>
+            </div>
+            <div id="modal-deposit-hint" style="display: none;">
+              <button type="button" class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 10px; color: var(--warning); border-color: rgba(245, 158, 11, 0.4);" onclick="openDepositModal()">
+                📥 Binance'e USDT Yatır
+              </button>
+            </div>
+          </div>
+
+          <!-- Emir Parametreleri (Borsa Seçimi ve Tutar) -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select id="modal-trade-exchange" class="form-input" style="width: auto; min-width: 155px; font-weight: 600;">
-              <option value="AUTO">🌐 Otomatik (Akıllı)</option>
-              <option value="BINANCE">🟡 Binance Spot</option>
-              <option value="MEXC">🟢 MEXC Spot</option>
-              <option value="OKX">⚫ OKX Spot</option>
-            </select>
-            <div style="flex: 1; min-width: 140px;">
-              <input type="number" id="modal-trade-amount" class="form-input" placeholder="Tutar ($ USDT)" value="50" min="5" step="5">
+            <div id="modal-exchange-select-container" style="display: none;">
+              <select id="modal-trade-exchange" class="form-input" style="width: auto; min-width: 155px; font-weight: 700; height: 38px;" onchange="updateModalBalanceInfo()">
+                <option value="BINANCE">🟡 Binance Spot</option>
+                <option value="AUTO">🌐 Akıllı Yönlendirme</option>
+                <option value="MEXC">🟢 MEXC Spot</option>
+                <option value="OKX">⚫ OKX Spot</option>
+              </select>
             </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 25">$25</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 50">$50</button>
-              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 100">$100</button>
+            <div style="flex: 1; min-width: 140px; position: relative;">
+              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700; font-size: 13px;">$</span>
+              <input type="number" id="modal-trade-amount" class="form-input" placeholder="Tutar (USDT)" value="50" min="5" step="5" style="padding-left: 24px; font-weight: 700; font-family: var(--font-mono); height: 38px;">
             </div>
-            <button class="btn btn-primary" style="background: var(--profit); border-color: var(--profit); height: 38px; font-weight: 700; padding: 0 18px;" onclick="submitManualOrder('BUY')">
-              Hızlı Al (BUY)
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 25">$25</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 50">$50</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 100">$100</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
+            </div>
+          </div>
+
+          <!-- Al / Sat Eylem Düğmeleri (Dengeli 2 Sütun, Asla Alta Kırılmaz) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+            <button id="modal-btn-buy" type="button" class="btn" style="background: var(--profit); color: #000; border: none; height: 42px; font-weight: 800; font-size: 13px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onclick="submitManualOrder('BUY')">
+              <span>🟢 Hızlı Al (BUY)</span>
             </button>
-            <button class="btn btn-danger-sm" style="height: 38px; font-weight: 700; padding: 0 18px;" onclick="submitManualOrder('SELL')">
-              Hızlı Sat (SELL)
+            <button id="modal-btn-sell" type="button" class="btn" style="background: var(--loss); color: #fff; border: none; height: 42px; font-weight: 800; font-size: 13px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onclick="submitManualOrder('SELL')">
+              <span>🔴 Hızlı Sat (SELL)</span>
             </button>
           </div>
-          <div id="modal-trade-status" style="font-size: 12px; margin-top: 8px; display: none;"></div>
+
+          <!-- İşlem Durum ve Geri Bildirim Bildirimi -->
+          <div id="modal-trade-status" style="font-size: 12px; margin-top: 12px; padding: 10px 14px; border-radius: 6px; display: none;"></div>
         </div>
       </div>
     </div>
