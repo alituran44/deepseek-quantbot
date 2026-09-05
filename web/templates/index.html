@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepSeek-QuantBot | Otonom Kripto Sepet Yöneticisi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=2.7.0">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('app-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- Üst Bar (Header) -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">DeepSeek QuantBot</div>
+      </div>
+      <span class="brand-badge">Kripto Sepet v2.0</span>
+    </div>
+
+    <div class="header-actions">
+      <!-- Makro Risk Kalkanı (FRED / DXY) -->
+      <div id="badge-macro-mode" class="indicator-pill" style="color: var(--profit); font-weight: 700; border-color: rgba(16, 185, 129, 0.4); cursor: pointer;" onclick="openSettingsModal()" title="Makro Risk Kalkanı & Fed Durumu">
+        🛡️ Makro: Risk-On (DXY: 98.9)
+      </div>
+
+      <!-- Finans Uzmanı Risk Rozeti -->
+      <div id="badge-risk-mode" class="indicator-pill" style="color: var(--accent-cyan); font-weight: 700; border-color: rgba(2, 132, 199, 0.4); cursor: pointer;" onclick="openSettingsModal()" title="Risk ve Finans Uzmanı Stratejisini Değiştir">
+        ⚡ Finans Uzmanı: Agresif Alpha
+      </div>
+
+      <!-- Canlı / Sanal Mod Hızlı Geçiş Butonu -->
+      <button id="btn-mode-toggle" class="btn btn-secondary" onclick="toggleTradingMode()" style="display: flex; align-items: center; gap: 8px; border: 1px solid var(--accent-cyan);">
+        <span class="status-dot" id="mode-dot"></span>
+        <span id="mode-label">Sanal Kasa (Öğrenme Modu)</span>
+      </button>
+
+      <!-- Aktif Canlı Borsa Seçici (Binance, MEXC, OKX, Çoklu Borsa) -->
+      <select id="select-header-exchange" onchange="setTradingExchange(this.value)" class="indicator-pill" style="display: none; background: var(--bg-surface); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); font-weight: 700; height: 38px; padding: 0 10px; cursor: pointer; border-radius: 8px;" title="İşlem Yapılacak Canlı Borsa Tercihi">
+        <option value="AUTO">🌐 Çoklu Borsa (Otomatik)</option>
+        <option value="BINANCE">🟡 Binance Spot</option>
+        <option value="MEXC">🟢 MEXC Spot</option>
+        <option value="OKX">⚫ OKX Spot</option>
+      </select>
+
+      <button id="btn-scan" class="btn btn-primary" onclick="triggerManualScan()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+        </svg>
+        Sepeti Analiz Et & Dengele
+      </button>
+
+      <button id="btn-theme-toggle" class="btn btn-secondary" onclick="toggleTheme()" title="Tema Değiştir (Aydınlık / Karanlık)">
+        <span id="theme-icon">☀️</span>
+        <span id="theme-text" style="font-size: 12px; font-weight: 600;">Aydınlık</span>
+      </button>
+
+      <button id="btn-settings-header" class="btn btn-secondary" onclick="openSettingsModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Ayarlar
+      </button>
+    </div>
+  </header>
+
+  <!-- Ana İçerik Grid (68% Sol / 32% Sağ Asimetrik) -->
+  <main class="layout">
+    
+    <!-- Sol Sütun: Kasa, Sepet Dağılımı, AI Sinyalleri, Pozisyonlar -->
+    <div class="left-column">
+
+      <!-- Çalışma Modu Bilgi Kartı (Sanal Öğrenme / Canlı Borsa) -->
+      <div id="mode-banner" class="card" style="padding: 16px 20px; border-left: 4px solid var(--accent-cyan); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div id="banner-icon" style="background: rgba(2, 132, 199, 0.15); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); font-size: 20px;">
+            🧪
+          </div>
+          <div>
+            <div id="banner-title" style="font-weight: 700; font-size: 14px; color: var(--text-primary);">
+              Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)
+            </div>
+            <div id="banner-desc" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              Bot canlı piyasa mumları üzerinde stratejilerini ve sepet dengesini test ediyor. Binance bağlantınız hazır ve onaylıdır; dilediğiniz an tek tıkla Canlı Moda geçebilirsiniz.
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="toggleTradingMode()" style="font-size: 12px; height: 32px; white-space: nowrap;" id="banner-action-btn">
+          Canlı Moda Geç ⚡
+        </button>
+      </div>
+      
+      <!-- Ana Kasa (USD & TL) ve Çoklu Borsa Metrikleri -->
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="metric-label" id="m-equity-label">Konsolide Ana Kasa</div>
+            <span id="m-usd-try-rate" style="font-size: 10px; color: var(--accent-cyan); font-weight: 600;">1$ = ₺48.09</span>
+          </div>
+          <div class="metric-value text-cyan" id="m-equity">$0.00 USD</div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--profit); margin-top: 4px;" id="m-equity-try">₺0.00 TL</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label" id="m-cash-label">Kullanılabilir Boşta Nakit</div>
+          <div class="metric-value" id="m-cash">$0.00 USD</div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="m-cash-try">₺0.00 TL</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label" id="m-breakdown-label">Borsa Kasa Dağılımı</div>
+          
+          <!-- CANLI MODDA GÖSTERİLEN BORSA DAĞILIMI -->
+          <div id="box-live-distribution" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #f3ba2f; font-weight: 700;">🟡 Binance:</span>
+              <span id="m-binance-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--accent-cyan); font-weight: 700;">⚫ OKX:</span>
+              <span id="m-okx-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #10b981; font-weight: 700;">🟢 MEXC:</span>
+              <span id="m-mexc-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
+            </div>
+          </div>
+
+          <!-- SANAL MODDA GÖSTERİLEN PORTFÖY ÖZETİ (GERÇEK BORSA BİLGİSİ YOK!) -->
+          <div id="box-paper-distribution" style="display: none; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Açık Sepet Değeri:</span>
+              <span id="m-paper-positions-val" style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Sanal Net Kâr/Zarar:</span>
+              <span id="m-paper-total-pnl" style="font-family: var(--font-mono); font-weight: 700;">$0.00 (%0.00)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Sermaye Riski:</span>
+              <span style="color: var(--profit); font-weight: 600;">🛡️ %0 (Tamamen Sanal)</span>
+            </div>
+          </div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Başarı & Risk Durumu</div>
+          <div class="metric-value" id="m-winrate">%0.0 (0 İşlem)</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="m-risk-subtext">Agresif Finans Uzmanı Modu</div>
+        </div>
+      </div>
+
+      <!-- Çoklu Borsa Cüzdan Varlıkları & Sanal Pozisyonlar Tablosu -->
+      <div class="card" style="border-top: 3px solid var(--accent-cyan);">
+        <!-- Üst Başlık ve Hızlı İşlemler -->
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 18px;">
+          <div>
+            <div class="card-title" style="margin-bottom: 3px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              <span id="positions-card-title">Çoklu Borsa Cüzdan Varlıkları</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted);" id="positions-card-desc">
+              Borsalardaki coinleriniz ayrı ayrı veya konsolide tam hassasiyetle listelenir
+            </div>
+          </div>
+
+          <!-- Canlı Mod: Hızlı Yatırma Butonları -->
+          <div id="live-deposit-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-right: 2px;">Hızlı Yatır:</span>
+            <button class="btn btn-secondary" onclick="openDepositModal('BINANCE')" style="font-size: 11px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(243, 186, 47, 0.5); color: #f3ba2f; background: rgba(243, 186, 47, 0.06);">
+              📥 Binance
+            </button>
+            <button class="btn btn-secondary" onclick="openDepositModal('OKX')" style="font-size: 11px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(2, 132, 199, 0.5); color: var(--accent-cyan); background: rgba(2, 132, 199, 0.06);">
+              📥 OKX
+            </button>
+            <button class="btn btn-secondary" onclick="openDepositModal('MEXC')" style="font-size: 11px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(16, 185, 129, 0.5); color: #10b981; background: rgba(16, 185, 129, 0.06);">
+              📥 MEXC
+            </button>
+          </div>
+
+          <!-- Sanal Mod: Sanal Kasa Sıfırlama Butonu -->
+          <div id="paper-actions" style="display: none; align-items: center; gap: 8px;">
+            <button class="btn btn-secondary" onclick="resetPaperWallet()" style="font-size: 11px; height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(244, 63, 94, 0.4); color: var(--loss); background: rgba(244, 63, 94, 0.05);">
+              🔄 Sanal Kasayı Sıfırla ($10.000)
+            </button>
+          </div>
+        </div>
+
+        <!-- Canlı Mod Alt Şerit: Cüzdan Filtresi Sekmeleri -->
+        <div id="live-exchange-toolbar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 18px; background: rgba(255, 255, 255, 0.02); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Cüzdan Filtresi:</span>
+            <button class="btn-filter active" id="filter-ex-all" onclick="setExchangeFilter('ALL', this)">🌐 Tüm Borsalar</button>
+            <button class="btn-filter" id="filter-ex-binance" onclick="setExchangeFilter('Binance', this)" style="border-color: rgba(243, 186, 47, 0.4); color: #f3ba2f;">🟡 Binance Spot</button>
+            <button class="btn-filter" id="filter-ex-okx" onclick="setExchangeFilter('OKX', this)" style="border-color: rgba(2, 132, 199, 0.4); color: var(--accent-cyan);">⚫ OKX Spot</button>
+            <button class="btn-filter" id="filter-ex-mexc" onclick="setExchangeFilter('MEXC', this)" style="border-color: rgba(16, 185, 129, 0.4); color: #10b981;">🟢 MEXC Spot</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="indicator-pill" id="positions-active-filter-label" style="font-size: 11px; color: var(--accent-cyan);">Konsolide Çoklu Borsa</span>
+          </div>
+        </div>
+
+        <!-- Sanal Mod Alt Şerit: Bilgilendirme Çubuğu -->
+        <div id="paper-toolbar" style="display: none; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 18px; background: rgba(255, 255, 255, 0.02); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+          <div style="font-size: 11px; color: var(--text-muted);">
+            🧪 <strong>Sanal Simülasyon:</strong> Yapay zeka canlı piyasada $10.000 sanal sermayeyle test edilmektedir. Gerçek borsa cüzdanlarınıza dokunulmaz.
+          </div>
+          <div>
+            <span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">10.000$ Sanal Başlangıç</span>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Kripto</th>
+                <th>Cüzdan / Sektör</th>
+                <th>Durum</th>
+                <th>Giriş Fiyatı</th>
+                <th>Anlık Fiyat</th>
+                <th>Miktar / Stop-Hedef</th>
+                <th>Toplam Değer</th>
+                <th>Açık PnL / Bakiye</th>
+                <th style="text-align: right;">İşlem</th>
+              </tr>
+            </thead>
+            <tbody id="positions-body">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Varlıklar yükleniyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kripto Sepet Sektör Dağılım Kartı -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Yapay Zeka Kripto Sepet Dağılımı & Sektör Dengeleme
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted);">
+            Hedef Dağılım: Çekirdek %35 | L1 %25 | AI %25 | DeFi %15
+          </span>
+        </div>
+
+        <!-- Çoklu Renk Dağılım Çubuğu -->
+        <div class="basket-bar" id="basket-bar">
+          <div class="basket-segment seg-core" id="bar-core" style="width: 0%;" title="Çekirdek Varlıklar"></div>
+          <div class="basket-segment seg-layer1" id="bar-layer1" style="width: 0%;" title="Katman-1"></div>
+          <div class="basket-segment seg-ai" id="bar-ai" style="width: 0%;" title="Yapay Zeka & DePIN"></div>
+          <div class="basket-segment seg-momentum" id="bar-momentum" style="width: 0%;" title="DeFi & Momentum"></div>
+          <div class="basket-segment seg-cash" id="bar-cash" style="width: 100%;" title="Nakit Rezervi"></div>
+        </div>
+
+        <!-- CoinGecko Canlı Sektör Rallisi ve Trend Şeridi -->
+        <div id="coingecko-sector-strip" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px 0; padding: 8px 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 11px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: #84cc16; font-weight: 700;">🦎 CoinGecko Lider Sektör:</span>
+            <span id="cg-top-sector" style="font-weight: 600; color: var(--text-primary);">-</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="color: var(--text-muted);">Günün Trendleri:</span>
+            <span id="cg-trending-coins" style="color: var(--accent-cyan); font-weight: 600;">-</span>
+          </div>
+        </div>
+
+        <!-- Sektör İstatistik Kartları -->
+        <div class="sector-grid" id="sectors-container">
+          <!-- app.js tarafından dinamik doldurulacak -->
+        </div>
+      </div>
+
+      <!-- DeepSeek AI Analiz ve Sinyal Kartları (Giriş Yapılabilir & Filtrelenebilir) -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+              DeepSeek Akıl Yürütme Sinyalleri (Kripto Piyasası)
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              Kartlara tıklayarak detaylı canlı grafik, teknik indikatörler ve hızlı al-sat penceresine giriş yapabilirsiniz.
+            </div>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted);">
+            Son Tarama: <span id="last-scan-time" style="font-family: var(--font-mono); color: var(--text-secondary);">Bekleniyor</span>
+          </span>
+
+          <!-- Kategori & Cüzdan Filtre Sekmeleri -->
+          <div style="display: flex; gap: 6px; width: 100%; margin-top: 6px; flex-wrap: wrap;" id="signal-filters">
+            <button class="btn-filter active" onclick="setSignalFilter('ALL', this)">Tümü (14+)</button>
+            <button class="btn-filter" onclick="setSignalFilter('OWNED', this)" style="border-color: var(--profit); color: var(--profit);">💼 Cüzdandaki Kriptolarım</button>
+            <button class="btn-filter" onclick="setSignalFilter('CORE', this)">Çekirdek (%35)</button>
+            <button class="btn-filter" onclick="setSignalFilter('LAYER1', this)">Katman-1 (%25)</button>
+            <button class="btn-filter" onclick="setSignalFilter('AI_DEPIN', this)">Yapay Zeka (%25)</button>
+            <button class="btn-filter" onclick="setSignalFilter('DEFI_MOMENTUM', this)">DeFi (%15)</button>
+          </div>
+        </div>
+
+        <div class="signals-grid" id="signals-container">
+          <div style="grid-column: 1/-1; padding: 24px; text-align: center; color: var(--text-muted);">
+            Sepet verileri yükleniyor...
+          </div>
+        </div>
+      </div>
+
+      <!-- Çoklu Borsa Kripto Evreni (2.700+ Altcoin Canlı Tarayıcı) -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
+          <div>
+            <div class="card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              Çoklu Borsa Kripto Evreni (2.700+ Canlı Altcoin)
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              Binance, OKX ve MEXC borsalarındaki tüm altcoinler anlık fiyat ve 24s hacimle taranır. İstediğiniz coin'e tıklayarak yapay zeka analizini ve canlı grafiğini açabilirsiniz.
+            </div>
+          </div>
+
+          <!-- Borsa Seçici & Sayaç -->
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-filter active" id="market-tab-binance" onclick="switchMarketExchange('BINANCE', this)" style="border-color: rgba(243, 186, 47, 0.5); color: #f3ba2f;">🟡 Binance (650+)</button>
+            <button class="btn-filter" id="market-tab-okx" onclick="switchMarketExchange('OKX', this)" style="border-color: rgba(2, 132, 199, 0.5); color: var(--accent-cyan);">⚫ OKX (390+)</button>
+            <button class="btn-filter" id="market-tab-mexc" onclick="switchMarketExchange('MEXC', this)" style="border-color: rgba(16, 185, 129, 0.5); color: #10b981;">🟢 MEXC (1.650+)</button>
+            <span class="indicator-pill" style="color: var(--profit); font-weight: 700;" id="market-total-count">Yükleniyor...</span>
+          </div>
+
+          <!-- Arama Barı ve Sıralama Butonları -->
+          <div style="display: flex; gap: 10px; width: 100%; margin-top: 6px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 240px;">
+              <input type="text" id="market-search-input" class="form-input" placeholder="🔍 Seçili Borsada Altcoin Ara... (örn: BTC, PEPE, SUI, DOGE, SOL, RENDER)" oninput="filterAllMarketCoins()">
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="btn-filter active" id="sort-vol" onclick="sortMarketCoins('volume', this)">🔥 En Yüksek Hacim</button>
+              <button class="btn-filter" id="sort-gain" onclick="sortMarketCoins('gainers', this)">🚀 En Çok Yükselenler</button>
+              <button class="btn-filter" id="sort-loss" onclick="sortMarketCoins('losers', this)">🔻 En Çok Düşenler</button>
+              <button class="btn-filter" id="sort-alpha" onclick="sortMarketCoins('alphabetical', this)">🔤 A-Z</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 650+ Coin Listesi (Scrollable & Responsive) -->
+        <div style="max-height: 420px; overflow-y: auto; padding: 0 4px;" class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Altcoin / Sembol</th>
+                <th>Anlık Fiyat (USDT)</th>
+                <th>24s Değişim</th>
+                <th>24s Hacim ($)</th>
+                <th style="text-align: right;">Detay & Grafik</th>
+              </tr>
+            </thead>
+            <tbody id="market-coins-body">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Tüm Binance altcoinleri taranıyor...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Geçmiş İşlemler Defteri -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Son Kapanan Sepet İşlemleri
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Varlık</th>
+                <th>Yön</th>
+                <th>Giriş</th>
+                <th>Çıkış</th>
+                <th>Net PnL</th>
+                <th>Neden</th>
+              </tr>
+            </thead>
+            <tbody id="trades-body">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir işlem kaydı yok.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sağ Sütun: Piyasa Psikolojisi ve Ajan Durumu -->
+    <div class="right-column">
+      
+      <!-- Çoklu Borsa Yükseliş Radarı & Günlük Takip Listesi -->
+      <div class="card" id="card-breakout-radar">
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px; align-items: flex-start;">
+          <div>
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2a10 10 0 0 1 10 10"></path>
+                <circle cx="12" cy="12" r="6"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+              </svg>
+              Çoklu Borsa Yükseliş Radarı
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              Binance • MEXC • OKX Günlük Yükseliş & Kırılım Takipçisi
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span id="radar-tracked-pill" class="indicator-pill" style="color: var(--profit); font-weight: 700; font-size: 11px; padding: 2px 8px;">
+              0 Takipte
+            </span>
+            <button class="btn btn-secondary" id="btn-scan-radar" onclick="scanBreakoutRadar()" style="font-size: 11px; height: 28px; padding: 0 10px; display: flex; align-items: center; gap: 4px;" title="Tüm borsaları canlı tara">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="radar-refresh-icon">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span id="btn-scan-text">Şimdi Tara</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mini Filtre Sekmeleri -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;" id="radar-filter-buttons">
+          <button class="btn-filter active" onclick="filterRadar('ALL', this)">Tümü</button>
+          <button class="btn-filter" onclick="filterRadar('TRACKED', this)" style="color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.4);">⭐ Takip Edilenler</button>
+          <button class="btn-filter" onclick="filterRadar('BINANCE', this)">🟡 Binance</button>
+          <button class="btn-filter" onclick="filterRadar('MEXC', this)">🟢 MEXC</button>
+          <button class="btn-filter" onclick="filterRadar('OKX', this)">⚫ OKX</button>
+        </div>
+
+        <!-- Fırsat ve Takip Listesi (Scrollable) -->
+        <div id="radar-items-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 480px; overflow-y: auto; padding-right: 2px;">
+          <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;">
+            Yükseliş radarı taranıyor...
+          </div>
+        </div>
+
+        <!-- Günlük Piyasa Raporu Özeti -->
+        <div id="radar-market-report-card" style="margin-top: 12px; padding: 10px 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted); font-weight: 600;">🎯 Günün Lider Fırsatı:</span>
+            <span id="radar-report-top-pick" style="color: var(--accent-cyan); font-weight: 700; font-family: var(--font-mono);">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+            <span style="color: var(--text-muted);">Ortalama Yükseliş Hedefi:</span>
+            <span id="radar-report-avg-target" style="color: var(--profit); font-weight: 700; font-family: var(--font-mono);">+%14.5</span>
+          </div>
+          <div id="radar-report-text" style="margin-top: 6px; font-size: 11px; color: var(--text-muted); line-height: 1.4; border-top: 1px dashed var(--border-subtle); padding-top: 6px;">
+            Piyasa analiz ediliyor...
+          </div>
+        </div>
+      </div>
+
+      <!-- Fear & Greed Kartı -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Kripto Duygu Durumu</div>
+        </div>
+        <div class="sentiment-gauge">
+          <div class="metric-label">Korku & Açgözlülük Endeksi</div>
+          <div class="sentiment-val" id="sentiment-val">50</div>
+          <div style="font-size: 13px; font-weight: 600; margin-top: 4px; color: var(--text-primary);" id="sentiment-label">
+            Nötr
+          </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+          Endeks aşırı korku (0-25) bölgesindeyken sepet alımları kademeli artırılır; aşırı açgözlülük (75-100) bölgesinde kâr alma ve nakit oranı yükseltilir.
+        </div>
+      </div>
+
+      <!-- Ajan Durum Özeti -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Sepet Ajanı Kuralları</div>
+        </div>
+        <div style="font-size: 13px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <span style="color: var(--text-muted);">Çatı:</span>
+            <span style="font-family: var(--font-mono);">DeepSeek Harness</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <span style="color: var(--text-muted);">Model:</span>
+            <span style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ state.deepseek_model }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <span style="color: var(--text-muted);">Sepet Çeşitlendirme:</span>
+            <span style="font-family: var(--font-mono); color: var(--profit);">4 Sektör Dağılımı</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <span style="color: var(--text-muted);">Risk Limiti:</span>
+            <span id="agent-rules-risk-limit" style="font-family: var(--font-mono); color: var(--warning); font-weight: 700;">Maks %5.0 / İşlem</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Otomatik SL / TP:</span>
+            <span style="font-family: var(--font-mono); color: var(--profit);">Aktif</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kapsam Listesi -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Kripto Sepet Kapsamı</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Çekirdek (%35 Hedef)</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span class="indicator-pill" style="color: var(--accent-cyan);">BTC</span>
+              <span class="indicator-pill" style="color: var(--accent-cyan);">ETH</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Katman-1 (%25 Hedef)</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span class="indicator-pill" style="color: var(--profit);">SOL</span>
+              <span class="indicator-pill" style="color: var(--profit);">SUI</span>
+              <span class="indicator-pill" style="color: var(--profit);">BNB</span>
+              <span class="indicator-pill" style="color: var(--profit);">AVAX</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Yapay Zeka & DePIN (%25 Hedef)</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span class="indicator-pill" style="color: #818CF8;">TAO</span>
+              <span class="indicator-pill" style="color: #818CF8;">NEAR</span>
+              <span class="indicator-pill" style="color: #818CF8;">FET</span>
+              <span class="indicator-pill" style="color: #818CF8;">RENDER</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">DeFi & Momentum (%15 Hedef)</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span class="indicator-pill" style="color: var(--warning);">UNI</span>
+              <span class="indicator-pill" style="color: var(--warning);">LINK</span>
+              <span class="indicator-pill" style="color: var(--warning);">ENA</span>
+              <span class="indicator-pill" style="color: var(--warning);">DOGE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Kripto Detay, Canlı Grafik & Manuel İşlem Modalı -->
+  <div class="modal-overlay" id="asset-modal" onclick="if(event.target === this) closeAssetModal()">
+    <div class="modal modal-lg" style="max-width: 850px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="brand-icon" id="modal-asset-icon" style="width: 38px; height: 38px; font-weight: 800; font-size: 14px;">
+            BTC
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="modal-asset-title" style="font-size: 18px; font-weight: 800;">BTCUSDT</span>
+              <span id="modal-asset-sector" class="indicator-pill" style="color: var(--accent-cyan);">CORE</span>
+              <span id="modal-asset-owned" class="badge badge-buy" style="display: none;">CÜZDANDA</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              Canlı Fiyat: <strong id="modal-asset-price" style="color: var(--text-primary); font-family: var(--font-mono); font-size: 14px;">$0.00</strong>
+              <span id="modal-asset-change" style="margin-left: 8px; font-weight: 600;">%0.00</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="height: 32px; width: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="closeAssetModal()">✕</button>
+      </div>
+
+      <div style="padding: 16px 0;">
+        <!-- TradingView Canlı Kripto Grafiği -->
+        <div style="border-radius: 8px; overflow: hidden; border: 1px solid var(--border-subtle); height: 360px; background: #131722;" id="tradingview-container">
+          <!-- TradingView iframe dinamik yüklenecek -->
+        </div>
+
+        <!-- İndikatörler & Teknik Özet -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 14px;">
+          <div style="background: var(--bg-elevated); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 11px; color: var(--text-muted);">RSI (14)</div>
+            <div id="modal-ind-rsi" style="font-family: var(--font-mono); font-weight: 700; font-size: 15px;">-</div>
+          </div>
+          <div style="background: var(--bg-elevated); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 11px; color: var(--text-muted);">MACD</div>
+            <div id="modal-ind-macd" style="font-family: var(--font-mono); font-weight: 700; font-size: 15px;">-</div>
+          </div>
+          <div style="background: var(--bg-elevated); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 11px; color: var(--text-muted);">Trend Yönü</div>
+            <div id="modal-ind-trend" style="font-family: var(--font-mono); font-weight: 700; font-size: 15px;">-</div>
+          </div>
+          <div style="background: var(--bg-elevated); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 11px; color: var(--text-muted);">Volatilite (ATR)</div>
+            <div id="modal-ind-atr" style="font-family: var(--font-mono); font-weight: 700; font-size: 15px;">-</div>
+          </div>
+          <div style="background: var(--bg-elevated); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 11px; color: var(--text-muted);">AI Kararı</div>
+            <div id="modal-ind-action" style="font-weight: 700; font-size: 15px;">-</div>
+          </div>
+        </div>
+
+        <!-- DeepSeek / Groq AI Akıl Yürütme Tezi -->
+        <div style="background: rgba(2, 132, 199, 0.06); border-left: 3px solid var(--accent-cyan); padding: 12px 14px; border-radius: 6px; margin-top: 14px;">
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--accent-cyan); margin-bottom: 4px;">Finans Uzmanı & AI Akıl Yürütme Tezi</div>
+          <div id="modal-ai-thesis" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">-</div>
+        </div>
+
+        <!-- Hyperliquid Vadeli Fonlama & Tasfiye (Squeeze) İstihbaratı -->
+        <div id="modal-hl-box" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px 14px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #a855f7;">⚡ Hyperliquid Vadeli Piyasa İstihbaratı</span>
+            <div id="modal-hl-details" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+              8s Fonlama: <strong id="modal-hl-funding" style="color: var(--text-primary); font-family: var(--font-mono);">%0.010</strong> | Açık Pozisyon: <strong id="modal-hl-oi" style="color: var(--text-primary); font-family: var(--font-mono);">$0</strong>
+            </div>
+          </div>
+          <span id="modal-hl-squeeze" class="indicator-pill" style="font-size: 11px; color: var(--accent-cyan); font-weight: 700;">Dengeli Piyasa</span>
+        </div>
+
+        <!-- Hızlı Alım / Satım Bölümü -->
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-top: 16px;">
+          <div style="font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between;">
+            <span>Manuel Al / Sat Emri İlet</span>
+            <span id="modal-mode-badge" style="font-size: 11px; color: var(--accent-cyan); font-weight: 600;">Sanal Kasa</span>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <select id="modal-trade-exchange" class="form-input" style="width: auto; min-width: 155px; font-weight: 600;">
+              <option value="AUTO">🌐 Otomatik (Akıllı)</option>
+              <option value="BINANCE">🟡 Binance Spot</option>
+              <option value="MEXC">🟢 MEXC Spot</option>
+              <option value="OKX">⚫ OKX Spot</option>
+            </select>
+            <div style="flex: 1; min-width: 140px;">
+              <input type="number" id="modal-trade-amount" class="form-input" placeholder="Tutar ($ USDT)" value="50" min="5" step="5">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 25">$25</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 50">$50</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('modal-trade-amount').value = 100">$100</button>
+            </div>
+            <button class="btn btn-primary" style="background: var(--profit); border-color: var(--profit); height: 38px; font-weight: 700; padding: 0 18px;" onclick="submitManualOrder('BUY')">
+              Hızlı Al (BUY)
+            </button>
+            <button class="btn btn-danger-sm" style="height: 38px; font-weight: 700; padding: 0 18px;" onclick="submitManualOrder('SELL')">
+              Hızlı Sat (SELL)
+            </button>
+          </div>
+          <div id="modal-trade-status" style="font-size: 12px; margin-top: 8px; display: none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Binance Resmi Yatırma / Cüzdan Adresleri Modalı -->
+  <div class="modal-overlay" id="deposit-modal" onclick="if(event.target === this) closeDepositModal()">
+    <div class="modal modal-lg" style="max-width: 720px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="brand-icon" style="width: 38px; height: 38px; background: rgba(2, 132, 199, 0.15); color: var(--accent-cyan); font-size: 18px;">
+            📥
+          </div>
+          <div>
+            <div style="font-size: 16px; font-weight: 800;">Binance Cüzdan & Yatırma Adreslerim</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              Binance hesabınıza kripto transfer etmek için kullanabileceğiniz resmi onaylı yatırma adresleriniz
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="height: 32px; width: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="closeDepositModal()">✕</button>
+      </div>
+
+      <div style="padding: 16px 0;" id="deposit-addresses-list">
+        <div style="text-align: center; color: var(--text-muted); padding: 24px;">
+          Adresler doğrudan Binance üzerinden çekiliyor...
+        </div>
+      </div>
+
+      <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--warning); padding: 12px 14px; border-radius: 6px; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+        ⚠️ <strong>Önemli Transfer Uyarısı:</strong> Kripto transfer ederken lütfen gönderici cüzdanda seçtiğiniz ağın (örneğin USDT için TRC-20 veya BEP-20) buradaki ağ ile <strong>birebir aynı</strong> olduğundan emin olun.
+      </div>
+    </div>
+  </div>
+
+  <!-- Ayarlar Modalı -->
+  <div class="modal-overlay" id="settings-modal" onclick="if(event.target === this) closeSettingsModal()">
+    <div class="modal">
+      <div class="card-header">
+        <div class="card-title">Sistem & Borsa Ayarları</div>
+        <button class="btn btn-secondary" style="height: 30px; padding: 0 8px;" onclick="closeSettingsModal()">✕</button>
+      </div>
+      
+      <div id="settings-status-msg" style="display: none; padding: 10px 14px; border-radius: 8px; margin: 12px 0; font-size: 12px; font-weight: 600;"></div>
+
+      <form onsubmit="saveSettings(event)">
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">DeepSeek AI API Anahtarı</label>
+            <span id="badge-deepseek-status" class="indicator-pill" style="font-size: 11px;">Kontrol Ediliyor...</span>
+          </div>
+          <input type="password" id="input-api-key" class="form-input" placeholder="sk-... (Değiştirmek istemiyorsanız boş bırakın)" value="">
+          <div id="current-deepseek-key-display" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Durum: <span id="current-deepseek-key" style="font-family: var(--font-mono); color: var(--accent-cyan);">-</span></div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Groq Cloud API Anahtarı (Acil Durum Hızlı Karar Motoru)</label>
+            <span id="badge-groq-status" class="indicator-pill" style="font-size: 11px;">Kontrol Ediliyor...</span>
+          </div>
+          <input type="password" id="input-groq-key" class="form-input" placeholder="gsk_... (console.groq.com ücretsiz anahtarı)">
+          <div id="current-groq-key-display" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Durum: <span id="current-groq-key" style="font-family: var(--font-mono); color: var(--accent-cyan);">-</span></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Model Seçimi</label>
+          <select id="select-model" class="form-input">
+            <option value="deepseek-reasoner" selected>deepseek-reasoner (Derin Akıl Yürütme - R1)</option>
+            <option value="deepseek-chat">deepseek-chat (Hızlı Genel Model - V3)</option>
+            <option value="groq/llama-3.3-70b-versatile">groq/llama-3.3-70b-versatile (Groq LPU - 500+ tok/sn Ultra Hızlı)</option>
+            <option value="groq/mixtral-8x7b-32768">groq/mixtral-8x7b-32768 (Groq MoE Mimarisi)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Çalışma Modu (Trading Mode)</label>
+          <select id="select-trading-mode" class="form-input">
+            <option value="PAPER" selected>🧪 Sanal Kasa (Paper-Trading & Öğrenme Modu)</option>
+            <option value="LIVE">⚡ Canlı Kripto Modu (Çoklu Borsa Spot Al-Sat)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Canlı Pozisyon Alınacak Borsa Tercihi (Trading Exchange)</label>
+          <select id="select-trading-exchange" class="form-input">
+            <option value="AUTO" selected>🌐 Çoklu Borsa: Otomatik (Kayıtlı API'ler arasında bakiyeye göre akıllı seçim - Önerilen)</option>
+            <option value="BINANCE">🟡 Yalnızca Binance Spot</option>
+            <option value="MEXC">🟢 Yalnızca MEXC Spot (Kullanıcı Anahtarı Bağlı & Aktif)</option>
+            <option value="OKX">⚫ Yalnızca OKX Spot</option>
+          </select>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            Botun canlı modda al-sat yaparken hangi borsayı kullanacağını belirler. Otomatik modda serbest USDT bakiyesi olan kayıtlı borsa otomatik seçilir.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Yapay Zeka Risk & Finans Uzmanı Profili</label>
+          <select id="select-risk-profile" class="form-input">
+            <option value="AGGRESSIVE_ALPHA" selected>⚡ Agresif Finans Uzmanı (Asimetrik 1:3+ Fırsat Avcısı)</option>
+            <option value="BALANCED">⚖️ Dengeli Portföy Yöneticisi (1:2.4 Hedef / Standart Risk)</option>
+            <option value="CONSERVATIVE">🛡️ Temkinli Sermaye Koruyucu (Sıkı Stop / Minimum Risk)</option>
+          </select>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            Yapay zekanın piyasa analizlerinde ne kadar cesur ve hesaplanmış asimetrik risk alacağını belirler.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">İşlem Başına Risk Limiti (% Kasa Riski)</label>
+            <span id="badge-risk-limit-display" class="indicator-pill" style="font-size: 11px; color: var(--warning); font-weight: 700;">%5.0</span>
+          </div>
+          <select id="select-risk-limit" class="form-input">
+            <option value="2.0">%2.0 / İşlem (Sıkı Risk)</option>
+            <option value="3.0">%3.0 / İşlem (Standart Risk)</option>
+            <option value="5.0" selected>%5.0 / İşlem (⚡ Agresif Finans Uzmanı - Önerilen)</option>
+            <option value="7.5">%7.5 / İşlem (Yüksek Büyüme & Risk)</option>
+            <option value="10.0">%10.0 / İşlem (Maksimum Alpha Avcısı)</option>
+          </select>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            Yapay zekanın tek bir pozisyonda ana kasadan göze alabileceği maksimum risk yüzdesi.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Binance API Key</label>
+            <span id="badge-binance-status" class="indicator-pill" style="font-size: 11px;">Kontrol Ediliyor...</span>
+          </div>
+          <input type="text" id="input-binance-key" class="form-input" placeholder="Binance API Key..." value="">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Kayıtlı Anahtar: <span id="current-binance-key" style="font-family: var(--font-mono); color: var(--profit); font-weight: 600;">-</span></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Binance Secret Key</label>
+          <input type="password" id="input-binance-secret" class="form-input" placeholder="●●●●●●●● (Kayıtlı & Doğrulandı - Değiştirmek için yeni girin)" value="">
+          <span style="font-size: 11px; color: var(--text-muted);">Güvenlik: Yalnızca 'Spot Al-Sat' yetkisi aktiftir, 'Para Çekme' KAPALIDIR.</span>
+        </div>
+
+        <!-- Çoklu Borsa Entegrasyonu (Bybit, OKX vb.) -->
+        <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+          <div style="font-size: 13px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <span>🌐 Çoklu Borsa Desteği (Multi-Exchange)</span>
+            <span class="indicator-pill" style="color: var(--profit);">CCXT Altyapısı Hazır</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+            Yakında bağlayacağınız diğer borsaların API anahtarlarını buraya girerek tüm borsaları tek panelden yönetebilirsiniz:
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Bybit API Key (Opsiyonel)</label>
+            <input type="text" id="input-bybit-key" class="form-input" placeholder="Bybit API Key...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bybit Secret Key (Opsiyonel)</label>
+            <input type="password" id="input-bybit-secret" class="form-input" placeholder="Bybit Secret Key...">
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">OKX API Key</label>
+              <span id="badge-okx-status" class="indicator-pill" style="font-size: 11px;">Kayıtlı</span>
+            </div>
+            <input type="text" id="input-okx-key" class="form-input" placeholder="OKX API Key..." value="3ca2fd53-e50e-433e-baa6-9f71fa3081b5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">OKX Secret Key</label>
+            <input type="password" id="input-okx-secret" class="form-input" placeholder="●●●●●●●● (Kayıtlı)">
+          </div>
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">OKX Passphrase (API Parolası)</label>
+              <span id="badge-okx-pass-status" class="indicator-pill" style="font-size: 11px; color: var(--warning);">Parola Bekleniyor</span>
+            </div>
+            <input type="password" id="input-okx-passphrase" class="form-input" placeholder="OKX anahtarını oluştururken belirlediğiniz parola...">
+            <span style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">OKX güvenlik protokolü gereği API işlemlerinde anahtarı açarken belirlediğiniz parola zorunludur.</span>
+          </div>
+
+          <!-- MEXC API -->
+          <div class="form-group" style="margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">MEXC API Key</label>
+              <span id="badge-mexc-status" class="indicator-pill" style="font-size: 11px; color: #10b981;">Kayıtlı & Bağlı</span>
+            </div>
+            <input type="text" id="input-mexc-key" class="form-input" placeholder="MEXC API Key..." value="mx0vglDl9kY9ZGYyJE">
+          </div>
+          <div class="form-group">
+            <label class="form-label">MEXC Secret Key</label>
+            <input type="password" id="input-mexc-secret" class="form-input" placeholder="●●●●●●●● (Kayıtlı)">
+            <span style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">MEXC Spot bakiyesi okuma ve al-sat işlemleri için kullanılır.</span>
+          </div>
+        </div>
+
+        <!-- 4 Kritik İstihbarat & Alfa API'leri (CoinGecko & FRED) -->
+        <div style="margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+          <div style="font-size: 13px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <span>🎖️ Sektör ve Makro İstihbarat API'leri</span>
+            <span class="indicator-pill" style="color: var(--profit);">Otomatik Canlı Veri</span>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">CoinGecko Demo API Key (Opsiyonel)</label>
+              <span id="badge-coingecko-status" class="indicator-pill" style="font-size: 11px; color: var(--profit);">✅ Açık / Ücretsiz Aktif</span>
+            </div>
+            <input type="password" id="input-coingecko-key" class="form-input" placeholder="CG-... (Boş bırakırsanız genel ücretsiz API çalışır)">
+            <div id="current-coingecko-key-display" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Durum: <span id="current-coingecko-key" style="font-family: var(--font-mono); color: var(--accent-cyan);">-</span></div>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">FRED (St. Louis Fed) API Key (Opsiyonel)</label>
+              <span id="badge-fred-status" class="indicator-pill" style="font-size: 11px; color: var(--accent-cyan);">✅ DXY / Tahvil Kalkanı Aktif</span>
+            </div>
+            <input type="password" id="input-fred-key" class="form-input" placeholder="32 karakterlik FRED API Key (Boş bırakırsanız açık DXY/Tahvil akışı çalışır)">
+            <div id="current-fred-key-display" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Durum: <span id="current-fred-key" style="font-family: var(--font-mono); color: var(--accent-cyan);">-</span></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Telegram Bot Token (Opsiyonel)</label>
+          <input type="text" id="input-tg-token" class="form-input" placeholder="123456:ABC-DEF..." value="">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Telegram Chat ID (Opsiyonel)</label>
+          <input type="text" id="input-tg-chat" class="form-input" placeholder="987654321" value="">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">İptal</button>
+          <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=2.9.0"></script>
+</body>
+</html>

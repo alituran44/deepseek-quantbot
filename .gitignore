@@ -1,0 +1,56 @@
+# Environment variables and secrets (CRITICAL - NEVER COMMIT)
+.env
+.env.*
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# DeepSeek Harness upstream repository & local cache
+deepseek-harness/
+.dsh_home/
+
+# Vercel deployment cache
+.vercel/
+
+# Runtime storage & logs
+data_storage/*.json
+!data_storage/.gitkeep
+*.log
+scratch/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
