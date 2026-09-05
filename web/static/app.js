@@ -813,24 +813,28 @@ function renderTrades(trades) {
 
 async function triggerManualScan() {
   const btn = document.getElementById('btn-scan');
-  const originalText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = 'Sepet Hesaplanıyor...';
+  const originalText = btn ? btn.innerHTML : 'Sepeti Analiz Et & Dengele';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Sepet Hesaplanıyor...';
+  }
 
   try {
-    await fetch('/api/scan', {
+    const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
-    setTimeout(fetchState, 3000);
+    if (res.ok) {
+      await fetchState();
+    }
   } catch (err) {
-    alert('Sepet taraması başlatılırken hata oluştu: ' + err);
+    console.error('Sepet taraması başlatılırken hata:', err);
   } finally {
-    setTimeout(() => {
+    if (btn) {
       btn.disabled = false;
       btn.innerHTML = originalText;
-    }, 4000);
+    }
   }
 }
 
@@ -1674,4 +1678,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAllMarketCoins();
   setInterval(fetchState, 8000);
   setInterval(loadAllMarketCoins, 30000);
+
+  // Sayfa açıkken her 90 saniyede bir otonom sepet taraması ve dengelemesi yap
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        fetchState();
+      }
+    } catch (e) {}
+  }, 90000);
 });

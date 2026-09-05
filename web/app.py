@@ -86,11 +86,19 @@ def get_state():
     """Dashboard verisini anlık JSON olarak döndürür."""
     return JSONResponse(content=orchestrator.get_dashboard_state())
 
-@app.post("/api/scan")
-async def trigger_scan(req: ScanRequest, bg_tasks: BackgroundTasks):
-    """Manuel piyasa taraması tetikler."""
-    if req.symbol:
-        res = orchestrator.scan_asset(req.symbol)
+@app.api_route("/api/scan", methods=["GET", "POST"])
+async def trigger_scan(request: Request, bg_tasks: BackgroundTasks):
+    """Manuel veya Vercel Cron otomatik piyasa taraması tetikler."""
+    symbol = None
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            symbol = body.get("symbol")
+        except Exception:
+            pass
+
+    if symbol:
+        res = orchestrator.scan_asset(symbol)
         return JSONResponse(content=res)
     else:
         if os.getenv("VERCEL"):
