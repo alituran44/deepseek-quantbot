@@ -81,7 +81,19 @@ class MacroFeed:
         return 98.94  # Güvenli varsayılan
 
     def _fetch_10y_treasury(self) -> float:
-        """ABD 10 Yıllık Tahvil Faizini çeker."""
+        """ABD 10 Yıllık Tahvil Faizini (FRED DGS10 veya Yahoo) çeker."""
+        if self.fred_api_key:
+            try:
+                url = f"https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key={self.fred_api_key}&file_type=json&limit=1&sort_order=desc"
+                resp = requests.get(url, timeout=6)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    obs = data.get("observations", [])
+                    if obs and obs[0].get("value") not in (".", None):
+                        return float(obs[0]["value"])
+            except Exception:
+                pass
+
         try:
             url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX"
             resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
