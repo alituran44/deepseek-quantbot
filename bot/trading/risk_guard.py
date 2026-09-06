@@ -7,11 +7,27 @@ class RiskGuard:
     Hatalı, aşırı riskli veya kurallara uymayan emirleri engeller.
     """
     def __init__(self, max_risk_pct: float = None):
-        is_aggressive = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA") == "AGGRESSIVE_ALPHA"
-        default_limit = 5.0 if is_aggressive else 3.0
+        profile = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA").upper()
+        is_ultra = profile in ["ULTRA_DEGEN", "DEGEN_ALPHA", "DEGEN"]
+        is_aggressive = is_ultra or profile == "AGGRESSIVE_ALPHA"
+        
+        if is_ultra:
+            default_limit = 10.0
+            self.max_open_positions = 15
+            self.max_wallet_allocation_per_trade = 0.50  # Degen modda kasanın %50'sine kadar alım desteği
+            self.min_rr_ratio = 1.2
+        elif is_aggressive:
+            default_limit = 5.0
+            self.max_open_positions = 10
+            self.max_wallet_allocation_per_trade = 0.40  # Yüksek inançlı işlemde %40'a kadar alım desteği
+            self.min_rr_ratio = 1.4
+        else:
+            default_limit = 3.0
+            self.max_open_positions = 6
+            self.max_wallet_allocation_per_trade = 0.25
+            self.min_rr_ratio = 1.6
+
         self.max_risk_pct = max_risk_pct or getattr(config, "MAX_RISK_PER_TRADE_PERCENT", default_limit)
-        self.max_open_positions = 10 if is_aggressive else 6
-        self.max_wallet_allocation_per_trade = 0.40 if is_aggressive else 0.25 # Yüksek inançlı işlemde %40'a kadar alım desteği
 
     def validate_and_size_position(
         self, 
@@ -58,8 +74,9 @@ class RiskGuard:
             
         # Risk / Ödül Oranı Testi
         rr_ratio = reward_per_unit / (risk_per_unit + 1e-9)
-        if rr_ratio < 1.4:
-            return False, f"Risk/Ödül oranı çok düşük ({rr_ratio:.2f} < 1.40). Kural gereği işlem reddedildi", {}
+        min_rr = getattr(self, "min_rr_ratio", 1.4)
+        if rr_ratio < min_rr:
+            return False, f"Risk/Ödül oranı çok düşük ({rr_ratio:.2f} < {min_rr:.2f}). Kural gereği işlem reddedildi", {}
             
         # Pozisyon Büyüklüğü Hesaplama (Fixed Fractional Risk Sizing)
         # Riske edilecek miktar = Toplam Bakiye * Risk Yüzdesi (Örn: $10,000 * %2 = $200)

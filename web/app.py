@@ -527,6 +527,8 @@ async def update_settings(req: ConfigUpdateRequest):
 
     if req.ai_risk_profile is not None and req.ai_risk_profile.strip():
         config.AI_RISK_PROFILE = req.ai_risk_profile.strip().upper()
+        from bot.trading.risk_guard import RiskGuard
+        orchestrator.risk_guard = RiskGuard(max_risk_pct=getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 5.0))
         env_updates["AI_RISK_PROFILE"] = config.AI_RISK_PROFILE
 
     if req.max_risk_per_trade_percent is not None and req.max_risk_per_trade_percent > 0:

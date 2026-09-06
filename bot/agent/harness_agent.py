@@ -192,36 +192,53 @@ class DeepSeekQuantAgent:
         ema50 = indicators.get("moving_averages", {}).get("ema_50", price)
         bb_pos = indicators.get("bollinger_bands", {}).get("position", "INSIDE")
         
-        is_aggressive = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA") == "AGGRESSIVE_ALPHA"
+        profile = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA").upper()
+        is_ultra = profile in ["ULTRA_DEGEN", "DEGEN_ALPHA", "DEGEN"]
+        is_aggressive = is_ultra or profile == "AGGRESSIVE_ALPHA"
         
         # 1. HESAPLANMIŞ ALIM (BUY) SENARYOLARI (Trend Devamı, Dip Toparlanması veya Hacim Kırılımı)
         buy_condition = (
-            ("BULLISH" in summary and rsi < 76) or
+            ("BULLISH" in summary and (rsi < 84 if is_ultra else (rsi < 76 if is_aggressive else rsi < 70))) or
+            (is_ultra and (vol_surge or (rsi > 40 and rsi < 85) or price > ema50)) or
             (is_aggressive and (price > ema20 or vol_surge or (rsi > 44 and rsi < 74))) or
-            (rsi < 35 and price >= support * 0.99) # Aşırı satımdan asimetrik dip tepkisi
+            (rsi < 38 and price >= support * 0.985) # Aşırı satımdan asimetrik dip tepkisi
         )
         
         # 2. SATIŞ (SELL) SENARYOLARI
         sell_condition = (
-            ("BEARISH" in summary and rsi > 28) or
-            (rsi > 78 and bb_pos == "ABOVE_UPPER") # Tepe kâr realizasyonu
+            ("BEARISH" in summary and rsi > 25) or
+            (rsi > (86 if is_ultra else 78) and bb_pos == "ABOVE_UPPER") # Tepe kâr realizasyonu
         )
 
         if buy_condition and not sell_condition:
             action = "BUY"
-            # Asimetrik Risk/Ödül: Sıkı Stop (%1.8 - %3.0), Geniş Kâr Hedefi (1:2.8 - 1:3.8)
-            stop_distance = max(atr * 1.2, price * 0.022)
-            stop_loss = round(max(support * 0.992, price - stop_distance), 4 if price < 1 else 2)
+            # Asimetrik Risk/Ödül: Ultra modda 1:4.2+, Agresif modda 1:3.2, Dengeli modda 1:2.4
+            if is_ultra:
+                rr_mult = 4.2
+                stop_distance = max(atr * 1.5, price * 0.032)
+            elif is_aggressive:
+                rr_mult = 3.2
+                stop_distance = max(atr * 1.2, price * 0.022)
+            else:
+                rr_mult = 2.4
+                stop_distance = max(atr * 1.0, price * 0.018)
+
+            stop_loss = round(max(support * 0.99, price - stop_distance), 4 if price < 1 else 2)
             risk = price - stop_loss
-            rr_mult = 3.2 if is_aggressive else 2.4
             take_profit = round(price + (risk * rr_mult), 4 if price < 1 else 2)
-            confidence = 0.88 if (summary == "STRONG_BULLISH" or vol_surge) else 0.78
+            confidence = 0.92 if is_ultra else (0.88 if (summary == "STRONG_BULLISH" or vol_surge) else 0.78)
             
-            thesis = (
-                f"Finans Uzmanı Değerlendirmesi: {symbol} için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. "
-                f"Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, "
-                f"1:{rr_mult:.1f} Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor."
-            )
+            if is_ultra:
+                thesis = (
+                    f"🔥 Ultra Degen Finans Uzmanı: {symbol} için yüksek momentum ve volatilite kırılımı tespit edildi. "
+                    f"Maksimum kâr arayışı kapsamında 1:{rr_mult:.1f} asimetrik hedefle agresif pozisyonlanma öneriliyor."
+                )
+            else:
+                thesis = (
+                    f"Finans Uzmanı Değerlendirmesi: {symbol} için piyasa yapısı asimetrik bir getiri fırsatı sunuyor. "
+                    f"Fiyatın kısa vadeli likiditeyi süpürerek EMA ve destek seviyelerinin üzerinde tutunması, "
+                    f"1:{rr_mult:.1f} Risk/Ödül oranlı yüksek olasılıklı bir yükseliş kırılımına işaret ediyor."
+                )
             reasoning = [
                 f"Piyasa Yapısı & Momentum: Algoritmik Trend {summary} - RSI 14 Seviyesi {rsi:.1f}",
                 f"Likidite & Hacim Dinamiği: {'🔥 Hacim patlaması ve kurumsal para girişi tespit edildi' if vol_surge else 'Dengeli emir akışı ve fiyat konsolidasyonu'}",

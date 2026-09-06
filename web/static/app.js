@@ -345,7 +345,11 @@ function renderDashboard(data) {
   const riskBadge = document.getElementById('badge-risk-mode');
   const riskProfile = data.ai_risk_profile || 'AGGRESSIVE_ALPHA';
   if (riskBadge) {
-    if (riskProfile === 'AGGRESSIVE_ALPHA') {
+    if (riskProfile === 'ULTRA_DEGEN' || riskProfile === 'DEGEN_ALPHA') {
+      riskBadge.innerHTML = '🔥 Finans Uzmanı: Ultra Degen (1:4+ Maksimum Volatilite)';
+      riskBadge.style.color = '#f43f5e';
+      riskBadge.style.borderColor = 'rgba(244, 63, 94, 0.5)';
+    } else if (riskProfile === 'AGGRESSIVE_ALPHA') {
       riskBadge.innerHTML = '⚡ Finans Uzmanı: Agresif Alpha (Asimetrik 1:3+)';
       riskBadge.style.color = 'var(--profit)';
       riskBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
