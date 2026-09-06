@@ -343,7 +343,7 @@ function renderDashboard(data) {
 
   // Finans Uzmanı & Risk Rozeti Senkronizasyonu
   const riskBadge = document.getElementById('badge-risk-mode');
-  const riskProfile = data.ai_risk_profile || 'AGGRESSIVE_ALPHA';
+  const riskProfile = localStorage.getItem('deepseek_ai_risk_profile') || data.ai_risk_profile || 'AGGRESSIVE_ALPHA';
   if (riskBadge) {
     if (riskProfile === 'ULTRA_DEGEN' || riskProfile === 'DEGEN_ALPHA') {
       riskBadge.innerHTML = '🔥 Finans Uzmanı: Ultra Degen (1:4+ Maksimum Volatilite)';
@@ -362,10 +362,6 @@ function renderDashboard(data) {
       riskBadge.style.color = 'var(--warning)';
       riskBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
     }
-  }
-  const selectRisk = document.getElementById('select-risk-profile');
-  if (selectRisk && document.activeElement !== selectRisk) {
-    selectRisk.value = riskProfile;
   }
 
   // Makro Risk Kalkanı (FRED / DXY) Senkronizasyonu
@@ -1258,19 +1254,24 @@ async function openSettingsModal() {
       if (selMode && c.trading_mode) selMode.value = c.trading_mode;
 
       const selExchange = document.getElementById('select-trading-exchange');
-      if (selExchange && c.trading_exchange) selExchange.value = c.trading_exchange;
+      const savedExchange = localStorage.getItem('deepseek_trading_exchange') || c.trading_exchange;
+      if (selExchange && savedExchange) selExchange.value = savedExchange;
 
       const selRisk = document.getElementById('select-risk-profile');
-      if (selRisk && c.ai_risk_profile) selRisk.value = c.ai_risk_profile;
+      const savedRisk = localStorage.getItem('deepseek_ai_risk_profile') || c.ai_risk_profile;
+      if (selRisk && savedRisk) selRisk.value = savedRisk;
 
       const selRiskLimit = document.getElementById('select-risk-limit');
-      if (selRiskLimit && c.max_risk_per_trade_percent !== undefined) {
-        selRiskLimit.value = String(Number(c.max_risk_per_trade_percent).toFixed(1));
+      const savedLimit = localStorage.getItem('deepseek_max_risk_limit') || (c.max_risk_per_trade_percent !== undefined ? String(Number(c.max_risk_per_trade_percent).toFixed(1)) : null);
+      if (selRiskLimit && savedLimit) {
+        selRiskLimit.value = String(Number(savedLimit).toFixed(1));
       }
       const badgeRiskLimit = document.getElementById('badge-risk-limit-display');
-      if (badgeRiskLimit && c.max_risk_per_trade_percent !== undefined) {
-        badgeRiskLimit.textContent = `%${Number(c.max_risk_per_trade_percent).toFixed(1)}`;
+      if (badgeRiskLimit && savedLimit) {
+        badgeRiskLimit.textContent = `%${Number(savedLimit).toFixed(1)}`;
       }
+
+      initSettingsAutoListeners();
 
       // DeepSeek API
       const badgeDs = document.getElementById('badge-deepseek-status');
@@ -1421,6 +1422,107 @@ function closeSettingsModal() {
   document.getElementById('settings-modal').style.display = 'none';
 }
 
+function showAutoSaveFeedback(msg) {
+  const statusMsg = document.getElementById('settings-status-msg');
+  if (statusMsg) {
+    statusMsg.style.display = 'block';
+    statusMsg.style.background = 'rgba(16, 185, 129, 0.15)';
+    statusMsg.style.border = '1px solid var(--profit)';
+    statusMsg.style.color = 'var(--profit)';
+    statusMsg.innerHTML = `✅ ${msg} ⚡`;
+    setTimeout(() => {
+      if (statusMsg && statusMsg.innerHTML.includes(msg)) {
+        statusMsg.style.display = 'none';
+      }
+    }, 4000);
+  }
+}
+
+function initSettingsAutoListeners() {
+  const selRisk = document.getElementById('select-risk-profile');
+  if (selRisk && !selRisk._hasAutoListener) {
+    selRisk._hasAutoListener = true;
+    selRisk.addEventListener('change', async function () {
+      const val = this.value;
+      localStorage.setItem('deepseek_ai_risk_profile', val);
+
+      // Anında arayüzdeki rozeti güncelle
+      const riskBadge = document.getElementById('badge-risk-mode');
+      if (riskBadge) {
+        if (val === 'ULTRA_DEGEN') {
+          riskBadge.innerHTML = '🔥 Finans Uzmanı: Ultra Degen (1:4+ Maksimum Volatilite)';
+          riskBadge.style.color = '#f43f5e';
+          riskBadge.style.borderColor = 'rgba(244, 63, 94, 0.5)';
+        } else if (val === 'AGGRESSIVE_ALPHA') {
+          riskBadge.innerHTML = '⚡ Finans Uzmanı: Agresif Alpha (Asimetrik 1:3+)';
+          riskBadge.style.color = 'var(--profit)';
+          riskBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        } else if (val === 'BALANCED') {
+          riskBadge.innerHTML = '⚖️ Finans Uzmanı: Dengeli Portföy (1:2.4)';
+          riskBadge.style.color = 'var(--accent-cyan)';
+          riskBadge.style.borderColor = 'rgba(2, 132, 199, 0.4)';
+        } else {
+          riskBadge.innerHTML = '🛡️ Finans Uzmanı: Temkinli Koruma';
+          riskBadge.style.color = 'var(--warning)';
+          riskBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        }
+      }
+
+      showAutoSaveFeedback('Risk Profili kaydedildi: ' + selRisk.options[selRisk.selectedIndex].text.split('(')[0].trim());
+      try {
+        await fetch('/api/config/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ai_risk_profile: val })
+        });
+      } catch (err) {
+        console.error('Risk profili otomatik kaydedilemedi:', err);
+      }
+    });
+  }
+
+  const selRiskLimit = document.getElementById('select-risk-limit');
+  if (selRiskLimit && !selRiskLimit._hasAutoListener) {
+    selRiskLimit._hasAutoListener = true;
+    selRiskLimit.addEventListener('change', async function () {
+      const val = parseFloat(this.value);
+      localStorage.setItem('deepseek_max_risk_limit', val);
+      const badge = document.getElementById('badge-risk-limit-display');
+      if (badge) badge.textContent = `%${val.toFixed(1)}`;
+
+      showAutoSaveFeedback(`Risk Limiti %${val.toFixed(1)} olarak güncellendi`);
+      try {
+        await fetch('/api/config/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ max_risk_per_trade_percent: val })
+        });
+      } catch (err) {
+        console.error('Risk limiti otomatik kaydedilemedi:', err);
+      }
+    });
+  }
+
+  const selExchange = document.getElementById('select-trading-exchange');
+  if (selExchange && !selExchange._hasAutoListener) {
+    selExchange._hasAutoListener = true;
+    selExchange.addEventListener('change', async function () {
+      const val = this.value;
+      localStorage.setItem('deepseek_trading_exchange', val);
+      showAutoSaveFeedback('Borsa tercihi güncellendi: ' + selExchange.options[selExchange.selectedIndex].text.split('(')[0].trim());
+      try {
+        await fetch('/api/config/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trading_exchange: val })
+        });
+      } catch (err) {
+        console.error('Borsa tercihi otomatik kaydedilemedi:', err);
+      }
+    });
+  }
+}
+
 async function openDepositModal(exchange = 'BINANCE') {
   const modal = document.getElementById('deposit-modal');
   const container = document.getElementById('deposit-addresses-list');
@@ -1552,6 +1654,10 @@ async function saveSettings(e) {
   const groqKey = document.getElementById('input-groq-key') ? document.getElementById('input-groq-key').value.trim() : '';
   const coingeckoKey = document.getElementById('input-coingecko-key') ? document.getElementById('input-coingecko-key').value.trim() : '';
   const fredKey = document.getElementById('input-fred-key') ? document.getElementById('input-fred-key').value.trim() : '';
+
+  localStorage.setItem('deepseek_ai_risk_profile', riskProfile);
+  localStorage.setItem('deepseek_max_risk_limit', riskLimitVal);
+  localStorage.setItem('deepseek_trading_exchange', tradingExchange);
 
   const payload = {
     deepseek_model: model,
@@ -2050,6 +2156,7 @@ window.lockDashboard = lockDashboard;
 // Başlatıcı
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
+  initSettingsAutoListeners();
 
   // Güvenlik Kalkanı & Oturum Kontrolü
   const isAuth = await checkInitialAuth();
