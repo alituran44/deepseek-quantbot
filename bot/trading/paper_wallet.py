@@ -211,8 +211,47 @@ class PaperWallet:
         self._save_state()
         return closed_events
 
-    def get_portfolio_summary(self) -> Dict[str, Any]:
+    _last_live_price_time: float = 0.0
+
+    def update_live_prices(self):
+        """Binance üzerinden açık pozisyonların anlık fiyatlarını çeker ve PnL'leri günceller."""
+        open_pos = self.open_positions
+        if not open_pos:
+            return
+
+        import time
+        now = time.time()
+        if now - getattr(self, "_last_live_price_time", 0.0) < 4.0:
+            return
+
+        symbols = list({p["symbol"] for p in open_pos if "symbol" in p})
+        if not symbols:
+            return
+
+        try:
+            import json, urllib.parse, requests
+            encoded = urllib.parse.quote(json.dumps(symbols).replace(" ", ""))
+            for base in ["https://data-api.binance.vision/api/v3", "https://api.binance.com/api/v3"]:
+                try:
+                    url = f"{base}/ticker/price?symbols={encoded}"
+                    resp = requests.get(url, timeout=3.5)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        price_map = {item["symbol"]: float(item["price"]) for item in data}
+                        if price_map:
+                            self.check_and_update_prices(price_map)
+                            self._last_live_price_time = now
+                            break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    def get_portfolio_summary(self, auto_update: bool = True) -> Dict[str, Any]:
         """Portföy istatistiklerini ve metriklerini hesaplar."""
+        if auto_update and self.open_positions:
+            self.update_live_prices()
+
         cash = self.cash_balance
         open_positions = self.open_positions
         closed_trades = self.closed_trades
