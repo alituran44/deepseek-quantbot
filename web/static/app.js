@@ -1051,7 +1051,10 @@ function renderPositions(positions, isLive) {
 
       html += `
         <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}')" title="Canlı grafiği ve detayları açmak için tıklayın">
-          <td><strong>${pos.symbol}</strong></td>
+          <td>
+            <strong>${pos.symbol}</strong>
+            ${pos.open_time ? `<span style="color: var(--text-muted); font-size: 10px; font-family: var(--font-mono); display: block; margin-top: 2px;">⏱️ ${formatTradeTime(pos.open_time)}</span>` : ''}
+          </td>
           <td><span class="indicator-pill" style="color: var(--accent-cyan);">${pos.symbol.includes('BTC') || pos.symbol.includes('ETH') ? 'CORE' : 'ALTCOIN'}</span></td>
           <td><span class="badge ${badgeClass}">${pos.action}</span></td>
           <td>${formatCryptoMoney(pos.entry_price)}</td>
@@ -1073,10 +1076,34 @@ function renderPositions(positions, isLive) {
   tbody.innerHTML = html;
 }
 
+function formatTradeTime(timeStr) {
+  if (!timeStr) return '-';
+  try {
+    const trimmed = String(timeStr).trim();
+    const parts = trimmed.split(' ');
+    if (parts.length === 2) {
+      const dateParts = parts[0].split('-');
+      if (dateParts.length === 3) {
+        return `${dateParts[2]}.${dateParts[1]}.${dateParts[0]} ${parts[1].substring(0, 5)}`;
+      }
+    }
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      return `${day}.${month}.${year} ${hours}:${mins}`;
+    }
+  } catch (e) {}
+  return timeStr;
+}
+
 function renderTrades(trades) {
   const tbody = document.getElementById('trades-body');
   if (!trades || trades.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir sepet işlemi yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir sepet işlemi yok.</td></tr>`;
     return;
   }
 
@@ -1086,6 +1113,9 @@ function renderTrades(trades) {
     const pnlPct = t.pnl_pct || 0;
     const pnlClass = pnl >= 0 ? 'text-profit' : 'text-loss';
     const reasonTr = t.exit_reason === 'TAKE_PROFIT_HIT' ? 'Hedef (TP)' : (t.exit_reason === 'STOP_LOSS_HIT' ? 'Stop (SL)' : (t.exit_reason === 'PORTFOLIO_CRYPTO_BASKET_TRANSITION' ? 'Sepet Geçişi' : 'Manuel'));
+    const closeTimeStr = t.close_time || t.open_time || '';
+    const formattedTime = formatTradeTime(closeTimeStr);
+    const tooltip = `Giriş Zamanı: ${t.open_time || '-'} | Kapanış Zamanı: ${t.close_time || '-'}`;
 
     html += `
       <tr>
@@ -1095,6 +1125,9 @@ function renderTrades(trades) {
         <td>$${t.exit_price.toLocaleString('en-US')}</td>
         <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct.toFixed(2)})</td>
         <td style="color: var(--text-muted); font-size: 11px;">${reasonTr}</td>
+        <td style="color: var(--text-secondary); font-size: 11px; font-family: var(--font-mono); white-space: nowrap;" title="${tooltip}">
+          <span style="opacity: 0.75;">⏱️</span> ${formattedTime}
+        </td>
       </tr>
     `;
   });
