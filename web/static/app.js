@@ -198,30 +198,20 @@ async function fetchState() {
 }
 
 function renderDashboard(data) {
-  // Mod Bilgisi ve Anahtar Gösterimi: Kullanıcı tercihi (localStorage) önceliklidir
-  const savedMode = localStorage.getItem('deepseek_trading_mode');
-  const mode = savedMode || data.trading_mode || 'LIVE';
-  currentTradingMode = mode;
-  const isLive = mode === 'LIVE';
+  // Mod Bilgisi ve Anahtar Gösterimi: Canlı Spot Kripto Modu Kalıcı Olarak Aktif
+  currentTradingMode = 'LIVE';
+  localStorage.setItem('deepseek_trading_mode', 'LIVE');
+  const isLive = true;
   const binance = data.binance_status || {};
   const binanceTr = data.binance_tr_status || {};
   const w = data.wallet || {};
   const mt = data.master_treasury || {};
 
-  // 1. Kasa Metrikleri (USD ve TL): Sanal vs Canlı Ayrımı
-  let totalUsd, totalTry, cashUsd, cashTry;
-  if (isLive) {
-    totalUsd = (mt.live_total_usd !== undefined) ? mt.live_total_usd : (mt.total_usd !== undefined ? mt.total_usd : (w.total_value || 0));
-    totalTry = (mt.live_total_try !== undefined) ? mt.live_total_try : (mt.total_try !== undefined ? mt.total_try : (w.total_value_try || 0));
-    cashUsd = (mt.live_cash_usd !== undefined) ? mt.live_cash_usd : (mt.cash_usd !== undefined ? mt.cash_usd : (w.cash_balance || 0));
-    cashTry = (mt.live_cash_try !== undefined) ? mt.live_cash_try : (mt.cash_try !== undefined ? mt.cash_try : (w.cash_balance_try || 0));
-  } else {
-    // Tamamen Sanal Kasa: Gerçek borsa bakiyeleri kesinlikle karıştırılmaz
-    totalUsd = w.total_value !== undefined ? w.total_value : (w.total_equity || 10000.0);
-    totalTry = w.total_value_try !== undefined ? w.total_value_try : (totalUsd * (data.usd_try_rate || 38.0));
-    cashUsd = w.cash_balance !== undefined ? w.cash_balance : 10000.0;
-    cashTry = w.cash_balance_try !== undefined ? w.cash_balance_try : (cashUsd * (data.usd_try_rate || 38.0));
-  }
+  // 1. Konsolide Canlı Kasa Metrikleri (USD ve TL)
+  const totalUsd = (mt.live_total_usd !== undefined) ? mt.live_total_usd : (mt.total_usd !== undefined ? mt.total_usd : (w.total_value || 0));
+  const totalTry = (mt.live_total_try !== undefined) ? mt.live_total_try : (mt.total_try !== undefined ? mt.total_try : (w.total_value_try || 0));
+  const cashUsd = (mt.live_cash_usd !== undefined) ? mt.live_cash_usd : (mt.cash_usd !== undefined ? mt.cash_usd : (w.cash_balance || 0));
+  const cashTry = (mt.live_cash_try !== undefined) ? mt.live_cash_try : (mt.cash_try !== undefined ? mt.cash_try : (w.cash_balance_try || 0));
 
   document.getElementById('m-equity').textContent = `${formatCryptoMoney(totalUsd)} USD`;
   const eqTryEl = document.getElementById('m-equity-try');
@@ -236,82 +226,47 @@ function renderDashboard(data) {
     usdTryRateEl.textContent = `1$ = ₺${data.usd_try_rate.toFixed(2)}`;
   }
 
-  // Başlıklar ve Dağılım Kartları Ayrımı (CANLI vs SANAL)
+  // Canlı Kasa Başlıkları ve Borsa Dağılımı
   const eqLabel = document.getElementById('m-equity-label');
   const cashLabel = document.getElementById('m-cash-label');
   const breakdownLabel = document.getElementById('m-breakdown-label');
   const liveBox = document.getElementById('box-live-distribution');
-  const paperBox = document.getElementById('box-paper-distribution');
   const liveDepositActions = document.getElementById('live-deposit-actions');
-  const paperActions = document.getElementById('paper-actions');
   const liveToolbar = document.getElementById('live-exchange-toolbar');
-  const paperToolbar = document.getElementById('paper-toolbar');
   const posCardTitle = document.getElementById('positions-card-title');
   const posCardDesc = document.getElementById('positions-card-desc');
   const riskSubtext = document.getElementById('m-risk-subtext');
 
-  if (isLive) {
-    if (eqLabel) eqLabel.textContent = '⚡ Konsolide Ana Kasa';
-    if (cashLabel) cashLabel.textContent = '⚡ Kullanılabilir Serbest Nakit';
-    if (breakdownLabel) breakdownLabel.textContent = '⚡ Borsa Kasa Dağılımı';
-    if (liveBox) liveBox.style.display = 'flex';
-    if (paperBox) paperBox.style.display = 'none';
-    if (liveDepositActions) liveDepositActions.style.display = 'flex';
-    if (paperActions) paperActions.style.display = 'none';
-    if (liveToolbar) liveToolbar.style.display = 'flex';
-    if (paperToolbar) paperToolbar.style.display = 'none';
-    if (posCardTitle) posCardTitle.textContent = '⚡ Çoklu Borsa Cüzdan Varlıkları';
-    if (posCardDesc) posCardDesc.textContent = 'Borsalardaki coinleriniz ayrı ayrı veya konsolide tam hassasiyetle listelenir';
-    if (riskSubtext) riskSubtext.textContent = '⚡ Canlı Borsa Kripto İşlemleri';
+  if (eqLabel) eqLabel.textContent = '⚡ Konsolide Ana Kasa';
+  if (cashLabel) cashLabel.textContent = '⚡ Kullanılabilir Serbest Nakit';
+  if (breakdownLabel) breakdownLabel.textContent = '⚡ Borsa Kasa Dağılımı';
+  if (liveBox) liveBox.style.display = 'flex';
+  if (liveDepositActions) liveDepositActions.style.display = 'flex';
+  if (liveToolbar) liveToolbar.style.display = 'flex';
+  if (posCardTitle) posCardTitle.textContent = '⚡ Çoklu Borsa Cüzdan Varlıkları';
+  if (posCardDesc) posCardDesc.textContent = 'Borsalardaki coinleriniz ayrı ayrı veya konsolide tam hassasiyetle listelenir';
+  if (riskSubtext) riskSubtext.textContent = '⚡ Canlı Borsa Kripto İşlemleri';
 
-    // Borsa Kasa Dağılımı (Binance, Binance TR, OKX, MEXC)
-    const binanceShareEl = document.getElementById('m-binance-share');
-    const binanceTrShareEl = document.getElementById('m-binancetr-share');
-    const okxShareEl = document.getElementById('m-okx-share');
-    const mexcShareEl = document.getElementById('m-mexc-share');
-    if (binanceShareEl && mt.binance) {
-      binanceShareEl.textContent = `$${(mt.binance.total_usd || 0).toFixed(2)} (₺${(mt.binance.total_try || 0).toFixed(2)})`;
+  // Borsa Kasa Dağılımı (Binance, Binance TR, OKX, MEXC)
+  const binanceShareEl = document.getElementById('m-binance-share');
+  const binanceTrShareEl = document.getElementById('m-binancetr-share');
+  const okxShareEl = document.getElementById('m-okx-share');
+  const mexcShareEl = document.getElementById('m-mexc-share');
+  if (binanceShareEl && mt.binance) {
+    binanceShareEl.textContent = `$${(mt.binance.total_usd || 0).toFixed(2)} (₺${(mt.binance.total_try || 0).toFixed(2)})`;
+  }
+  if (binanceTrShareEl && mt.binance_tr) {
+    binanceTrShareEl.textContent = `$${(mt.binance_tr.total_usd || 0).toFixed(2)} (₺${(mt.binance_tr.total_try || 0).toFixed(2)})`;
+  }
+  if (okxShareEl && mt.okx) {
+    if (data.okx_status && data.okx_status.needs_passphrase) {
+      okxShareEl.innerHTML = `<span style="color: var(--warning); font-size: 11px;">Parola Bekleniyor ⏳</span>`;
+    } else {
+      okxShareEl.textContent = `$${(mt.okx.total_usd || 0).toFixed(2)} (₺${(mt.okx.total_try || 0).toFixed(2)})`;
     }
-    if (binanceTrShareEl && mt.binance_tr) {
-      binanceTrShareEl.textContent = `$${(mt.binance_tr.total_usd || 0).toFixed(2)} (₺${(mt.binance_tr.total_try || 0).toFixed(2)})`;
-    }
-    if (okxShareEl && mt.okx) {
-      if (data.okx_status && data.okx_status.needs_passphrase) {
-        okxShareEl.innerHTML = `<span style="color: var(--warning); font-size: 11px;">Parola Bekleniyor ⏳</span>`;
-      } else {
-        okxShareEl.textContent = `$${(mt.okx.total_usd || 0).toFixed(2)} (₺${(mt.okx.total_try || 0).toFixed(2)})`;
-      }
-    }
-    if (mexcShareEl && mt.mexc) {
-      mexcShareEl.textContent = `$${(mt.mexc.total_usd || 0).toFixed(2)} (₺${(mt.mexc.total_try || 0).toFixed(2)})`;
-    }
-  } else {
-    // Sanal Kasa: Gerçek borsa bilgileri tamamen gizlenir, simülasyon metrikleri sunulur
-    if (eqLabel) eqLabel.textContent = '🧪 Sanal Kasa Varlığı';
-    if (cashLabel) cashLabel.textContent = '🧪 Boşta Sanal Nakit';
-    if (breakdownLabel) breakdownLabel.textContent = '🧪 Sanal Sepet Durumu';
-    if (liveBox) liveBox.style.display = 'none';
-    if (paperBox) paperBox.style.display = 'flex';
-    if (liveDepositActions) liveDepositActions.style.display = 'none';
-    if (paperActions) paperActions.style.display = 'flex';
-    if (liveToolbar) liveToolbar.style.display = 'none';
-    if (paperToolbar) paperToolbar.style.display = 'flex';
-    if (posCardTitle) posCardTitle.textContent = '🧪 Sanal Sepet Pozisyonları';
-    if (posCardDesc) posCardDesc.textContent = '10.000$ sanal kasa ile çalışan yapay zeka al-sat pozisyonları ve risk hedefleri';
-    if (riskSubtext) riskSubtext.textContent = '🧪 10.000$ Sanal Risk Simülasyonu';
-
-    // Sanal Portföy Dağılım Verileri
-    const paperPosValEl = document.getElementById('m-paper-positions-val');
-    if (paperPosValEl) {
-      paperPosValEl.textContent = `${formatCryptoMoney(w.positions_value || 0)} USD`;
-    }
-    const paperPnlEl = document.getElementById('m-paper-total-pnl');
-    if (paperPnlEl) {
-      const pnlUsd = (w.unrealized_pnl !== undefined ? w.unrealized_pnl : (totalUsd - 10000.0)) || 0;
-      const pnlPct = (w.unrealized_pnl_pct !== undefined ? w.unrealized_pnl_pct : (pnlUsd / 10000.0 * 100)) || 0;
-      paperPnlEl.className = pnlUsd >= 0 ? 'text-profit' : 'text-loss';
-      paperPnlEl.textContent = `${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)} (%${pnlPct.toFixed(2)})`;
-    }
+  }
+  if (mexcShareEl && mt.mexc) {
+    mexcShareEl.textContent = `$${(mt.mexc.total_usd || 0).toFixed(2)} (₺${(mt.mexc.total_try || 0).toFixed(2)})`;
   }
 
   document.getElementById('m-winrate').textContent = `%${w.win_rate || 0} (${w.total_trades || 0} İşlem)`;
@@ -401,33 +356,17 @@ function renderDashboard(data) {
   const bannerDesc = document.getElementById('banner-desc');
   const bannerActionBtn = document.getElementById('banner-action-btn');
 
-  if (banner && bannerTitle && bannerDesc && bannerActionBtn) {
-    if (isLive) {
-      banner.style.borderLeftColor = 'var(--profit)';
+  if (banner && bannerTitle && bannerDesc) {
+    banner.style.borderLeftColor = 'var(--profit)';
+    if (bannerIcon) {
       bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
       bannerIcon.style.color = 'var(--profit)';
       bannerIcon.textContent = '⚡';
-      if (exChoice === 'BINANCE_TR' || exChoice === 'BINANCETR') {
-        bannerTitle.textContent = `Canlı Binance TR Modu Aktif (Serbest: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
-        bannerDesc.textContent = `Bot doğrudan resmi Binance TR (trbinance.com) API'niz üzerinden serbest bakiye ile canlı pozisyon almaktadır.`;
-      } else if (exChoice === 'BINANCE') {
-        bannerTitle.textContent = `Canlı Binance Spot Modu Aktif (Serbest: $${cashUsd.toFixed(2)} USDT)`;
-        bannerDesc.textContent = `Bot doğrudan resmi Binance API'niz üzerinden serbest USDT bakiyesiyle canlı pozisyon almaktadır.`;
-      } else {
-        bannerTitle.textContent = `Canlı Çoklu Borsa Modu Aktif (${exLabel} - Serbest: $${cashUsd.toFixed(2)} USDT)`;
-        bannerDesc.textContent = `Bot kayıtlı borsa API'leriniz (Binance TR, Binance, MEXC, OKX) üzerinden serbest bakiye ile akıllı pozisyon almaktadır.`;
-      }
-      bannerActionBtn.textContent = 'Sanala Dön (Öğrenme) 🧪';
-      bannerActionBtn.style.borderColor = 'var(--profit)';
-    } else {
-      banner.style.borderLeftColor = 'var(--accent-cyan)';
-      bannerIcon.style.background = 'rgba(2, 132, 199, 0.15)';
-      bannerIcon.style.color = 'var(--accent-cyan)';
-      bannerIcon.textContent = '🧪';
-      bannerTitle.textContent = 'Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)';
-      bannerDesc.textContent = `Bot canlı piyasa verileri üzerinde $10,000 sanal kasa ile stratejilerini test eder. Dilediğiniz an tek tıkla Canlı Moda geçebilirsiniz.`;
-      bannerActionBtn.textContent = 'Canlı Moda Geç ⚡';
-      bannerActionBtn.style.borderColor = 'var(--accent-cyan)';
+    }
+    bannerTitle.textContent = `Canlı Spot Alım-Satım Aktif (Binance TR: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
+    bannerDesc.textContent = `Bot doğrudan resmi Binance TR (trbinance.com) ve kayıtlı borsa API'leriniz üzerinden serbest bakiye ile canlı pozisyon almaktadır.`;
+    if (bannerActionBtn) {
+      bannerActionBtn.style.display = 'none';
     }
   }
 
@@ -863,7 +802,34 @@ function updateModalBalanceInfo() {
     let freeUsdt = 0;
     let ownedUnits = 0;
 
-    if (selectedEx === 'BINANCE' || selectedEx === 'AUTO') {
+    if (selectedEx === 'BINANCE_TR') {
+      const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
+      const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
+      const usdRate = lastDashboardData.usd_try_rate || 48.34;
+      const btrUsd = btr.total_usd !== undefined ? btr.total_usd : (freeTry / usdRate);
+      if (freeCashEl) freeCashEl.textContent = `₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL (~$${btrUsd.toFixed(2)})`;
+      
+      const liveAssets = Array.isArray(lastDashboardData.wallet?.live_assets) ? lastDashboardData.wallet.live_assets : [];
+      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.symbol === currentModalSymbol);
+      if (foundAsset) {
+        ownedUnits = foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0);
+      }
+      if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
+      if (depositHintEl) depositHintEl.style.display = (freeTry < 50) ? 'block' : 'none';
+      return;
+    } else if (selectedEx === 'AUTO') {
+      const totalCashUsd = (mt && mt.cash_usd !== undefined) ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
+      const totalCashTry = (mt && mt.cash_try !== undefined) ? mt.cash_try : 0;
+      if (freeCashEl) freeCashEl.textContent = `$${totalCashUsd.toFixed(2)} (₺${totalCashTry.toFixed(2)})`;
+      const liveAssets = Array.isArray(lastDashboardData.wallet?.live_assets) ? lastDashboardData.wallet.live_assets : [];
+      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.symbol === currentModalSymbol);
+      if (foundAsset) {
+        ownedUnits = foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0);
+      }
+      if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
+      if (depositHintEl) depositHintEl.style.display = (totalCashUsd < 1.0) ? 'block' : 'none';
+      return;
+    } else if (selectedEx === 'BINANCE') {
       freeUsdt = binanceStatus.free_usdt !== undefined ? binanceStatus.free_usdt : ((mt.binance && mt.binance.free_usdt) || 0);
       const assets = binanceStatus.assets || {};
       if (assets[cleanSym]) {
@@ -877,38 +843,22 @@ function updateModalBalanceInfo() {
 
     if (freeCashEl) freeCashEl.textContent = `${formatCryptoMoney(freeUsdt)} USDT`;
     if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
-    
-    // Yetersiz USDT uyarısı
     if (depositHintEl) {
       depositHintEl.style.display = (freeUsdt < 5.0) ? 'block' : 'none';
     }
   } else {
-    // Sanal Kasa
-    const w = lastDashboardData.wallet || {};
-    const cash = w.cash_balance !== undefined ? w.cash_balance : 10000.0;
-    const positions = w.open_positions || [];
-    const myPos = positions.find(p => p.symbol === currentModalSymbol || p.symbol === cleanSym || p.symbol === `${cleanSym}USDT`);
-    const ownedUnits = myPos ? (myPos.units || 0) : 0;
-
-    if (freeCashEl) freeCashEl.textContent = `${formatCryptoMoney(cash)} USD`;
-    if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
-    if (depositHintEl) depositHintEl.style.display = 'none';
+    // Canlı Kasa Fallback
+    const totalCashUsd = (lastDashboardData.master_treasury && lastDashboardData.master_treasury.cash_usd !== undefined) ? lastDashboardData.master_treasury.cash_usd : 0;
+    if (freeCashEl) freeCashEl.textContent = `$${totalCashUsd.toFixed(2)} USD`;
   }
 }
 
 function setModalAmountMax() {
   const amtInput = document.getElementById('modal-trade-amount');
   if (!amtInput || !lastDashboardData) return;
-  
-  if (modalTradingMode === 'LIVE') {
-    const binanceStatus = lastDashboardData.binance_status || {};
-    const freeUsdt = binanceStatus.free_usdt || 0;
-    amtInput.value = freeUsdt >= 5.0 ? freeUsdt.toFixed(2) : 50;
-  } else {
-    const w = lastDashboardData.wallet || {};
-    const cash = w.cash_balance !== undefined ? w.cash_balance : 10000.0;
-    amtInput.value = Math.min(1000, Math.floor(cash));
-  }
+  const mt = lastDashboardData.master_treasury || {};
+  const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
+  amtInput.value = cashUsd >= 5 ? Math.floor(cashUsd) : 25;
 }
 
 async function submitManualOrder(action) {
@@ -916,28 +866,28 @@ async function submitManualOrder(action) {
   const amtInput = document.getElementById('modal-trade-amount');
   const amt = parseFloat(amtInput ? amtInput.value : 50) || 50;
   const exEl = document.getElementById('modal-trade-exchange');
-  const exVal = (modalTradingMode === 'LIVE' && exEl) ? exEl.value : 'AUTO';
+  const exVal = exEl ? exEl.value : 'AUTO';
   const statusEl = document.getElementById('modal-trade-status');
   
   statusEl.style.display = 'block';
   statusEl.style.background = 'rgba(2, 132, 199, 0.1)';
   statusEl.style.border = '1px solid rgba(2, 132, 199, 0.3)';
-  statusEl.innerHTML = `<span style="color: var(--accent-cyan); font-weight: 600;">⏳ ${modalTradingMode === 'LIVE' ? 'Canlı borsa' : 'Sanal kasa'} emri iletiliyor (${action} $${amt})...</span>`;
+  statusEl.innerHTML = `<span style="color: var(--accent-cyan); font-weight: 600;">⏳ Canlı borsa emri iletiliyor (${action} $${amt})...</span>`;
 
-  // Frontend ön kontrol: Canlı modda USDT 0 iken alım yapılmaya çalışılırsa kullanıcıyı anında bilgilendir
-  if (modalTradingMode === 'LIVE' && action === 'BUY' && lastDashboardData) {
-    const binanceStatus = lastDashboardData.binance_status || {};
-    const freeUsdt = binanceStatus.free_usdt || 0;
-    if (freeUsdt < 5.0 && (exVal === 'BINANCE' || exVal === 'AUTO')) {
+  // Frontend ön kontrol: Bakiyeyi kontrol et
+  if (action === 'BUY' && lastDashboardData) {
+    const mt = lastDashboardData.master_treasury || {};
+    const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
+    if (cashUsd < 1.0) {
       statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
       statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
       statusEl.innerHTML = `
-        <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Binance Serbest Bakiyesi Yetersiz ($${freeUsdt.toFixed(2)} USDT)</div>
+        <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Borsa Serbest Bakiyesi Yetersiz</div>
         <div style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">
-          Binance hesabınızda serbest USDT ($0.00) bulunmuyor. Gerçek canlı alım yapabilmek için hesabınıza USDT yatırmanız gerekmektedir. Veya üstteki <strong>'🧪 Sanal Kasa'</strong> sekmesine geçerek simülasyon olarak test edebilirsiniz.
+          Hesabınızda serbest bakiye bulunmuyor. Canlı alım yapabilmek için lütfen Binance TR veya Binance hesabınıza bakiye yatırın.
         </div>
-        <button type="button" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; height: 28px; color: var(--warning); border-color: rgba(245, 158, 11, 0.5);" onclick="openDepositModal()">
-          📥 Binance Resmi Kripto Yatırma Adreslerimi Aç
+        <button type="button" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; height: 28px; color: var(--warning); border-color: rgba(245, 158, 11, 0.5);" onclick="openDepositModal('BINANCE_TR')">
+          📥 Binance TR Kripto / TL Yatırma Adresleri
         </button>
       `;
       return;
@@ -1226,16 +1176,16 @@ async function closePosition(posId, currentPx) {
 }
 
 function applyModeUIToDOM(mode) {
-  currentTradingMode = mode;
-  const isLive = mode === 'LIVE';
+  currentTradingMode = 'LIVE';
+  localStorage.setItem('deepseek_trading_mode', 'LIVE');
 
   // 1. Header Butonu
   const btnToggle = document.getElementById('btn-mode-toggle');
-  const modeText = document.getElementById('mode-text');
+  const modeText = document.getElementById('mode-label') || document.getElementById('mode-text');
   const modeDot = document.getElementById('mode-dot');
-  if (modeText) modeText.textContent = isLive ? 'Canlı Mod (Binance)' : 'Sanal Mod ($10K)';
-  if (modeDot) modeDot.style.background = isLive ? 'var(--profit)' : 'var(--warning)';
-  if (btnToggle) btnToggle.style.borderColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+  if (modeText) modeText.textContent = '⚡ Canlı Spot Al-Sat';
+  if (modeDot) modeDot.style.background = 'var(--profit)';
+  if (btnToggle) btnToggle.style.borderColor = 'var(--profit)';
 
   // 2. Banner
   const banner = document.getElementById('mode-banner');
@@ -1244,62 +1194,30 @@ function applyModeUIToDOM(mode) {
   const bannerDesc = document.getElementById('banner-desc');
   const bannerActionBtn = document.getElementById('banner-action-btn');
 
-  if (banner) banner.style.borderLeftColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+  if (banner) banner.style.borderLeftColor = 'var(--profit)';
   if (bannerIcon) {
-    bannerIcon.textContent = isLive ? '⚡' : '🧪';
-    bannerIcon.style.background = isLive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(2, 132, 199, 0.15)';
-    bannerIcon.style.color = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
+    bannerIcon.textContent = '⚡';
+    bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
+    bannerIcon.style.color = 'var(--profit)';
   }
-  if (bannerTitle) bannerTitle.textContent = isLive ? 'Canlı Kripto Modu Aktif (Binance & Çoklu Borsa)' : 'Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)';
-  if (bannerDesc) bannerDesc.textContent = isLive ? 'Bot gerçek borsa hesap bakiyeniz üzerinden canlı emirler yönetir.' : 'Bot canlı piyasa mumları üzerinde $10,000 sanal kasa ile stratejilerini test eder.';
-  if (bannerActionBtn) {
-    bannerActionBtn.textContent = isLive ? 'Sanal Moda Geç 🧪' : 'Canlı Moda Geç ⚡';
-    bannerActionBtn.style.borderColor = isLive ? 'var(--profit)' : 'var(--accent-cyan)';
-  }
+  if (bannerTitle) bannerTitle.textContent = 'Canlı Spot Alım-Satım Aktif (Binance TR)';
+  if (bannerDesc) bannerDesc.textContent = 'Yapay zeka sinyalleri doğrudan Binance TR / borsa cüzdanınızdaki serbest bakiye ile canlı piyasa emirlerine dönüştürülür.';
+  if (bannerActionBtn) bannerActionBtn.style.display = 'none';
 
   // 3. Kasa etiketleri
   const mEquityLabel = document.getElementById('m-equity-label');
   const mCashLabel = document.getElementById('m-cash-label');
-  const posCardTitle = document.getElementById('pos-card-title');
-  if (mEquityLabel) mEquityLabel.textContent = isLive ? 'Konsolide Canlı Kasa' : 'Konsolide Ana Kasa';
-  if (mCashLabel) mCashLabel.textContent = isLive ? 'Kullanılabilir Boşta Nakit' : 'Kullanılabilir Boşta Nakit';
-  if (posCardTitle) posCardTitle.textContent = isLive ? 'Canlı Borsa Varlıkları (Spot Cüzdanı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
+  const posCardTitle = document.getElementById('positions-card-title') || document.getElementById('pos-card-title');
+  if (mEquityLabel) mEquityLabel.textContent = '⚡ Konsolide Ana Kasa';
+  if (mCashLabel) mCashLabel.textContent = '⚡ Kullanılabilir Serbest Nakit';
+  if (posCardTitle) posCardTitle.textContent = '⚡ Çoklu Borsa Cüzdan Varlıkları';
 }
 
 async function toggleTradingMode() {
-  const newMode = currentTradingMode === 'LIVE' ? 'PAPER' : 'LIVE';
-  const prevMode = currentTradingMode;
-
-  // 1. İyimser anında UI güncellemesi (0.01 sn tepki süresi!)
-  localStorage.setItem('deepseek_trading_mode', newMode);
-  currentTradingMode = newMode;
-  applyModeUIToDOM(newMode);
-  if (lastDashboardData) {
-    renderDashboard(lastDashboardData);
-  }
-
-  // 2. Arka planda ultra-hızlı API çağrısı
-  try {
-    const res = await fetch('/api/mode/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trading_mode: newMode })
-    });
-    const data = await res.json();
-    if (!res.ok || data.status !== 'SUCCESS') {
-      localStorage.setItem('deepseek_trading_mode', prevMode);
-      currentTradingMode = prevMode;
-      applyModeUIToDOM(prevMode);
-      if (lastDashboardData) renderDashboard(lastDashboardData);
-      alert('Mod değiştirilemedi: ' + (data.message || 'Bilinmeyen hata'));
-      return;
-    }
-    // Arka planda bakiye ve verileri sessizce güncelle
-    fetchState();
-  } catch (err) {
-    applyModeUIToDOM(prevMode);
-    console.error('Mod değiştirme hatası:', err);
-  }
+  currentTradingMode = 'LIVE';
+  localStorage.setItem('deepseek_trading_mode', 'LIVE');
+  applyModeUIToDOM('LIVE');
+  if (lastDashboardData) renderDashboard(lastDashboardData);
 }
 
 async function setTradingExchange(ex) {

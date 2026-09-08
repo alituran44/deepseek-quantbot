@@ -43,15 +43,16 @@
         ⚡ Finans Uzmanı: Agresif Alpha
       </div>
 
-      <!-- Canlı / Sanal Mod Hızlı Geçiş Butonu -->
-      <button id="btn-mode-toggle" class="btn btn-secondary" onclick="toggleTradingMode()" style="display: flex; align-items: center; gap: 8px; border: 1px solid var(--accent-cyan);">
-        <span class="status-dot" id="mode-dot"></span>
-        <span id="mode-label">Sanal Kasa (Öğrenme Modu)</span>
-      </button>
+      <!-- Canlı Kripto Modu Rozeti -->
+      <div id="btn-mode-toggle" class="indicator-pill" style="display: flex; align-items: center; gap: 8px; border: 1px solid var(--profit); color: var(--profit); font-weight: 700;">
+        <span class="status-dot" id="mode-dot" style="background: var(--profit);"></span>
+        <span id="mode-label">⚡ Canlı Spot Al-Sat</span>
+      </div>
 
-      <!-- Aktif Canlı Borsa Seçici (Binance, MEXC, OKX, Çoklu Borsa) -->
-      <select id="select-header-exchange" onchange="setTradingExchange(this.value)" class="indicator-pill" style="display: none; background: var(--bg-surface); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); font-weight: 700; height: 38px; padding: 0 10px; cursor: pointer; border-radius: 8px;" title="İşlem Yapılacak Canlı Borsa Tercihi">
+      <!-- Aktif Canlı Borsa Seçici (Binance TR, Binance, MEXC, OKX, Çoklu Borsa) -->
+      <select id="select-header-exchange" onchange="setTradingExchange(this.value)" class="indicator-pill" style="display: inline-block; background: var(--bg-surface); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); font-weight: 700; height: 38px; padding: 0 10px; cursor: pointer; border-radius: 8px;" title="İşlem Yapılacak Canlı Borsa Tercihi">
         <option value="AUTO">🌐 Çoklu Borsa (Otomatik)</option>
+        <option value="BINANCE_TR">🇹🇷 Binance TR</option>
         <option value="BINANCE">🟡 Binance Spot</option>
         <option value="MEXC">🟢 MEXC Spot</option>
         <option value="OKX">⚫ OKX Spot</option>
@@ -94,24 +95,24 @@
     <!-- Sol Sütun: Kasa, Sepet Dağılımı, AI Sinyalleri, Pozisyonlar -->
     <div class="left-column">
 
-      <!-- Çalışma Modu Bilgi Kartı (Sanal Öğrenme / Canlı Borsa) -->
-      <div id="mode-banner" class="card" style="padding: 16px 20px; border-left: 4px solid var(--accent-cyan); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+      <!-- Canlı Borsa İcra Bilgi Şeridi -->
+      <div id="mode-banner" class="card" style="padding: 14px 20px; border-left: 4px solid var(--profit); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 14px;">
-          <div id="banner-icon" style="background: rgba(2, 132, 199, 0.15); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); font-size: 20px;">
-            🧪
+          <div id="banner-icon" style="background: rgba(34, 197, 94, 0.15); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--profit); font-size: 20px;">
+            ⚡
           </div>
           <div>
             <div id="banner-title" style="font-weight: 700; font-size: 14px; color: var(--text-primary);">
-              Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)
+              Canlı Spot Alım-Satım Aktif (Binance TR)
             </div>
             <div id="banner-desc" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-              Bot canlı piyasa mumları üzerinde stratejilerini ve sepet dengesini test ediyor. Binance bağlantınız hazır ve onaylıdır; dilediğiniz an tek tıkla Canlı Moda geçebilirsiniz.
+              Yapay zeka sinyalleri doğrudan Binance TR / kayıtlı borsa cüzdanınızdaki serbest bakiye ile anlık piyasa emirlerine dönüştürülür.
             </div>
           </div>
         </div>
-        <button class="btn btn-secondary" onclick="toggleTradingMode()" style="font-size: 12px; height: 32px; white-space: nowrap;" id="banner-action-btn">
-          Canlı Moda Geç ⚡
-        </button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span class="indicator-pill" style="color: var(--profit); border-color: var(--profit); font-size: 11px; font-weight: 700;">🟢 SPOT CANLI</span>
+        </div>
       </div>
       
       <!-- Ana Kasa (USD & TL) ve Çoklu Borsa Metrikleri -->
@@ -152,20 +153,6 @@
             </div>
           </div>
 
-          <!-- SANAL MODDA GÖSTERİLEN PORTFÖY ÖZETİ (GERÇEK BORSA BİLGİSİ YOK!) -->
-          <div id="box-paper-distribution" style="display: none; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px;">
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: var(--text-muted);">Açık Sepet Değeri:</span>
-              <span id="m-paper-positions-val" style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary);">$0.00</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: var(--text-muted);">Sanal Net Kâr/Zarar:</span>
-              <span id="m-paper-total-pnl" style="font-family: var(--font-mono); font-weight: 700;">$0.00 (%0.00)</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: var(--text-muted);">Sermaye Riski:</span>
-              <span style="color: var(--profit); font-weight: 600;">🛡️ %0 (Tamamen Sanal)</span>
-            </div>
           </div>
         </div>
         <div class="metric-box">
@@ -208,13 +195,6 @@
               📥 MEXC
             </button>
           </div>
-
-          <!-- Sanal Mod: Sanal Kasa Sıfırlama Butonu -->
-          <div id="paper-actions" style="display: none; align-items: center; gap: 8px;">
-            <button class="btn btn-secondary" onclick="resetPaperWallet()" style="font-size: 11px; height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(244, 63, 94, 0.4); color: var(--loss); background: rgba(244, 63, 94, 0.05);">
-              🔄 Sanal Kasayı Sıfırla ($10.000)
-            </button>
-          </div>
         </div>
 
         <!-- Canlı Mod Alt Şerit: Cüzdan Filtresi Sekmeleri -->
@@ -229,16 +209,6 @@
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <span class="indicator-pill" id="positions-active-filter-label" style="font-size: 11px; color: var(--accent-cyan);">Konsolide Çoklu Borsa</span>
-          </div>
-        </div>
-
-        <!-- Sanal Mod Alt Şerit: Bilgilendirme Çubuğu -->
-        <div id="paper-toolbar" style="display: none; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px 18px; background: rgba(255, 255, 255, 0.02); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
-          <div style="font-size: 11px; color: var(--text-muted);">
-            🧪 <strong>Sanal Simülasyon:</strong> Yapay zeka canlı piyasada $10.000 sanal sermayeyle test edilmektedir. Gerçek borsa cüzdanlarınıza dokunulmaz.
-          </div>
-          <div>
-            <span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">10.000$ Sanal Başlangıç</span>
           </div>
         </div>
         <div class="table-wrapper">
@@ -669,20 +639,14 @@
 
         <!-- Hızlı Alım / Satım Bölümü -->
         <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 18px; margin-top: 16px;">
-          <!-- Kart Başlığı ve Mod Seçici -->
+          <!-- Kart Başlığı ve Canlı Terminal Göstergesi -->
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 13px; font-weight: 800; letter-spacing: 0.3px;">⚡ Manuel Al / Sat Terminali</span>
-              <span id="modal-mode-badge" class="indicator-pill" style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); border: 1px solid var(--accent-cyan); padding: 2px 8px; border-radius: 4px;">🧪 Sanal Kasa</span>
+              <span id="modal-mode-badge" class="indicator-pill" style="font-size: 11px; font-weight: 700; color: var(--profit); border: 1px solid var(--profit); padding: 2px 8px; border-radius: 4px;">⚡ Canlı Borsa Emri</span>
             </div>
-            <!-- Mod Seçim Düğmeleri (Segmented Control) -->
-            <div style="display: inline-flex; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 2px; gap: 2px;">
-              <button id="modal-btn-mode-paper" type="button" class="btn" style="padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 4px; border: none; background: var(--accent-cyan); color: #000; cursor: pointer;" onclick="setModalTradeMode('PAPER')">
-                🧪 Sanal Kasa
-              </button>
-              <button id="modal-btn-mode-live" type="button" class="btn" style="padding: 4px 12px; font-size: 11px; font-weight: 700; border-radius: 4px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer;" onclick="setModalTradeMode('LIVE')">
-                ⚡ Canlı Borsa
-              </button>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="indicator-pill" style="color: var(--profit); font-size: 11px; font-weight: 700;">🟢 SPOT CANLI</span>
             </div>
           </div>
 
@@ -693,19 +657,19 @@
               <span>Cüzdandaki Miktar: <strong id="modal-owned-qty" style="color: var(--accent-cyan); font-family: var(--font-mono); font-weight: 700;">0.00</strong></span>
             </div>
             <div id="modal-deposit-hint" style="display: none;">
-              <button type="button" class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 10px; color: var(--warning); border-color: rgba(245, 158, 11, 0.4);" onclick="openDepositModal()">
-                📥 Binance'e USDT Yatır
+              <button type="button" class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 10px; color: var(--warning); border-color: rgba(245, 158, 11, 0.4);" onclick="openDepositModal('BINANCE_TR')">
+                📥 Binance TR'ye TL / Kripto Yatır
               </button>
             </div>
           </div>
 
           <!-- Emir Parametreleri (Borsa Seçimi ve Tutar) -->
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <div id="modal-exchange-select-container" style="display: none;">
+            <div id="modal-exchange-select-container" style="display: block;">
               <select id="modal-trade-exchange" class="form-input" style="width: auto; min-width: 155px; font-weight: 700; height: 38px;" onchange="updateModalBalanceInfo()">
-                <option value="BINANCE">🟡 Binance Spot</option>
-                <option value="BINANCE_TR">🇹🇷 Binance TR</option>
                 <option value="AUTO">🌐 Akıllı Yönlendirme</option>
+                <option value="BINANCE_TR" selected>🇹🇷 Binance TR</option>
+                <option value="BINANCE">🟡 Binance Spot</option>
                 <option value="MEXC">🟢 MEXC Spot</option>
                 <option value="OKX">⚫ OKX Spot</option>
               </select>
@@ -810,10 +774,13 @@
 
         <div class="form-group">
           <label class="form-label">Çalışma Modu (Trading Mode)</label>
-          <select id="select-trading-mode" class="form-input">
-            <option value="PAPER" selected>🧪 Sanal Kasa (Paper-Trading & Öğrenme Modu)</option>
-            <option value="LIVE">⚡ Canlı Kripto Modu (Çoklu Borsa Spot Al-Sat)</option>
-          </select>
+          <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; color: var(--profit); font-size: 13px;">⚡ Canlı Kripto Modu Aktif (Spot Borsa)</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Sanal ve öğrenme modu devre dışı bırakılmıştır. Tüm işlemler doğrudan borsa cüzdanınız üzerinden canlı gerçekleştirilir.</div>
+            </div>
+            <input type="hidden" id="select-trading-mode" value="LIVE">
+          </div>
         </div>
 
         <div class="form-group">

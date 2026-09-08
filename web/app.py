@@ -248,50 +248,38 @@ async def execute_manual_order(req: ManualOrderRequest):
     clean_sym = sym.replace("USDT", "")
 
     if order_mode == "LIVE":
-        # 1. Borsa API ve Doğrulama Kontrolleri
-        if req_exchange in ["BINANCE", "AUTO"]:
-            if not orchestrator.binance_executor.enabled:
-                return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance API anahtarlarınız tanımlı değil veya doğrulanamadı. Lütfen Ayarlar sekmesinden API anahtarlarınızı kontrol edin."})
-            
-            b_bal = orchestrator.binance_executor.get_account_balances()
-            if not b_bal.get("success"):
-                return JSONResponse(status_code=400, content={"status": "ERROR", "message": f"Binance hesabına bağlanılamadı: {b_bal.get('error', 'Erişim hatası')}"})
+        # 1. Borsa API ve Doğrulama Kontrolleri (Çoklu Borsa & Binance TR)
+        executor, ex_id, free_usdt, sel_msg = orchestrator.select_execution_exchange(
+            symbol=sym, 
+            required_amount_usd=req.amount_usd if action == "BUY" else 0.0, 
+            preferred_exchange=req_exchange
+        )
+        if not executor:
+            return JSONResponse(status_code=400, content={"status": "ERROR", "message": sel_msg})
 
-            if action == "BUY":
-                if req.amount_usd < 5.0:
-                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance spot piyasasında minimum işlem tutarı $5.00 USDT'dir."})
-                free_usdt = float(b_bal.get("free_usdt", 0.0))
-                if free_usdt < req.amount_usd:
-                    return JSONResponse(status_code=400, content={
-                        "status": "ERROR", 
-                        "message": f"Binance hesabınızda serbest USDT bakiyesi yetersiz! (Mevcut: ${free_usdt:.2f} USDT, İstenen: ${req.amount_usd:.2f} USDT). Canlı alım yapabilmek için lütfen Binance hesabınıza USDT yatırın veya Sanal Kasa sekmesini kullanın."
-                    })
-
-            elif action == "SELL":
-                assets = b_bal.get("assets", {})
-                coin_info = assets.get(clean_sym, {})
-                free_coin = float(coin_info.get("free", 0.0))
-                if free_coin <= 0:
-                    return JSONResponse(status_code=400, content={
-                        "status": "ERROR", 
-                        "message": f"Binance cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym}). Canlı satış yapabilmek için önce bu coine sahip olmalısınız."
-                    })
-
-                # Miktar hesabı
-                if req.amount_usd > 0:
-                    calc_units = req.amount_usd / px
-                    units = min(calc_units, free_coin)
-                else:
-                    units = free_coin
-
-                est_usd = units * px
-                if est_usd < 5.0 and (free_coin * px) < 5.0:
-                    return JSONResponse(status_code=400, content={
-                        "status": "ERROR", 
-                        "message": f"Binance cüzdanınızdaki {clean_sym} bakiyesinin toplam değeri (${free_coin * px:.2f}), Binance minimum emir tutarı ($5.00) altında olduğu için emir iletilemiyor."
-                    })
-                elif est_usd < 5.0:
-                    units = min(free_coin, 5.5 / px)
+        if action == "BUY":
+            if req.amount_usd < 1.0:
+                return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Minimum işlem tutarı $1.00 USD / ~50 TL olmalıdır."})
+            if free_usdt < req.amount_usd:
+                return JSONResponse(status_code=400, content={
+                    "status": "ERROR", 
+                    "message": f"{ex_id} hesabınızda serbest bakiye yetersiz! (Mevcut: ${free_usdt:.2f}, İstenen: ${req.amount_usd:.2f})."
+                })
+        elif action == "SELL":
+            b_bal = executor.get_account_balances()
+            assets = b_bal.get("assets", {})
+            coin_info = assets.get(clean_sym, {})
+            free_coin = float(coin_info.get("free", 0.0))
+            if free_coin <= 0:
+                return JSONResponse(status_code=400, content={
+                    "status": "ERROR", 
+                    "message": f"{ex_id} cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym})."
+                })
+            if req.amount_usd > 0:
+                calc_units = req.amount_usd / px
+                units = min(calc_units, free_coin)
+            else:
+                units = free_coin
 
         # Canlı Emri Gerçekleştir
         ok, res, used_ex = orchestrator.execute_live_order(

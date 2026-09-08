@@ -3,6 +3,7 @@ import hmac
 import hashlib
 import requests
 import urllib.parse
+from decimal import Decimal
 from typing import Dict, Any, List, Optional, Tuple
 from .base import BaseExchange
 from ...config import config
@@ -146,7 +147,7 @@ class BinanceTRLiveExecutor(BaseExchange):
 
         rate = usd_try_rate if usd_try_rate > 0 else 48.34
 
-        total_value_usd = free_usdt + (free_try / rate)
+        total_value_usd = 0.0
         live_assets = []
 
         for asset, data in assets.items():
@@ -159,7 +160,17 @@ class BinanceTRLiveExecutor(BaseExchange):
             elif asset == "TRY":
                 val_usd = tot / rate
             else:
-                val_usd = 0.0
+                try:
+                    px_resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={asset}USDT", timeout=3)
+                    if px_resp.status_code == 200:
+                        px = float(px_resp.json().get("price", 0.0))
+                        val_usd = tot * px
+                    else:
+                        val_usd = 0.0
+                except Exception:
+                    val_usd = 0.0
+
+            total_value_usd += val_usd
 
             live_assets.append({
                 "asset": asset,
@@ -188,6 +199,56 @@ class BinanceTRLiveExecutor(BaseExchange):
             "live_assets": live_assets
         }
 
+    _step_size_cache: Dict[str, str] = {}
+
+    def get_step_size(self, symbol: str) -> str:
+        clean_sym = symbol.strip().upper()
+        if clean_sym in self._step_size_cache:
+            return self._step_size_cache[clean_sym]
+
+        try:
+            resp = requests.get(f"{self.BASE_URL}/open/v1/common/symbols", timeout=4)
+            if resp.status_code == 200:
+                data = resp.json().get("data", {}).get("list", [])
+                for item in data:
+                    s_name = item.get("symbol", "")
+                    for f in item.get("filters", []):
+                        if f.get("filterType") == "LOT_SIZE":
+                            self._step_size_cache[s_name] = str(f.get("stepSize", "0.001"))
+        except Exception:
+            pass
+
+        if clean_sym in self._step_size_cache:
+            return self._step_size_cache[clean_sym]
+
+        defaults = {
+            "BTC_TRY": "0.00001",
+            "ETH_TRY": "0.0001",
+            "BNB_TRY": "0.001",
+            "SOL_TRY": "0.001",
+            "AVAX_TRY": "0.01",
+            "XRP_TRY": "0.1",
+            "DOGE_TRY": "1",
+            "USDT_TRY": "1",
+            "PEPE_TRY": "1",
+        }
+        return defaults.get(clean_sym, "0.001")
+
+    def format_quantity(self, symbol: str, quantity: float) -> Tuple[float, str]:
+        step_str = self.get_step_size(symbol)
+        try:
+            d_step = Decimal(step_str).normalize()
+            exponent = d_step.as_tuple().exponent
+            precision = max(0, -exponent) if exponent < 0 else 0
+
+            d_qty = Decimal(str(quantity))
+            stepped = (d_qty // Decimal(step_str)) * Decimal(step_str)
+            fmt = f"{stepped:.{precision}f}"
+            return float(fmt), fmt
+        except Exception:
+            val = round(quantity, 3)
+            return val, str(val)
+
     def place_market_order(self, symbol: str, side: str, quantity: float) -> Tuple[bool, Dict[str, Any]]:
         """
         Binance TR uzerinde anlik piyasa fiyatindan emir iletir.
@@ -208,11 +269,15 @@ class BinanceTRLiveExecutor(BaseExchange):
 
         numeric_side = 0 if side.upper() == "BUY" else 1
 
+        formatted_float, formatted_str = self.format_quantity(clean_sym, quantity)
+        if formatted_float <= 0:
+            return False, {"error": f"Gecersiz islem miktari: {quantity} -> {formatted_str}"}
+
         params = {
             "symbol": clean_sym,
             "side": numeric_side,
             "type": 2,
-            "quantity": quantity,
+            "quantity": formatted_str,
             "timestamp": int(time.time() * 1000)
         }
 
