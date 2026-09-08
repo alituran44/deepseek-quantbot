@@ -118,40 +118,40 @@
     "symbol": "ETHUSDT",
     "asset_type": "CRYPTO",
     "sector": "CORE",
-    "timestamp": "2026-09-08 15:02:11",
-    "current_price": 2471.12,
-    "change_24h": -0.765,
+    "timestamp": "2026-09-08 15:13:53",
+    "current_price": 2470.12,
+    "change_24h": -0.774,
     "is_owned": false,
     "owned_units": 0.0,
     "owned_val": 0.0,
     "wallet_type": "",
     "indicators": {
-      "current_price": 2471.12,
-      "rsi": 44.43,
+      "current_price": 2470.12,
+      "rsi": 44.16,
       "rsi_status": "NORMAL",
       "macd": {
-        "macd": -4.431,
-        "signal": -3.4865,
-        "histogram": -0.9445,
+        "macd": -4.4845,
+        "signal": -3.4972,
+        "histogram": -0.9873,
         "cross": "BEARISH_CROSS"
       },
       "moving_averages": {
-        "ema_20": 2483.36,
-        "ema_50": 2487.62,
-        "ema_200": 2490.87,
+        "ema_20": 2483.29,
+        "ema_50": 2487.59,
+        "ema_200": 2490.86,
         "price_vs_ema20": "BELOW",
         "price_vs_ema50": "BELOW",
         "price_vs_ema200": "BELOW"
       },
       "bollinger_bands": {
-        "upper": 2505.04,
-        "middle": 2485.51,
-        "lower": 2465.98,
+        "upper": 2505.11,
+        "middle": 2485.47,
+        "lower": 2465.84,
         "position": "NEAR_LOWER"
       },
       "volatility": {
-        "atr": 13.42,
-        "atr_percent": 0.54,
+        "atr": 13.61,
+        "atr_percent": 0.55,
         "volume_surge": false
       },
       "key_levels": {
@@ -163,7 +163,7 @@
         "bearish_score": 6
       },
       "summary": "STRONG_BEARISH",
-      "change_24h": -0.765
+      "change_24h": -0.774
     },
     "sentiment": {
       "value": 69,
@@ -174,43 +174,43 @@
     "signal": {
       "action": "SELL",
       "confidence": 0.84,
-      "entry_price": 2471.12,
-      "stop_loss": 2525.48,
-      "take_profit": 2318.91,
+      "entry_price": 2470.12,
+      "stop_loss": 2524.46,
+      "take_profit": 2317.97,
       "risk_reward_ratio": "1:2.8",
       "timeframe": "1H / 4H Momentum Swing",
       "thesis_summary": "Finans Uzmanı Değerlendirmesi: ETHUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
       "reasoning_points": [
-        "Trend Yapısı: STRONG_BEARISH - RSI (44.4) güç kaybına işaret ediyor",
+        "Trend Yapısı: STRONG_BEARISH - RSI (44.2) güç kaybına işaret ediyor",
         "Direnç Reddi: 2511.4 seviyesinde satış emirleri yoğunlaştı",
-        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $2525.48"
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $2524.46"
       ],
       "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
       "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
       "symbol": "ETHUSDT",
       "hyperliquid": {
         "asset": "ETH",
-        "oracle_price": 2471.05,
+        "oracle_price": 2470.44,
         "funding_rate_8h_pct": 0.01,
         "funding_rate_annual_pct": 3.65,
-        "open_interest_coins": 984854.7926000005,
-        "open_interest_usd": 2433625435.25,
-        "day_volume_usd": 775789281.54,
+        "open_interest_coins": 986482.322,
+        "open_interest_usd": 2437045387.56,
+        "day_volume_usd": 784500835.91,
         "squeeze_status": "BALANCED",
         "squeeze_tr": "Dengeli Piyasa Yapısı",
         "risk_color": "var(--accent-cyan)"
       },
       "macro": {
-        "dxy_index": 98.98,
-        "us_10y_yield": 4.78,
-        "fed_rate": 4.5,
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
         "regime": "DEFENSIVE",
         "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
         "regime_color": "var(--loss)",
         "stance": "BEARISH_HEADWIND",
         "cash_recommendation": "Nakit Oranını Artır (%35+)",
         "has_fred_key": true,
-        "last_updated": 1788868903
+        "last_updated": 1788869588
       }
     },
     "risk_validation": {
@@ -218,10 +218,10 @@
       "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
       "order_params": {
         "action": "SELL",
-        "entry_price": 2471.12,
-        "stop_loss": 2525.48,
-        "take_profit": 2318.91,
-        "units": 0.010169,
+        "entry_price": 2470.12,
+        "stop_loss": 2524.46,
+        "take_profit": 2317.97,
+        "units": 0.010174,
         "position_value_usd": 25.13,
         "risk_amount_usd": 0.55,
         "risk_reward_ratio": 2.8
@@ -233,40 +233,40 @@
     "symbol": "SOLUSDT",
     "asset_type": "CRYPTO",
     "sector": "LAYER1",
-    "timestamp": "2026-09-08 15:02:12",
-    "current_price": 102.7,
-    "change_24h": -2.209,
+    "timestamp": "2026-09-08 15:13:29",
+    "current_price": 102.59,
+    "change_24h": -2.305,
     "is_owned": false,
     "owned_units": 0.0,
     "owned_val": 0.0,
     "wallet_type": "",
     "indicators": {
-      "current_price": 102.7,
-      "rsi": 40.9,
+      "current_price": 102.59,
+      "rsi": 39.87,
       "rsi_status": "NORMAL",
       "macd": {
-        "macd": -0.4478,
-        "signal": -0.4405,
-        "histogram": -0.0072,
+        "macd": -0.4573,
+        "signal": -0.4425,
+        "histogram": -0.0149,
         "cross": "BEARISH_CROSS"
       },
       "moving_averages": {
-        "ema_20": 103.5,
-        "ema_50": 104.04,
+        "ema_20": 103.49,
+        "ema_50": 104.03,
         "ema_200": 104.11,
         "price_vs_ema20": "BELOW",
         "price_vs_ema50": "BELOW",
         "price_vs_ema200": "BELOW"
       },
       "bollinger_bands": {
-        "upper": 104.6,
+        "upper": 104.62,
         "middle": 103.5,
-        "lower": 102.4,
+        "lower": 102.38,
         "position": "NEAR_LOWER"
       },
       "volatility": {
-        "atr": 0.68,
-        "atr_percent": 0.66,
+        "atr": 0.69,
+        "atr_percent": 0.67,
         "volume_surge": false
       },
       "key_levels": {
@@ -278,7 +278,7 @@
         "bearish_score": 6
       },
       "summary": "STRONG_BEARISH",
-      "change_24h": -2.209
+      "change_24h": -2.305
     },
     "sentiment": {
       "value": 69,
@@ -289,43 +289,43 @@
     "signal": {
       "action": "SELL",
       "confidence": 0.84,
-      "entry_price": 102.7,
-      "stop_loss": 104.96,
-      "take_profit": 96.37,
+      "entry_price": 102.59,
+      "stop_loss": 104.85,
+      "take_profit": 96.26,
       "risk_reward_ratio": "1:2.8",
       "timeframe": "1H / 4H Momentum Swing",
       "thesis_summary": "Finans Uzmanı Değerlendirmesi: SOLUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
       "reasoning_points": [
-        "Trend Yapısı: STRONG_BEARISH - RSI (40.9) güç kaybına işaret ediyor",
+        "Trend Yapısı: STRONG_BEARISH - RSI (39.9) güç kaybına işaret ediyor",
         "Direnç Reddi: 105.93 seviyesinde satış emirleri yoğunlaştı",
-        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $104.96"
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $104.85"
       ],
       "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
       "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
       "symbol": "SOLUSDT",
       "hyperliquid": {
         "asset": "SOL",
-        "oracle_price": 102.695,
-        "funding_rate_8h_pct": 0.0017,
-        "funding_rate_annual_pct": 0.64,
-        "open_interest_coins": 5667893.640000001,
-        "open_interest_usd": 582064337.36,
-        "day_volume_usd": 139427410.15,
+        "oracle_price": 102.5719,
+        "funding_rate_8h_pct": 0.0032,
+        "funding_rate_annual_pct": 1.17,
+        "open_interest_coins": 5669207.039999999,
+        "open_interest_usd": 581501337.59,
+        "day_volume_usd": 139214523.17,
         "squeeze_status": "BALANCED",
         "squeeze_tr": "Dengeli Piyasa Yapısı",
         "risk_color": "var(--accent-cyan)"
       },
       "macro": {
-        "dxy_index": 98.98,
-        "us_10y_yield": 4.78,
-        "fed_rate": 4.5,
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
         "regime": "DEFENSIVE",
         "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
         "regime_color": "var(--loss)",
         "stance": "BEARISH_HEADWIND",
         "cash_recommendation": "Nakit Oranını Artır (%35+)",
         "has_fred_key": true,
-        "last_updated": 1788868903
+        "last_updated": 1788869588
       }
     },
     "risk_validation": {
@@ -333,10 +333,10 @@
       "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
       "order_params": {
         "action": "SELL",
-        "entry_price": 102.7,
-        "stop_loss": 104.96,
-        "take_profit": 96.37,
-        "units": 0.244693,
+        "entry_price": 102.59,
+        "stop_loss": 104.85,
+        "take_profit": 96.26,
+        "units": 0.244956,
         "position_value_usd": 25.13,
         "risk_amount_usd": 0.55,
         "risk_reward_ratio": 2.8
@@ -348,25 +348,25 @@
     "symbol": "XRPUSDT",
     "asset_type": "CRYPTO",
     "sector": "DEFI_MOMENTUM",
-    "timestamp": "2026-09-08 15:02:17",
-    "current_price": 1.3918,
-    "change_24h": -0.572,
+    "timestamp": "2026-09-08 15:14:20",
+    "current_price": 1.3885,
+    "change_24h": -1.055,
     "is_owned": false,
     "owned_units": 0.0,
     "owned_val": 0.0,
     "wallet_type": "",
     "indicators": {
-      "current_price": 1.3918,
-      "rsi": 52.52,
+      "current_price": 1.3885,
+      "rsi": 50.0,
       "rsi_status": "NORMAL",
       "macd": {
-        "macd": -0.0027,
+        "macd": -0.003,
         "signal": -0.0035,
-        "histogram": 0.0007,
+        "histogram": 0.0005,
         "cross": "BULLISH_CROSS"
       },
       "moving_averages": {
-        "ema_20": 1.4,
+        "ema_20": 1.39,
         "ema_50": 1.4,
         "ema_200": 1.41,
         "price_vs_ema20": "BELOW",
@@ -389,11 +389,11 @@
         "resistance": 1.41
       },
       "scores": {
-        "bullish_score": 3,
-        "bearish_score": 0
+        "bullish_score": 2,
+        "bearish_score": 3
       },
-      "summary": "STRONG_BULLISH",
-      "change_24h": -0.572
+      "summary": "BEARISH",
+      "change_24h": -1.055
     },
     "sentiment": {
       "value": 69,
@@ -402,60 +402,59 @@
       "timestamp": "1788825600"
     },
     "signal": {
-      "action": "BUY",
-      "confidence": 0.92,
-      "entry_price": 1.3918,
-      "stop_loss": 1.37,
-      "take_profit": 1.48,
-      "risk_reward_ratio": "1:4.2",
+      "action": "SELL",
+      "confidence": 0.74,
+      "entry_price": 1.3885,
+      "stop_loss": 1.42,
+      "take_profit": 1.3,
+      "risk_reward_ratio": "1:2.8",
       "timeframe": "1H / 4H Momentum Swing",
-      "thesis_summary": "🔥 Ultra Degen Finans Uzmanı: XRPUSDT için yüksek momentum ve volatilite kırılımı tespit edildi. Maksimum kâr arayışı kapsamında 1:4.2 asimetrik hedefle agresif pozisyonlanma öneriliyor.",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: XRPUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
       "reasoning_points": [
-        "Piyasa Yapısı & Momentum: Algoritmik Trend STRONG_BULLISH - RSI 14 Seviyesi 52.5",
-        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
-        "Asimetrik Risk Yönetimi: Stop-Loss $1.37 seviyesinde sınırlandırıldı, hedef 1:4.2 getiri oranı ile $1.48",
-        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+        "Trend Yapısı: BEARISH - RSI (50.0) güç kaybına işaret ediyor",
+        "Direnç Reddi: 1.41 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $1.42"
       ],
-      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
       "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
       "symbol": "XRPUSDT",
       "hyperliquid": {
         "asset": "XRP",
-        "oracle_price": 1.3921,
+        "oracle_price": 1.3885,
         "funding_rate_8h_pct": 0.01,
         "funding_rate_annual_pct": 3.65,
-        "open_interest_coins": 164990928.0,
-        "open_interest_usd": 229683870.87,
-        "day_volume_usd": 31865955.74,
+        "open_interest_coins": 164909134.0,
+        "open_interest_usd": 228976332.56,
+        "day_volume_usd": 32052858.92,
         "squeeze_status": "BALANCED",
         "squeeze_tr": "Dengeli Piyasa Yapısı",
         "risk_color": "var(--accent-cyan)"
       },
       "macro": {
-        "dxy_index": 98.98,
-        "us_10y_yield": 4.78,
-        "fed_rate": 4.5,
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
         "regime": "DEFENSIVE",
         "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
         "regime_color": "var(--loss)",
         "stance": "BEARISH_HEADWIND",
         "cash_recommendation": "Nakit Oranını Artır (%35+)",
         "has_fred_key": true,
-        "last_updated": 1788868904
+        "last_updated": 1788869588
       }
     },
     "risk_validation": {
       "passed": true,
       "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
       "order_params": {
-        "action": "BUY",
-        "entry_price": 1.3918,
-        "stop_loss": 1.37,
-        "take_profit": 1.48,
-        "units": 18.055755,
+        "action": "SELL",
+        "entry_price": 1.3885,
+        "stop_loss": 1.42,
+        "take_profit": 1.3,
+        "units": 18.098668,
         "position_value_usd": 25.13,
-        "risk_amount_usd": 0.39,
-        "risk_reward_ratio": 4.05
+        "risk_amount_usd": 0.57,
+        "risk_reward_ratio": 2.81
       }
     },
     "trade_executed": null
@@ -464,35 +463,35 @@
     "symbol": "BTCUSDT",
     "asset_type": "CRYPTO",
     "sector": "CORE",
-    "timestamp": "2026-09-08 15:06:19",
-    "current_price": 78289.7,
-    "change_24h": -1.428,
+    "timestamp": "2026-09-08 15:14:07",
+    "current_price": 78238.01,
+    "change_24h": -1.518,
     "is_owned": false,
     "owned_units": 0.0,
     "owned_val": 0.0,
     "wallet_type": "",
     "indicators": {
-      "current_price": 78289.7,
-      "rsi": 37.49,
+      "current_price": 78238.01,
+      "rsi": 36.82,
       "rsi_status": "NORMAL",
       "macd": {
-        "macd": -272.9181,
-        "signal": -243.0576,
-        "histogram": -29.8605,
+        "macd": -276.7519,
+        "signal": -243.8243,
+        "histogram": -32.9276,
         "cross": "BEARISH_CROSS"
       },
       "moving_averages": {
-        "ema_20": 78798.94,
-        "ema_50": 79202.71,
-        "ema_200": 79598.76,
+        "ema_20": 78794.36,
+        "ema_50": 79200.82,
+        "ema_200": 79597.81,
         "price_vs_ema20": "BELOW",
         "price_vs_ema50": "BELOW",
         "price_vs_ema200": "BELOW"
       },
       "bollinger_bands": {
-        "upper": 79617.31,
-        "middle": 78866.76,
-        "lower": 78116.22,
+        "upper": 79622.95,
+        "middle": 78864.36,
+        "lower": 78105.77,
         "position": "NEAR_LOWER"
       },
       "volatility": {
@@ -509,7 +508,7 @@
         "bearish_score": 6
       },
       "summary": "STRONG_BEARISH",
-      "change_24h": -1.428
+      "change_24h": -1.518
     },
     "sentiment": {
       "value": 69,
@@ -520,34 +519,34 @@
     "signal": {
       "action": "SELL",
       "confidence": 0.84,
-      "entry_price": 78289.7,
-      "stop_loss": 80012.07,
-      "take_profit": 73467.06,
+      "entry_price": 78238.01,
+      "stop_loss": 79959.25,
+      "take_profit": 73418.54,
       "risk_reward_ratio": "1:2.8",
       "timeframe": "1H / 4H Momentum Swing",
       "thesis_summary": "Finans Uzmanı Değerlendirmesi: BTCUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
       "reasoning_points": [
-        "Trend Yapısı: STRONG_BEARISH - RSI (37.5) güç kaybına işaret ediyor",
+        "Trend Yapısı: STRONG_BEARISH - RSI (36.8) güç kaybına işaret ediyor",
         "Direnç Reddi: 79691.06 seviyesinde satış emirleri yoğunlaştı",
-        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $80012.07"
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $79959.25"
       ],
       "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
       "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
       "symbol": "BTCUSDT",
       "hyperliquid": {
         "asset": "BTC",
-        "oracle_price": 78299.3,
-        "funding_rate_8h_pct": 0.0029,
-        "funding_rate_annual_pct": 1.05,
-        "open_interest_coins": 33197.16016,
-        "open_interest_usd": 2599314402.52,
-        "day_volume_usd": 2021819215.43,
+        "oracle_price": 78241.6,
+        "funding_rate_8h_pct": 0.005,
+        "funding_rate_annual_pct": 1.82,
+        "open_interest_coins": 33264.42584,
+        "open_interest_usd": 2602661900.8,
+        "day_volume_usd": 2029988514.57,
         "squeeze_status": "BALANCED",
         "squeeze_tr": "Dengeli Piyasa Yapısı",
         "risk_color": "var(--accent-cyan)"
       },
       "macro": {
-        "dxy_index": 98.98,
+        "dxy_index": 98.95,
         "us_10y_yield": 4.77,
         "fed_rate": 3.63,
         "regime": "DEFENSIVE",
@@ -556,7 +555,7 @@
         "stance": "BEARISH_HEADWIND",
         "cash_recommendation": "Nakit Oranını Artır (%35+)",
         "has_fred_key": true,
-        "last_updated": 1788869165
+        "last_updated": 1788869588
       }
     },
     "risk_validation": {
@@ -564,9 +563,9 @@
       "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
       "order_params": {
         "action": "SELL",
-        "entry_price": 78289.7,
-        "stop_loss": 80012.07,
-        "take_profit": 73467.06,
+        "entry_price": 78238.01,
+        "stop_loss": 79959.25,
+        "take_profit": 73418.54,
         "units": 0.000321,
         "position_value_usd": 25.13,
         "risk_amount_usd": 0.55,
@@ -579,21 +578,21 @@
     "symbol": "SUIUSDT",
     "asset_type": "CRYPTO",
     "sector": "LAYER1",
-    "timestamp": "2026-09-08 15:02:12",
-    "current_price": 0.8088,
-    "change_24h": -0.357,
+    "timestamp": "2026-09-08 15:15:05",
+    "current_price": 0.8058,
+    "change_24h": -1.189,
     "is_owned": false,
     "owned_units": 0.0,
     "owned_val": 0.0,
     "wallet_type": "",
     "indicators": {
-      "current_price": 0.8088,
-      "rsi": 47.79,
+      "current_price": 0.8058,
+      "rsi": 46.45,
       "rsi_status": "NORMAL",
       "macd": {
-        "macd": 0.0006,
+        "macd": 0.0004,
         "signal": 0.0024,
-        "histogram": -0.0018,
+        "histogram": -0.002,
         "cross": "BEARISH_CROSS"
       },
       "moving_averages": {
@@ -624,7 +623,7 @@
         "bearish_score": 4
       },
       "summary": "STRONG_BEARISH",
-      "change_24h": -0.357
+      "change_24h": -1.189
     },
     "sentiment": {
       "value": 69,
@@ -635,43 +634,43 @@
     "signal": {
       "action": "SELL",
       "confidence": 0.84,
-      "entry_price": 0.8088,
-      "stop_loss": 0.8266,
-      "take_profit": 0.759,
+      "entry_price": 0.8058,
+      "stop_loss": 0.8235,
+      "take_profit": 0.7562,
       "risk_reward_ratio": "1:2.8",
       "timeframe": "1H / 4H Momentum Swing",
       "thesis_summary": "Finans Uzmanı Değerlendirmesi: SUIUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
       "reasoning_points": [
-        "Trend Yapısı: STRONG_BEARISH - RSI (47.8) güç kaybına işaret ediyor",
+        "Trend Yapısı: STRONG_BEARISH - RSI (46.5) güç kaybına işaret ediyor",
         "Direnç Reddi: 0.84 seviyesinde satış emirleri yoğunlaştı",
-        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $0.8266"
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $0.8235"
       ],
       "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
       "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
       "symbol": "SUIUSDT",
       "hyperliquid": {
         "asset": "SUI",
-        "oracle_price": 0.80865,
+        "oracle_price": 0.80565,
         "funding_rate_8h_pct": 0.01,
         "funding_rate_annual_pct": 3.65,
-        "open_interest_coins": 48091522.0,
-        "open_interest_usd": 38889209.27,
-        "day_volume_usd": 14129231.89,
+        "open_interest_coins": 48086394.0,
+        "open_interest_usd": 38740803.33,
+        "day_volume_usd": 14090985.84,
         "squeeze_status": "BALANCED",
         "squeeze_tr": "Dengeli Piyasa Yapısı",
         "risk_color": "var(--accent-cyan)"
       },
       "macro": {
-        "dxy_index": 98.98,
-        "us_10y_yield": 4.78,
-        "fed_rate": 4.5,
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
         "regime": "DEFENSIVE",
         "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
         "regime_color": "var(--loss)",
         "stance": "BEARISH_HEADWIND",
         "cash_recommendation": "Nakit Oranını Artır (%35+)",
         "has_fred_key": true,
-        "last_updated": 1788868903
+        "last_updated": 1788869588
       }
     },
     "risk_validation": {
@@ -679,13 +678,589 @@
       "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
       "order_params": {
         "action": "SELL",
-        "entry_price": 0.8088,
-        "stop_loss": 0.8266,
-        "take_profit": 0.759,
-        "units": 31.070722,
+        "entry_price": 0.8058,
+        "stop_loss": 0.8235,
+        "take_profit": 0.7562,
+        "units": 31.186399,
         "position_value_usd": 25.13,
         "risk_amount_usd": 0.55,
         "risk_reward_ratio": 2.8
+      }
+    },
+    "trade_executed": null
+  },
+  "BNBUSDT": {
+    "symbol": "BNBUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "LAYER1",
+    "timestamp": "2026-09-08 15:17:00",
+    "current_price": 750.54,
+    "change_24h": 0.736,
+    "is_owned": false,
+    "owned_units": 0.0,
+    "owned_val": 0.0,
+    "wallet_type": "",
+    "indicators": {
+      "current_price": 750.54,
+      "rsi": 65.71,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": 2.2961,
+        "signal": 1.0687,
+        "histogram": 1.2274,
+        "cross": "BULLISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 748.21,
+        "ema_50": 746.93,
+        "ema_200": 743.33,
+        "price_vs_ema20": "ABOVE",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 758.47,
+        "middle": 745.62,
+        "lower": 732.78,
+        "position": "MIDDLE"
+      },
+      "volatility": {
+        "atr": 5.9,
+        "atr_percent": 0.79,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 733.0,
+        "resistance": 761.39
+      },
+      "scores": {
+        "bullish_score": 5,
+        "bearish_score": 0
+      },
+      "summary": "STRONG_BULLISH",
+      "change_24h": 0.736
+    },
+    "sentiment": {
+      "value": 69,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788825600"
+    },
+    "signal": {
+      "action": "BUY",
+      "confidence": 0.92,
+      "entry_price": 750.54,
+      "stop_loss": 726.52,
+      "take_profit": 851.42,
+      "risk_reward_ratio": "1:4.2",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "🔥 Ultra Degen Finans Uzmanı: BNBUSDT için yüksek momentum ve volatilite kırılımı tespit edildi. Maksimum kâr arayışı kapsamında 1:4.2 asimetrik hedefle agresif pozisyonlanma öneriliyor.",
+      "reasoning_points": [
+        "Piyasa Yapısı & Momentum: Algoritmik Trend STRONG_BULLISH - RSI 14 Seviyesi 65.7",
+        "Likidite & Hacim Dinamiği: Dengeli emir akışı ve fiyat konsolidasyonu",
+        "Asimetrik Risk Yönetimi: Stop-Loss $726.52 seviyesinde sınırlandırıldı, hedef 1:4.2 getiri oranı ile $851.42",
+        "Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+      ],
+      "risk_warning": "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "BNBUSDT",
+      "hyperliquid": {
+        "asset": "BNB",
+        "oracle_price": 750.545,
+        "funding_rate_8h_pct": 0.0041,
+        "funding_rate_annual_pct": 1.5,
+        "open_interest_coins": 80220.668,
+        "open_interest_usd": 60209221.26,
+        "day_volume_usd": 26623781.36,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": true,
+        "last_updated": 1788869807
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
+      "order_params": {
+        "action": "BUY",
+        "entry_price": 750.54,
+        "stop_loss": 726.52,
+        "take_profit": 851.42,
+        "units": 0.033483,
+        "position_value_usd": 25.13,
+        "risk_amount_usd": 0.8,
+        "risk_reward_ratio": 4.2
+      }
+    },
+    "trade_executed": null
+  },
+  "DOGEUSDT": {
+    "symbol": "DOGEUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "DEFI_MOMENTUM",
+    "timestamp": "2026-09-08 15:14:53",
+    "current_price": 0.08876,
+    "change_24h": -1.257,
+    "is_owned": false,
+    "owned_units": 0.0,
+    "owned_val": 0.0,
+    "wallet_type": "",
+    "indicators": {
+      "current_price": 0.08876,
+      "rsi": 38.82,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": -0.0002,
+        "signal": -0.0001,
+        "histogram": -0.0001,
+        "cross": "BEARISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 0.09,
+        "ema_50": 0.09,
+        "ema_200": 0.09,
+        "price_vs_ema20": "BELOW",
+        "price_vs_ema50": "BELOW",
+        "price_vs_ema200": "BELOW"
+      },
+      "bollinger_bands": {
+        "upper": 0.09,
+        "middle": 0.09,
+        "lower": 0.09,
+        "position": "NEAR_LOWER"
+      },
+      "volatility": {
+        "atr": 0.0,
+        "atr_percent": 0.0,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 0.09,
+        "resistance": 0.09
+      },
+      "scores": {
+        "bullish_score": 1,
+        "bearish_score": 4
+      },
+      "summary": "STRONG_BEARISH",
+      "change_24h": -1.257
+    },
+    "sentiment": {
+      "value": 69,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788825600"
+    },
+    "signal": {
+      "action": "SELL",
+      "confidence": 0.84,
+      "entry_price": 0.08876,
+      "stop_loss": 0.0907,
+      "take_profit": 0.0833,
+      "risk_reward_ratio": "1:2.8",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: DOGEUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
+      "reasoning_points": [
+        "Trend Yapısı: STRONG_BEARISH - RSI (38.8) güç kaybına işaret ediyor",
+        "Direnç Reddi: 0.09 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $0.0907"
+      ],
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "DOGEUSDT",
+      "hyperliquid": {
+        "asset": "DOGE",
+        "oracle_price": 0.088765,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 842601306.0,
+        "open_interest_usd": 74793504.93,
+        "day_volume_usd": 16812819.11,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": true,
+        "last_updated": 1788869588
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
+      "order_params": {
+        "action": "SELL",
+        "entry_price": 0.08876,
+        "stop_loss": 0.0907,
+        "take_profit": 0.0833,
+        "units": 283.123028,
+        "position_value_usd": 25.13,
+        "risk_amount_usd": 0.55,
+        "risk_reward_ratio": 2.81
+      }
+    },
+    "trade_executed": null
+  },
+  "AVAXUSDT": {
+    "symbol": "AVAXUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "LAYER1",
+    "timestamp": "2026-09-08 15:15:20",
+    "current_price": 8.031,
+    "change_24h": 1.839,
+    "is_owned": false,
+    "owned_units": 0.0,
+    "owned_val": 0.0,
+    "wallet_type": "",
+    "indicators": {
+      "current_price": 8.031,
+      "rsi": 46.21,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": 0.0315,
+        "signal": 0.0474,
+        "histogram": -0.016,
+        "cross": "BEARISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 8.05,
+        "ema_50": 7.94,
+        "ema_200": 7.8,
+        "price_vs_ema20": "BELOW",
+        "price_vs_ema50": "ABOVE",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 8.15,
+        "middle": 8.08,
+        "lower": 8.01,
+        "position": "NEAR_LOWER"
+      },
+      "volatility": {
+        "atr": 0.06,
+        "atr_percent": 0.75,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 7.73,
+        "resistance": 8.2
+      },
+      "scores": {
+        "bullish_score": 0,
+        "bearish_score": 4
+      },
+      "summary": "STRONG_BEARISH",
+      "change_24h": 1.839
+    },
+    "sentiment": {
+      "value": 69,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788825600"
+    },
+    "signal": {
+      "action": "SELL",
+      "confidence": 0.84,
+      "entry_price": 8.031,
+      "stop_loss": 8.21,
+      "take_profit": 7.53,
+      "risk_reward_ratio": "1:2.8",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: AVAXUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
+      "reasoning_points": [
+        "Trend Yapısı: STRONG_BEARISH - RSI (46.2) güç kaybına işaret ediyor",
+        "Direnç Reddi: 8.2 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $8.21"
+      ],
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "AVAXUSDT",
+      "hyperliquid": {
+        "asset": "AVAX",
+        "oracle_price": 8.0306,
+        "funding_rate_8h_pct": 0.0032,
+        "funding_rate_annual_pct": 1.18,
+        "open_interest_coins": 2031996.3,
+        "open_interest_usd": 16318149.49,
+        "day_volume_usd": 5396639.89,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": true,
+        "last_updated": 1788869588
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
+      "order_params": {
+        "action": "SELL",
+        "entry_price": 8.031,
+        "stop_loss": 8.21,
+        "take_profit": 7.53,
+        "units": 3.129747,
+        "position_value_usd": 25.14,
+        "risk_amount_usd": 0.56,
+        "risk_reward_ratio": 2.8
+      }
+    },
+    "trade_executed": null
+  },
+  "ADAUSDT": {
+    "symbol": "ADAUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "LAYER1",
+    "timestamp": "2026-09-08 15:15:35",
+    "current_price": 0.2165,
+    "change_24h": -1.814,
+    "is_owned": false,
+    "owned_units": 0.0,
+    "owned_val": 0.0,
+    "wallet_type": "",
+    "indicators": {
+      "current_price": 0.2165,
+      "rsi": 45.27,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": -0.0006,
+        "signal": -0.0005,
+        "histogram": -0.0002,
+        "cross": "BEARISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 0.22,
+        "ema_50": 0.22,
+        "ema_200": 0.22,
+        "price_vs_ema20": "BELOW",
+        "price_vs_ema50": "BELOW",
+        "price_vs_ema200": "BELOW"
+      },
+      "bollinger_bands": {
+        "upper": 0.22,
+        "middle": 0.22,
+        "lower": 0.22,
+        "position": "NEAR_LOWER"
+      },
+      "volatility": {
+        "atr": 0.0,
+        "atr_percent": 0.0,
+        "volume_surge": false
+      },
+      "key_levels": {
+        "support": 0.21,
+        "resistance": 0.23
+      },
+      "scores": {
+        "bullish_score": 1,
+        "bearish_score": 4
+      },
+      "summary": "STRONG_BEARISH",
+      "change_24h": -1.814
+    },
+    "sentiment": {
+      "value": 69,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788825600"
+    },
+    "signal": {
+      "action": "SELL",
+      "confidence": 0.84,
+      "entry_price": 0.2165,
+      "stop_loss": 0.2213,
+      "take_profit": 0.2031,
+      "risk_reward_ratio": "1:2.8",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: ADAUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
+      "reasoning_points": [
+        "Trend Yapısı: STRONG_BEARISH - RSI (45.3) güç kaybına işaret ediyor",
+        "Direnç Reddi: 0.23 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $0.2213"
+      ],
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "ADAUSDT",
+      "hyperliquid": {
+        "asset": "ADA",
+        "oracle_price": 0.216594,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 149627314.0,
+        "open_interest_usd": 32408378.45,
+        "day_volume_usd": 6908711.94,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": true,
+        "last_updated": 1788869588
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
+      "order_params": {
+        "action": "SELL",
+        "entry_price": 0.2165,
+        "stop_loss": 0.2213,
+        "take_profit": 0.2031,
+        "units": 116.096998,
+        "position_value_usd": 25.14,
+        "risk_amount_usd": 0.56,
+        "risk_reward_ratio": 2.79
+      }
+    },
+    "trade_executed": null
+  },
+  "LINKUSDT": {
+    "symbol": "LINKUSDT",
+    "asset_type": "CRYPTO",
+    "sector": "DEFI_MOMENTUM",
+    "timestamp": "2026-09-08 15:15:56",
+    "current_price": 12.523,
+    "change_24h": -5.287,
+    "is_owned": false,
+    "owned_units": 0.0,
+    "owned_val": 0.0,
+    "wallet_type": "",
+    "indicators": {
+      "current_price": 12.523,
+      "rsi": 38.28,
+      "rsi_status": "NORMAL",
+      "macd": {
+        "macd": -0.0786,
+        "signal": -0.0576,
+        "histogram": -0.0209,
+        "cross": "BEARISH_CROSS"
+      },
+      "moving_averages": {
+        "ema_20": 12.71,
+        "ema_50": 12.69,
+        "ema_200": 12.51,
+        "price_vs_ema20": "BELOW",
+        "price_vs_ema50": "BELOW",
+        "price_vs_ema200": "ABOVE"
+      },
+      "bollinger_bands": {
+        "upper": 12.91,
+        "middle": 12.7,
+        "lower": 12.49,
+        "position": "NEAR_LOWER"
+      },
+      "volatility": {
+        "atr": 0.12,
+        "atr_percent": 0.96,
+        "volume_surge": true
+      },
+      "key_levels": {
+        "support": 12.43,
+        "resistance": 13.53
+      },
+      "scores": {
+        "bullish_score": 0,
+        "bearish_score": 4
+      },
+      "summary": "STRONG_BEARISH",
+      "change_24h": -5.287
+    },
+    "sentiment": {
+      "value": 69,
+      "classification": "Greed",
+      "label_tr": "Açgözlülük",
+      "timestamp": "1788825600"
+    },
+    "signal": {
+      "action": "SELL",
+      "confidence": 0.84,
+      "entry_price": 12.523,
+      "stop_loss": 12.8,
+      "take_profit": 11.75,
+      "risk_reward_ratio": "1:2.8",
+      "timeframe": "1H / 4H Momentum Swing",
+      "thesis_summary": "Finans Uzmanı Değerlendirmesi: LINKUSDT direnç bölgesinde zayıflık ve momentum tükenişi gösteriyor. Kâr koruma veya koruyucu satış stratejisi öneriliyor.",
+      "reasoning_points": [
+        "Trend Yapısı: STRONG_BEARISH - RSI (38.3) güç kaybına işaret ediyor",
+        "Direnç Reddi: 13.53 seviyesinde satış emirleri yoğunlaştı",
+        "Risk Yönetimi: 1:2.8 Risk/Ödül oranıyla stop seviyesi $12.8"
+      ],
+      "risk_warning": "Olası short squeeze ve ani hacimli tepki alımlarına karşı stop seviyesine sadık kalınmalıdır.",
+      "source": "FINANCIAL_QUANT_EXPERT_ENGINE",
+      "symbol": "LINKUSDT",
+      "hyperliquid": {
+        "asset": "LINK",
+        "oracle_price": 12.51429,
+        "funding_rate_8h_pct": 0.01,
+        "funding_rate_annual_pct": 3.65,
+        "open_interest_coins": 6472275.4,
+        "open_interest_usd": 80995931.32,
+        "day_volume_usd": 15905419.52,
+        "squeeze_status": "BALANCED",
+        "squeeze_tr": "Dengeli Piyasa Yapısı",
+        "risk_color": "var(--accent-cyan)"
+      },
+      "macro": {
+        "dxy_index": 98.95,
+        "us_10y_yield": 4.77,
+        "fed_rate": 3.63,
+        "regime": "DEFENSIVE",
+        "regime_tr": "🛡️ Savunma Modu (Makro Risk Yüksek)",
+        "regime_color": "var(--loss)",
+        "stance": "BEARISH_HEADWIND",
+        "cash_recommendation": "Nakit Oranını Artır (%35+)",
+        "has_fred_key": true,
+        "last_updated": 1788869588
+      }
+    },
+    "risk_validation": {
+      "passed": true,
+      "reason": "BINANCE_TR canlı emir hatası: {'error': 'Incorrect Order Quantity', 'code': 3203}",
+      "order_params": {
+        "action": "SELL",
+        "entry_price": 12.523,
+        "stop_loss": 12.8,
+        "take_profit": 11.75,
+        "units": 2.007107,
+        "position_value_usd": 25.14,
+        "risk_amount_usd": 0.56,
+        "risk_reward_ratio": 2.79
       }
     },
     "trade_executed": null

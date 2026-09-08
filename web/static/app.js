@@ -462,7 +462,7 @@ function renderDashboard(data) {
 
   const selectMode = document.getElementById('select-trading-mode');
   if (selectMode && document.activeElement !== selectMode) {
-    selectMode.value = mode;
+    selectMode.value = currentTradingMode;
   }
 
   // Risk Limiti Göstergesi (Sepet Ajanı Kuralları & Ayarlar)
@@ -477,32 +477,55 @@ function renderDashboard(data) {
   }
 
   // 2. Kripto Sepet Dağılımı ve Sektör Çubuğu
-  renderBasket(data.basket || {});
+  try {
+    renderBasket(data.basket || {});
+  } catch (e) {
+    console.error('renderBasket error:', e);
+  }
 
   // 3. Sentiment
   const s = data.sentiment || {};
-  document.getElementById('sentiment-val').textContent = s.value || 50;
-  document.getElementById('sentiment-label').textContent = s.label_tr || 'Nötr';
+  const sentVal = document.getElementById('sentiment-val');
+  if (sentVal) sentVal.textContent = s.value || 50;
+  const sentLbl = document.getElementById('sentiment-label');
+  if (sentLbl) sentLbl.textContent = s.label_tr || 'Nötr';
 
   // 4. Son Tarama Zamanı
-  document.getElementById('last-scan-time').textContent = data.last_scan_time || 'Bekleniyor';
+  const lastScanEl = document.getElementById('last-scan-time');
+  if (lastScanEl) lastScanEl.textContent = data.last_scan_time || 'Bekleniyor';
   
   // 5. Sinyaller Izgarası
-  renderSignals(data.analyses || []);
+  try {
+    renderSignals(data.analyses || []);
+  } catch (e) {
+    console.error('renderSignals error:', e);
+  }
 
   // 6. Açık Pozisyonlar / Canlı Cüzdan Varlıkları Tablosu
   if (posCardTitle) {
     posCardTitle.textContent = isLive ? 'Canlı Çoklu Borsa Cüzdan Varlıkları (Anlık Varlık & Bakiye Detayı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
   }
   const displayItems = isLive ? ((w.live_assets && w.live_assets.length > 0) ? w.live_assets : (w.open_positions || [])) : (w.open_positions || []);
-  renderPositions(displayItems, isLive);
+  try {
+    renderPositions(displayItems, isLive);
+  } catch (e) {
+    console.error('renderPositions error:', e);
+  }
 
   // 7. Kapanan İşlemler Tablosu
-  renderTrades(w.recent_closed_trades || []);
+  try {
+    renderTrades(w.recent_closed_trades || []);
+  } catch (e) {
+    console.error('renderTrades error:', e);
+  }
 
   // 8. Çoklu Borsa Yükseliş Radarı
   if (data.breakout_radar) {
-    renderBreakoutRadar(data.breakout_radar);
+    try {
+      renderBreakoutRadar(data.breakout_radar);
+    } catch (e) {
+      console.error('renderBreakoutRadar error:', e);
+    }
   }
 }
 
