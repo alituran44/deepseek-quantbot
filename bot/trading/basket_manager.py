@@ -30,8 +30,9 @@ class BasketManager:
         Mevcut açık pozisyonların sepet sektörlerine göre dağılımını ve
         hedef ağırlıklara göre sapmalarını hesaplar.
         """
-        total_equity = wallet_summary.get("total_equity", 10000.0)
-        cash = wallet_summary.get("cash_balance", total_equity)
+        total_equity = wallet_summary.get("total_value") or wallet_summary.get("total_equity", 10000.0)
+        cash = wallet_summary.get("cash_balance", 0.0)
+        live_assets = wallet_summary.get("live_assets")
         open_positions = wallet_summary.get("open_positions", [])
 
         # Sektör toplamları
@@ -39,12 +40,30 @@ class BasketManager:
         sector_pnl = {sec: 0.0 for sec in config.BASKET_SECTORS.keys()}
         sector_positions_count = {sec: 0 for sec in config.BASKET_SECTORS.keys()}
 
-        for pos in open_positions:
-            sec = cls.get_symbol_sector(pos["symbol"])
-            val = pos.get("position_value", 0.0) + pos.get("unrealized_pnl", 0.0)
-            sector_totals[sec] += val
-            sector_pnl[sec] += pos.get("unrealized_pnl", 0.0)
-            sector_positions_count[sec] += 1
+        if live_assets:
+            active_count = 0
+            for item in live_assets:
+                asset = (item.get("asset") or item.get("symbol") or "").upper()
+                if asset in ["TRY", "USDT", "USDC", "FDUSD", "BUSD"]:
+                    continue
+                
+                sec = cls.get_symbol_sector(asset)
+                val = float(item.get("value_usd", 0.0) or item.get("position_value", 0.0) or 0.0)
+                pnl = float(item.get("unrealized_pnl", 0.0) or 0.0)
+                
+                if val > 0 or float(item.get("units", 0) or 0) > 0:
+                    sector_totals[sec] += val
+                    sector_pnl[sec] += pnl
+                    sector_positions_count[sec] += 1
+                    active_count += 1
+        else:
+            active_count = len(open_positions)
+            for pos in open_positions:
+                sec = cls.get_symbol_sector(pos.get("symbol", ""))
+                val = pos.get("position_value", 0.0) + pos.get("unrealized_pnl", 0.0)
+                sector_totals[sec] += val
+                sector_pnl[sec] += pos.get("unrealized_pnl", 0.0)
+                sector_positions_count[sec] += 1
 
         sectors_report = []
         for sec_id, sec_data in config.BASKET_SECTORS.items():
@@ -57,21 +76,21 @@ class BasketManager:
                 "id": sec_id,
                 "name": sec_data["name"],
                 "target_pct": target_pct,
-                "current_pct": round(current_pct, 2),
+                "current_pct": round(current_pct, 1),
                 "current_val": round(current_val, 2),
                 "unrealized_pnl": round(sector_pnl[sec_id], 2),
                 "positions_count": sector_positions_count[sec_id],
                 "status": "OVERWEIGHT" if delta_pct > 5.0 else ("UNDERWEIGHT" if delta_pct < -5.0 else "BALANCED")
             })
 
-        cash_pct = round((cash / total_equity * 100.0) if total_equity > 0 else 100.0, 2)
+        cash_pct = round((cash / total_equity * 100.0) if total_equity > 0 else 100.0, 1)
 
         return {
             "total_basket_value": round(total_equity, 2),
             "cash_balance": round(cash, 2),
             "cash_pct": cash_pct,
             "sectors": sectors_report,
-            "active_assets_count": len(open_positions)
+            "active_assets_count": active_count
         }
 
     @classmethod

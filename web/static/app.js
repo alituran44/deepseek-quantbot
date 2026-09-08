@@ -1158,7 +1158,10 @@ function renderTrades(trades) {
   const tbody = document.getElementById('trades-body');
   if (!tbody) return;
   if (!trades || trades.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir işlem kaydı yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
+      <span style="color: var(--profit); font-weight: 600; font-size: 13px;">⚡ Canlı sepetteki varlıklarınız (XRP, NEAR, SOL) aktif kâr/hedef takibindedir.</span><br>
+      <span style="font-size: 11px; opacity: 0.8; margin-top: 6px; display: inline-block;">Kâr alma (TP) veya koruma (SL) tetiklendiğinde kapanan canlı işlemler anında burada listelenir.</span>
+    </td></tr>`;
     return;
   }
 
