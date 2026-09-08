@@ -139,6 +139,10 @@
               <span id="m-binance-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
             </div>
             <div style="display: flex; justify-content: space-between;">
+              <span style="color: #ef4444; font-weight: 700;">🇹🇷 Binance TR:</span>
+              <span id="m-binancetr-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
               <span style="color: var(--accent-cyan); font-weight: 700;">⚫ OKX:</span>
               <span id="m-okx-share" style="font-family: var(--font-mono); font-weight: 600;">$0.00 (₺0.00)</span>
             </div>
@@ -191,6 +195,9 @@
           <!-- Canlı Mod: Hızlı Yatırma Butonları -->
           <div id="live-deposit-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-right: 2px;">Hızlı Yatır:</span>
+            <button class="btn btn-secondary" onclick="openDepositModal('BINANCE_TR')" style="font-size: 11px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(239, 68, 68, 0.5); color: #ef4444; background: rgba(239, 68, 68, 0.06);">
+              📥 Binance TR
+            </button>
             <button class="btn btn-secondary" onclick="openDepositModal('BINANCE')" style="font-size: 11px; height: 30px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(243, 186, 47, 0.5); color: #f3ba2f; background: rgba(243, 186, 47, 0.06);">
               📥 Binance
             </button>
@@ -215,6 +222,7 @@
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Cüzdan Filtresi:</span>
             <button class="btn-filter active" id="filter-ex-all" onclick="setExchangeFilter('ALL', this)">🌐 Tüm Borsalar</button>
+            <button class="btn-filter" id="filter-ex-binancetr" onclick="setExchangeFilter('Binance TR', this)" style="border-color: rgba(239, 68, 68, 0.4); color: #ef4444;">🇹🇷 Binance TR</button>
             <button class="btn-filter" id="filter-ex-binance" onclick="setExchangeFilter('Binance', this)" style="border-color: rgba(243, 186, 47, 0.4); color: #f3ba2f;">🟡 Binance Spot</button>
             <button class="btn-filter" id="filter-ex-okx" onclick="setExchangeFilter('OKX', this)" style="border-color: rgba(2, 132, 199, 0.4); color: var(--accent-cyan);">⚫ OKX Spot</button>
             <button class="btn-filter" id="filter-ex-mexc" onclick="setExchangeFilter('MEXC', this)" style="border-color: rgba(16, 185, 129, 0.4); color: #10b981;">🟢 MEXC Spot</button>
@@ -696,6 +704,7 @@
             <div id="modal-exchange-select-container" style="display: none;">
               <select id="modal-trade-exchange" class="form-input" style="width: auto; min-width: 155px; font-weight: 700; height: 38px;" onchange="updateModalBalanceInfo()">
                 <option value="BINANCE">🟡 Binance Spot</option>
+                <option value="BINANCE_TR">🇹🇷 Binance TR</option>
                 <option value="AUTO">🌐 Akıllı Yönlendirme</option>
                 <option value="MEXC">🟢 MEXC Spot</option>
                 <option value="OKX">⚫ OKX Spot</option>
@@ -811,7 +820,8 @@
           <label class="form-label">Canlı Pozisyon Alınacak Borsa Tercihi (Trading Exchange)</label>
           <select id="select-trading-exchange" class="form-input">
             <option value="AUTO" selected>🌐 Çoklu Borsa: Otomatik (Kayıtlı API'ler arasında bakiyeye göre akıllı seçim - Önerilen)</option>
-            <option value="BINANCE">🟡 Yalnızca Binance Spot</option>
+            <option value="BINANCE">🟡 Yalnızca Binance Spot (Global)</option>
+            <option value="BINANCE_TR">🇹🇷 Yalnızca Binance TR (trbinance.com)</option>
             <option value="MEXC">🟢 Yalnızca MEXC Spot (Kullanıcı Anahtarı Bağlı & Aktif)</option>
             <option value="OKX">⚫ Yalnızca OKX Spot</option>
           </select>
@@ -854,17 +864,33 @@
 
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="form-label" style="margin-bottom: 0;">Binance API Key</label>
+            <label class="form-label" style="margin-bottom: 0;">Binance Global API Key</label>
             <span id="badge-binance-status" class="indicator-pill" style="font-size: 11px;">Kontrol Ediliyor...</span>
           </div>
-          <input type="text" id="input-binance-key" class="form-input" placeholder="Binance API Key..." value="">
+          <input type="text" id="input-binance-key" class="form-input" placeholder="Binance Global API Key..." value="">
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Kayıtlı Anahtar: <span id="current-binance-key" style="font-family: var(--font-mono); color: var(--profit); font-weight: 600;">-</span></div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Binance Secret Key</label>
+          <label class="form-label">Binance Global Secret Key</label>
           <input type="password" id="input-binance-secret" class="form-input" placeholder="●●●●●●●● (Kayıtlı & Doğrulandı - Değiştirmek için yeni girin)" value="">
           <span style="font-size: 11px; color: var(--text-muted);">Güvenlik: Yalnızca 'Spot Al-Sat' yetkisi aktiftir, 'Para Çekme' KAPALIDIR.</span>
+        </div>
+
+        <!-- Binance TR (trbinance.com) API -->
+        <div class="form-group" style="margin-top: 14px; padding: 14px; background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0; font-weight: 700; color: #ef4444;">🇹🇷 Binance TR API Key (trbinance.com)</label>
+            <span id="badge-binancetr-status" class="indicator-pill" style="font-size: 11px;">Kontrol Ediliyor...</span>
+          </div>
+          <input type="text" id="input-binancetr-key" class="form-input" placeholder="Binance TR API Key..." value="">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Kayıtlı Anahtar: <span id="current-binancetr-key" style="font-family: var(--font-mono); color: var(--profit); font-weight: 600;">-</span></div>
+
+          <label class="form-label" style="margin-top: 10px; margin-bottom: 4px;">Binance TR Secret Key</label>
+          <input type="password" id="input-binancetr-secret" class="form-input" placeholder="●●●●●●●● (Kayıtlı & Doğrulandı)">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            🇹🇷 Binance TR Spot cüzdanı, 7/24 Türk Lirası (TRY) ve USDT bakiyesi ile doğrudan al-sat işlemlerine entegredir.
+          </div>
         </div>
 
         <!-- Çoklu Borsa Entegrasyonu (Bybit, OKX vb.) -->

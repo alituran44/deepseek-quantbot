@@ -13,6 +13,7 @@ from .trading.risk_guard import RiskGuard
 from .trading.paper_wallet import PaperWallet
 from .trading.basket_manager import BasketManager
 from .trading.binance_live import BinanceLiveExecutor
+from .trading.exchanges.binance_tr_live import BinanceTRLiveExecutor
 from .notifications.telegram_notifier import TelegramNotifier
 
 from .trading.exchanges.okx_live import OKXLiveExecutor
@@ -40,6 +41,7 @@ class BotOrchestrator:
         self.wallet = PaperWallet()
         self.notifier = TelegramNotifier()
         self.binance_executor = BinanceLiveExecutor()
+        self.binance_tr_executor = BinanceTRLiveExecutor()
         self.okx_executor = OKXLiveExecutor()
         self.mexc_executor = MEXCLiveExecutor()
         self.radar = DailyBreakoutRadar()
@@ -51,6 +53,7 @@ class BotOrchestrator:
         # Çoklu Borsa Özet Önbelleği (Dashboard anında <5ms yüklensin diye)
         self._exchange_cache_time: float = 0.0
         self._cached_binance_summary: Dict[str, Any] = {}
+        self._cached_binance_tr_summary: Dict[str, Any] = {}
         self._cached_okx_summary: Dict[str, Any] = {}
         self._cached_mexc_summary: Dict[str, Any] = {}
         self._cached_binance_acc: Dict[str, Any] = {}
@@ -118,10 +121,20 @@ class BotOrchestrator:
             b_bal = self.binance_executor.get_account_balances()
             exchanges.append({
                 "id": "BINANCE",
-                "name": "Binance Spot",
+                "name": "Binance Spot (Global)",
                 "enabled": True,
                 "free_usdt": float(b_bal.get("free_usdt", 0.0)) if b_bal.get("success") else 0.0,
                 "executor": self.binance_executor
+            })
+        if self.binance_tr_executor.enabled:
+            tr_bal = self.binance_tr_executor.get_account_balances()
+            exchanges.append({
+                "id": "BINANCE_TR",
+                "name": "Binance TR (trbinance.com)",
+                "enabled": True,
+                "free_usdt": float(tr_bal.get("free_usdt", 0.0)) if tr_bal.get("success") else 0.0,
+                "free_try": float(tr_bal.get("free_try", 0.0)) if tr_bal.get("success") else 0.0,
+                "executor": self.binance_tr_executor
             })
         if self.mexc_executor.enabled:
             m_bal = self.mexc_executor.get_account_balances()
@@ -213,6 +226,8 @@ class BotOrchestrator:
                         )
                     except Exception:
                         pass
+            elif ex_id == "BINANCE_TR":
+                ok, order_res = executor.place_market_order(symbol=symbol, side=action, quantity=units)
             elif ex_id in ["MEXC", "OKX"]:
                 ok, order_res = executor.place_market_order(symbol=symbol, side=action, amount=units)
             else:
@@ -538,7 +553,7 @@ class BotOrchestrator:
         if self._scanner_thread:
             self._scanner_thread.join(timeout=3)
 
-    def get_dashboard_state(self) -> Dict[str, Any]:
+    def get_dashboard_state(self, mode: Optional[str] = None) -> Dict[str, Any]:
         """Web arayüzü için tüm sistem, çoklu borsa (Binance & OKX) ve döviz kurlarını derler."""
         sentiment = self.sentiment_feed.get_crypto_fear_and_greed()
         usd_try = self.get_usd_try_rate()
@@ -559,19 +574,27 @@ class BotOrchestrator:
                 }
                 return b_acc, b_sum
 
+            def _fetch_binance_tr():
+                return self.binance_tr_executor.get_real_portfolio_summary(usd_try_rate=usd_try) if self.binance_tr_executor.configured else {}
+
             def _fetch_okx():
                 return self.okx_executor.get_real_portfolio_summary() if self.okx_executor.configured else {}
 
             def _fetch_mexc():
                 return self.mexc_executor.get_real_portfolio_summary() if self.mexc_executor.configured else {}
 
-            with ThreadPoolExecutor(max_workers=3) as executor:
+            with ThreadPoolExecutor(max_workers=4) as executor:
                 f_bin = executor.submit(_fetch_binance)
+                f_bintr = executor.submit(_fetch_binance_tr)
                 f_okx = executor.submit(_fetch_okx)
                 f_mexc = executor.submit(_fetch_mexc)
 
                 try:
                     self._cached_binance_acc, self._cached_binance_summary = f_bin.result(timeout=7)
+                except Exception:
+                    pass
+                try:
+                    self._cached_binance_tr_summary = f_bintr.result(timeout=7)
                 except Exception:
                     pass
                 try:
@@ -587,27 +610,41 @@ class BotOrchestrator:
 
         binance_acc = self._cached_binance_acc
         binance_summary = self._cached_binance_summary
+        binance_tr_summary = self._cached_binance_tr_summary
         okx_summary = self._cached_okx_summary
         mexc_summary = self._cached_mexc_summary
 
         binance_usd = binance_summary.get("total_value_usd", 0.0)
         binance_try = round(binance_usd * usd_try, 2)
+        binance_tr_usd = binance_tr_summary.get("total_value_usd", 0.0)
+        binance_tr_try = binance_tr_summary.get("total_value_try", round(binance_tr_usd * usd_try, 2))
         okx_usd = okx_summary.get("total_value_usd", 0.0)
         okx_try = round(okx_usd * usd_try, 2)
         mexc_usd = mexc_summary.get("total_value_usd", 0.0)
         mexc_try = round(mexc_usd * usd_try, 2)
 
+        # Canlı borsa toplamları her zaman hesaplanır
+        live_total_usd = binance_usd + binance_tr_usd + okx_usd + mexc_usd
+        live_total_try = round(live_total_usd * usd_try, 2)
+        live_cash_usd = binance_summary.get("free_usdt", 0.0) + binance_tr_summary.get("cash_balance", 0.0) + okx_summary.get("free_usdt", 0.0) + mexc_summary.get("free_usdt", 0.0)
+        live_cash_try = round(live_cash_usd * usd_try, 2)
+
         # Çalışma Moduna Göre Portföy Verisi
-        if config.TRADING_MODE == "LIVE":
-            master_total_usd = binance_usd + okx_usd + mexc_usd
-            master_total_try = round(master_total_usd * usd_try, 2)
-            master_cash_usd = binance_summary.get("free_usdt", 0.0) + okx_summary.get("free_usdt", 0.0) + mexc_summary.get("free_usdt", 0.0)
-            master_cash_try = round(master_cash_usd * usd_try, 2)
+        active_mode = (mode or config.TRADING_MODE or "LIVE").strip().upper()
+        if active_mode == "LIVE":
+            master_total_usd = live_total_usd
+            master_total_try = live_total_try
+            master_cash_usd = live_cash_usd
+            master_cash_try = live_cash_try
 
             combined_assets = []
             for a in binance_summary.get("live_assets", []):
                 ac = dict(a)
                 ac["exchange"] = "Binance"
+                combined_assets.append(ac)
+            for a in binance_tr_summary.get("live_assets", []):
+                ac = dict(a)
+                ac["exchange"] = "Binance TR"
                 combined_assets.append(ac)
             for a in okx_summary.get("live_assets", []):
                 ac = dict(a)
@@ -625,7 +662,7 @@ class BotOrchestrator:
                 "cash_balance_try": master_cash_try,
                 "unrealized_pnl": 0.0,
                 "unrealized_pnl_pct": 0.0,
-                "open_positions": binance_summary.get("open_positions", []) + okx_summary.get("open_positions", []) + mexc_summary.get("open_positions", []),
+                "open_positions": binance_summary.get("open_positions", []) + binance_tr_summary.get("open_positions", []) + okx_summary.get("open_positions", []) + mexc_summary.get("open_positions", []),
                 "recent_closed_trades": [],
                 "win_rate": 0.0,
                 "total_trades": 0,
@@ -656,6 +693,15 @@ class BotOrchestrator:
             s = self.binance_executor.secret_key
             masked_binance_secret = f"{s[:6]}...{s[-6:]}" if len(s) > 12 else s
 
+        masked_binance_tr_key = ""
+        masked_binance_tr_secret = ""
+        if self.binance_tr_executor.api_key:
+            btk = self.binance_tr_executor.api_key
+            masked_binance_tr_key = f"{btk[:8]}...{btk[-8:]}" if len(btk) > 16 else btk
+        if self.binance_tr_executor.secret_key:
+            bts = self.binance_tr_executor.secret_key
+            masked_binance_tr_secret = f"{bts[:6]}...{bts[-6:]}" if len(bts) > 12 else bts
+
         masked_okx_key = ""
         if self.okx_executor.api_key:
             ok = self.okx_executor.api_key
@@ -672,7 +718,7 @@ class BotOrchestrator:
             masked_deepseek_key = f"{dk[:6]}...{dk[-6:]}" if len(dk) > 12 else dk
 
         return {
-            "trading_mode": config.TRADING_MODE,
+            "trading_mode": active_mode,
             "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
             "available_trading_exchanges": [ex["id"] for ex in self.get_registered_exchanges()],
             "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
@@ -686,14 +732,29 @@ class BotOrchestrator:
                 "total_try": master_total_try,
                 "cash_usd": round(master_cash_usd, 4 if master_cash_usd < 1 else 2),
                 "cash_try": master_cash_try,
+                "live_total_usd": round(live_total_usd, 4 if live_total_usd < 1 else 2),
+                "live_total_try": live_total_try,
+                "live_cash_usd": round(live_cash_usd, 4 if live_cash_usd < 1 else 2),
+                "live_cash_try": live_cash_try,
                 "usd_try_rate": usd_try,
                 "binance": {
-                    "name": "Binance Spot",
+                    "name": "Binance Spot (Global)",
                     "enabled": self.binance_executor.enabled,
                     "total_usd": binance_usd,
                     "total_try": binance_try,
                     "free_usdt": binance_summary.get("free_usdt", 0.0),
                     "assets": binance_summary.get("live_assets", [])
+                },
+                "binance_tr": {
+                    "name": "Binance TR (trbinance.com)",
+                    "enabled": self.binance_tr_executor.enabled,
+                    "configured": self.binance_tr_executor.configured,
+                    "masked_key": masked_binance_tr_key,
+                    "total_usd": binance_tr_usd,
+                    "total_try": binance_tr_try,
+                    "free_usdt": binance_tr_summary.get("free_usdt", 0.0),
+                    "free_try": binance_tr_summary.get("free_try", 0.0),
+                    "assets": binance_tr_summary.get("live_assets", [])
                 },
                 "okx": {
                     "name": "OKX Spot / Web3",
@@ -724,6 +785,17 @@ class BotOrchestrator:
                 "masked_secret": masked_binance_secret,
                 "free_usdt": float(binance_acc.get("free_usdt", 0.0)) if binance_acc.get("success") else 0.0,
                 "assets": binance_acc.get("assets", {}) if binance_acc.get("success") else {}
+            },
+            "binance_tr_status": {
+                "configured": self.binance_tr_executor.configured,
+                "enabled": self.binance_tr_executor.enabled,
+                "masked_key": masked_binance_tr_key,
+                "masked_secret": masked_binance_tr_secret,
+                "free_usdt": binance_tr_summary.get("free_usdt", 0.0),
+                "free_try": binance_tr_summary.get("free_try", 0.0),
+                "total_usd": binance_tr_usd,
+                "total_try": binance_tr_try,
+                "assets": binance_tr_summary.get("live_assets", [])
             },
             "okx_status": {
                 "configured": self.okx_executor.configured,

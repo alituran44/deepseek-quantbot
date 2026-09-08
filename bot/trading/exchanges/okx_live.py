@@ -1,4 +1,7 @@
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
 from typing import Dict, Any, List, Optional
 from ...config import config
 

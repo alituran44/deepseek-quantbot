@@ -28,7 +28,7 @@ class Config:
     ADMIN_PIN = os.getenv("ADMIN_PIN", "1923").strip()
 
     # Trading Configuration
-    TRADING_MODE = os.getenv("TRADING_MODE", "PAPER").upper()
+    TRADING_MODE = os.getenv("TRADING_MODE", "LIVE").upper()
     TRADING_EXCHANGE = os.getenv("TRADING_EXCHANGE", "AUTO").upper() # AUTO, BINANCE, MEXC, OKX
     INITIAL_BALANCE = float(os.getenv("INITIAL_BALANCE", "10000.0"))
     MAX_RISK_PER_TRADE_PERCENT = float(os.getenv("MAX_RISK_PER_TRADE_PERCENT", "5.0"))
@@ -38,6 +38,10 @@ class Config:
     BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "").strip()
     BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "").strip()
     BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "false").lower() in ["true", "1", "yes"]
+
+    # Binance TR (trbinance.com) Live Exchange Configuration
+    BINANCE_TR_API_KEY = os.getenv("BINANCE_TR_API_KEY", "").strip()
+    BINANCE_TR_SECRET_KEY = os.getenv("BINANCE_TR_SECRET_KEY", "").strip()
 
     # OKX Live Exchange Configuration
     OKX_API_KEY = os.getenv("OKX_API_KEY", "").strip()

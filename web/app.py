@@ -114,6 +114,8 @@ class ConfigUpdateRequest(BaseModel):
     telegram_chat_id: Optional[str] = None
     binance_api_key: Optional[str] = None
     binance_secret_key: Optional[str] = None
+    binance_tr_api_key: Optional[str] = None
+    binance_tr_secret_key: Optional[str] = None
     okx_api_key: Optional[str] = None
     okx_secret_key: Optional[str] = None
     okx_passphrase: Optional[str] = None
@@ -172,28 +174,29 @@ def auth_logout():
 def index(request: Request):
     """Ana Dashboard Sayfası."""
     is_auth = is_request_authenticated(request)
+    req_mode = request.query_params.get("mode") or request.cookies.get("deepseek_trading_mode") or config.TRADING_MODE or "LIVE"
     if is_auth:
-        state = orchestrator.get_dashboard_state()
+        state = orchestrator.get_dashboard_state(mode=req_mode)
         state["is_locked"] = False
     else:
         # Kilitliyken hassas portföy ve bakiye bilgilerini HTML içine gömme
         state = {
             "is_locked": True,
             "last_scan_time": "",
-            "trading_mode": config.TRADING_MODE,
+            "trading_mode": req_mode,
             "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
             "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
             "wallet": {"total_equity": 0.0, "cash_balance": 0.0, "open_positions": [], "is_live": False},
-            "master_treasury": {"total_usd": 0.0, "cash_usd": 0.0, "binance": {}, "okx": {}, "mexc": {}},
+            "master_treasury": {"total_usd": 0.0, "cash_usd": 0.0, "binance": {}, "binance_tr": {}, "okx": {}, "mexc": {}},
             "watchlist": [],
             "radar_watchlist": []
         }
     return templates.TemplateResponse(request=request, name="index.html", context={"state": state, "is_authenticated": is_auth})
 
 @app.get("/api/state")
-def get_state():
+def get_state(mode: Optional[str] = None):
     """Dashboard verisini anlık JSON olarak döndürür."""
-    return JSONResponse(content=orchestrator.get_dashboard_state())
+    return JSONResponse(content=orchestrator.get_dashboard_state(mode=mode))
 
 @app.api_route("/api/scan", methods=["GET", "POST"])
 async def trigger_scan(request: Request, bg_tasks: BackgroundTasks):
@@ -459,6 +462,7 @@ async def get_exchanges_status():
 def get_config():
     """Mevcut ayarları ve durumları frontend için döner."""
     masked_binance = f"{config.BINANCE_API_KEY[:8]}...{config.BINANCE_API_KEY[-8:]}" if config.BINANCE_API_KEY and len(config.BINANCE_API_KEY) > 16 else (config.BINANCE_API_KEY or "")
+    masked_binance_tr = f"{getattr(config, 'BINANCE_TR_API_KEY', '')[:8]}...{getattr(config, 'BINANCE_TR_API_KEY', '')[-8:]}" if getattr(config, "BINANCE_TR_API_KEY", "") and len(config.BINANCE_TR_API_KEY) > 16 else (getattr(config, "BINANCE_TR_API_KEY", "") or "")
     masked_okx = f"{config.OKX_API_KEY[:8]}...{config.OKX_API_KEY[-8:]}" if config.OKX_API_KEY and len(config.OKX_API_KEY) > 16 else (config.OKX_API_KEY or "")
     masked_mexc = f"{config.MEXC_API_KEY[:6]}...{config.MEXC_API_KEY[-6:]}" if config.MEXC_API_KEY and len(config.MEXC_API_KEY) > 12 else (config.MEXC_API_KEY or "")
     masked_deepseek = f"{config.DEEPSEEK_API_KEY[:6]}...{config.DEEPSEEK_API_KEY[-6:]}" if config.DEEPSEEK_API_KEY and len(config.DEEPSEEK_API_KEY) > 12 else (config.DEEPSEEK_API_KEY or "")
@@ -478,6 +482,9 @@ def get_config():
         "binance_configured": bool(config.BINANCE_API_KEY),
         "binance_masked_key": masked_binance,
         "binance_secret_set": bool(config.BINANCE_SECRET_KEY),
+        "binance_tr_configured": bool(getattr(config, "BINANCE_TR_API_KEY", "")),
+        "binance_tr_masked_key": masked_binance_tr,
+        "binance_tr_secret_set": bool(getattr(config, "BINANCE_TR_SECRET_KEY", "")),
         "okx_configured": bool(config.OKX_API_KEY),
         "okx_masked_key": masked_okx,
         "okx_secret_set": bool(config.OKX_SECRET_KEY),
@@ -549,6 +556,17 @@ async def update_settings(req: ConfigUpdateRequest):
     if req.binance_api_key or req.binance_secret_key:
         orchestrator.binance_executor.enabled = bool(orchestrator.binance_executor.api_key and orchestrator.binance_executor.secret_key)
     
+    # Binance TR API Anahtarları
+    if req.binance_tr_api_key is not None and req.binance_tr_api_key.strip():
+        config.BINANCE_TR_API_KEY = req.binance_tr_api_key.strip()
+        orchestrator.binance_tr_executor.api_key = config.BINANCE_TR_API_KEY
+        env_updates["BINANCE_TR_API_KEY"] = config.BINANCE_TR_API_KEY
+
+    if req.binance_tr_secret_key is not None and req.binance_tr_secret_key.strip():
+        config.BINANCE_TR_SECRET_KEY = req.binance_tr_secret_key.strip()
+        orchestrator.binance_tr_executor.secret_key = config.BINANCE_TR_SECRET_KEY
+        env_updates["BINANCE_TR_SECRET_KEY"] = config.BINANCE_TR_SECRET_KEY
+
     # OKX API Anahtarları ve Parola
     if req.okx_api_key is not None and req.okx_api_key.strip():
         config.OKX_API_KEY = req.okx_api_key.strip()
@@ -628,6 +646,14 @@ async def reset_paper_wallet():
     orchestrator.wallet.state["closed_trades"] = []
     orchestrator.wallet._save_state()
     return JSONResponse(content={"status": "SUCCESS", "message": "Sanal kasa $10.000 olarak sıfırlandı."})
+
+@app.get("/api/wallet/binancetr-deposit-addresses")
+async def get_binancetr_deposit_addresses():
+    """Kullanıcının Binance TR resmi kripto yatırma adreslerini döndürür."""
+    if not orchestrator.binance_tr_executor.enabled:
+        return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance TR API bağlantısı aktif değil veya anahtarlar tanımlanmadı."})
+    addrs = orchestrator.binance_tr_executor.get_deposit_addresses()
+    return JSONResponse(content={"status": "SUCCESS", "addresses": addrs})
 
 @app.get("/api/wallet/okx-deposit-addresses")
 async def get_okx_deposit_addresses():

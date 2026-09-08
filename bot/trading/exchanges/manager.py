@@ -1,17 +1,21 @@
 from typing import Dict, Any, List, Optional
 from .base import BaseExchange
 from ..binance_live import BinanceLiveExecutor
+from .binance_tr_live import BinanceTRLiveExecutor
 from .okx_live import OKXLiveExecutor
 from .mexc_live import MEXCLiveExecutor
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
 
 class MultiExchangeManager:
     """
     Çoklu Borsa Yöneticisi (Multi-Exchange Orchestrator).
-    Kullanıcının Binance, OKX, MEXC vb. borsaları tek merkezden yönetmesini sağlar.
+    Kullanıcının Binance, Binance TR, OKX, MEXC vb. borsaları tek merkezden yönetmesini sağlar.
     """
 
-    SUPPORTED_EXCHANGES = ["BINANCE", "OKX", "MEXC", "BYBIT", "GATEIO", "KUCOIN"]
+    SUPPORTED_EXCHANGES = ["BINANCE", "BINANCE_TR", "OKX", "MEXC", "BYBIT", "GATEIO", "KUCOIN"]
 
     def __init__(self, active_exchange: str = "BINANCE"):
         self.active_exchange_id = active_exchange.upper()
@@ -21,11 +25,15 @@ class MultiExchangeManager:
         self._binance = BinanceLiveExecutor()
         self._exchanges["BINANCE"] = self._binance
         
-        # 2. OKX Motor
+        # 2. Binance TR Motor
+        self._binance_tr = BinanceTRLiveExecutor()
+        self._exchanges["BINANCE_TR"] = self._binance_tr
+
+        # 3. OKX Motor
         self._okx = OKXLiveExecutor()
         self._exchanges["OKX"] = self._okx
 
-        # 3. MEXC Motor
+        # 4. MEXC Motor
         self._mexc = MEXCLiveExecutor()
         self._exchanges["MEXC"] = self._mexc
 
@@ -47,11 +55,19 @@ class MultiExchangeManager:
         return [
             {
                 "id": "BINANCE",
-                "name": "Binance Spot",
+                "name": "Binance Spot (Global)",
                 "status": "CONNECTED" if self._binance.enabled else "DISCONNECTED",
                 "active": self.active_exchange_id == "BINANCE",
                 "is_configured": self._binance.enabled,
                 "masked_key": f"{self._binance.api_key[:6]}...{self._binance.api_key[-6:]}" if self._binance.api_key else ""
+            },
+            {
+                "id": "BINANCE_TR",
+                "name": "Binance TR (trbinance.com)",
+                "status": "CONNECTED" if self._binance_tr.enabled else "DISCONNECTED",
+                "active": self.active_exchange_id == "BINANCE_TR",
+                "is_configured": self._binance_tr.enabled,
+                "masked_key": f"{self._binance_tr.api_key[:6]}...{self._binance_tr.api_key[-6:]}" if self._binance_tr.api_key else ""
             },
             {
                 "id": "OKX",
@@ -96,7 +112,15 @@ class MultiExchangeManager:
             ok = self._binance.get_account_balances().get("success", False)
             return ok, "Binance anahtarları güncellendi." if ok else "Binance anahtar doğrulama başarısız."
         
+        if ex_id == "BINANCE_TR":
+            self._binance_tr = BinanceTRLiveExecutor(api_key=api_key, secret_key=secret_key)
+            self._exchanges["BINANCE_TR"] = self._binance_tr
+            ok = self._binance_tr.get_account_balances().get("success", False)
+            return ok, "Binance TR anahtarları başarıyla bağlandı." if ok else "Binance TR anahtar doğrulama başarısız."
+
         # CCXT Üzerinden Bybit, OKX vb.
+        if ccxt is None:
+            return False, "CCXT modülü yüklü değil."
         try:
             ex_class = getattr(ccxt, ex_id.lower(), None)
             if not ex_class:

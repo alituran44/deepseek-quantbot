@@ -151,7 +151,7 @@ async function checkInitialAuth() {
 let currentAnalyses = [];
 let currentSignalFilter = 'ALL';
 let currentModalSymbol = '';
-let currentTradingMode = 'PAPER';
+let currentTradingMode = localStorage.getItem('deepseek_trading_mode') || 'LIVE';
 
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -185,7 +185,8 @@ let modalTradingMode = 'PAPER';
 
 async function fetchState() {
   try {
-    const res = await fetch('/api/state');
+    const activeMode = localStorage.getItem('deepseek_trading_mode') || currentTradingMode || 'LIVE';
+    const res = await fetch(`/api/state?mode=${encodeURIComponent(activeMode)}`);
     if (!res.ok) return;
     const data = await res.json();
     lastDashboardData = data;
@@ -197,21 +198,23 @@ async function fetchState() {
 }
 
 function renderDashboard(data) {
-  // Mod Bilgisi ve Anahtar Gösterimi
-  const mode = data.trading_mode || 'PAPER';
+  // Mod Bilgisi ve Anahtar Gösterimi: Kullanıcı tercihi (localStorage) önceliklidir
+  const savedMode = localStorage.getItem('deepseek_trading_mode');
+  const mode = savedMode || data.trading_mode || 'LIVE';
   currentTradingMode = mode;
   const isLive = mode === 'LIVE';
   const binance = data.binance_status || {};
+  const binanceTr = data.binance_tr_status || {};
   const w = data.wallet || {};
   const mt = data.master_treasury || {};
 
   // 1. Kasa Metrikleri (USD ve TL): Sanal vs Canlı Ayrımı
   let totalUsd, totalTry, cashUsd, cashTry;
   if (isLive) {
-    totalUsd = mt.total_usd !== undefined ? mt.total_usd : (w.total_value || 0);
-    totalTry = mt.total_try !== undefined ? mt.total_try : (w.total_value_try || 0);
-    cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (w.cash_balance || 0);
-    cashTry = mt.cash_try !== undefined ? mt.cash_try : (w.cash_balance_try || 0);
+    totalUsd = (mt.live_total_usd !== undefined) ? mt.live_total_usd : (mt.total_usd !== undefined ? mt.total_usd : (w.total_value || 0));
+    totalTry = (mt.live_total_try !== undefined) ? mt.live_total_try : (mt.total_try !== undefined ? mt.total_try : (w.total_value_try || 0));
+    cashUsd = (mt.live_cash_usd !== undefined) ? mt.live_cash_usd : (mt.cash_usd !== undefined ? mt.cash_usd : (w.cash_balance || 0));
+    cashTry = (mt.live_cash_try !== undefined) ? mt.live_cash_try : (mt.cash_try !== undefined ? mt.cash_try : (w.cash_balance_try || 0));
   } else {
     // Tamamen Sanal Kasa: Gerçek borsa bakiyeleri kesinlikle karıştırılmaz
     totalUsd = w.total_value !== undefined ? w.total_value : (w.total_equity || 10000.0);
@@ -261,22 +264,26 @@ function renderDashboard(data) {
     if (posCardDesc) posCardDesc.textContent = 'Borsalardaki coinleriniz ayrı ayrı veya konsolide tam hassasiyetle listelenir';
     if (riskSubtext) riskSubtext.textContent = '⚡ Canlı Borsa Kripto İşlemleri';
 
-    // Borsa Kasa Dağılımı (Binance, OKX, MEXC)
+    // Borsa Kasa Dağılımı (Binance, Binance TR, OKX, MEXC)
     const binanceShareEl = document.getElementById('m-binance-share');
+    const binanceTrShareEl = document.getElementById('m-binancetr-share');
     const okxShareEl = document.getElementById('m-okx-share');
     const mexcShareEl = document.getElementById('m-mexc-share');
     if (binanceShareEl && mt.binance) {
-      binanceShareEl.textContent = `$${mt.binance.total_usd.toFixed(4)} (₺${mt.binance.total_try.toFixed(2)})`;
+      binanceShareEl.textContent = `$${(mt.binance.total_usd || 0).toFixed(2)} (₺${(mt.binance.total_try || 0).toFixed(2)})`;
+    }
+    if (binanceTrShareEl && mt.binance_tr) {
+      binanceTrShareEl.textContent = `$${(mt.binance_tr.total_usd || 0).toFixed(2)} (₺${(mt.binance_tr.total_try || 0).toFixed(2)})`;
     }
     if (okxShareEl && mt.okx) {
       if (data.okx_status && data.okx_status.needs_passphrase) {
         okxShareEl.innerHTML = `<span style="color: var(--warning); font-size: 11px;">Parola Bekleniyor ⏳</span>`;
       } else {
-        okxShareEl.textContent = `$${mt.okx.total_usd.toFixed(4)} (₺${mt.okx.total_try.toFixed(2)})`;
+        okxShareEl.textContent = `$${(mt.okx.total_usd || 0).toFixed(2)} (₺${(mt.okx.total_try || 0).toFixed(2)})`;
       }
     }
     if (mexcShareEl && mt.mexc) {
-      mexcShareEl.textContent = `$${mt.mexc.total_usd.toFixed(4)} (₺${mt.mexc.total_try.toFixed(2)})`;
+      mexcShareEl.textContent = `$${(mt.mexc.total_usd || 0).toFixed(2)} (₺${(mt.mexc.total_try || 0).toFixed(2)})`;
     }
   } else {
     // Sanal Kasa: Gerçek borsa bilgileri tamamen gizlenir, simülasyon metrikleri sunulur
@@ -316,7 +323,8 @@ function renderDashboard(data) {
   const headerExSelect = document.getElementById('select-header-exchange');
   const exChoice = data.trading_exchange || 'AUTO';
   let exLabel = 'Çoklu Borsa: Otomatik';
-  if (exChoice === 'BINANCE') exLabel = 'Binance Spot';
+  if (exChoice === 'BINANCE_TR' || exChoice === 'BINANCETR') exLabel = 'Binance TR';
+  else if (exChoice === 'BINANCE') exLabel = 'Binance Spot';
   else if (exChoice === 'MEXC') exLabel = 'MEXC Spot';
   else if (exChoice === 'OKX') exLabel = 'OKX Spot';
 
@@ -395,20 +403,19 @@ function renderDashboard(data) {
 
   if (banner && bannerTitle && bannerDesc && bannerActionBtn) {
     if (isLive) {
-      if (cashUsd < 5.0) {
-        banner.style.borderLeftColor = 'var(--warning)';
-        bannerIcon.style.background = 'rgba(234, 179, 8, 0.15)';
-        bannerIcon.style.color = 'var(--warning)';
-        bannerIcon.textContent = '⚠️';
-        bannerTitle.textContent = `Canlı Mod Aktif - Yetersiz Bakiye ($${cashUsd.toFixed(2)} USDT)`;
-        bannerDesc.innerHTML = `Bağlı borsalarınızda (Binance, OKX, MEXC) kullanılabilir serbest nakit <strong>$0.00 USDT</strong> olduğu için gerçek al-sat emirleri verilememektedir (Borsaların min. işlem limiti 5-10 USDT'dir). Gerçek işlem için hesabınıza USDT aktarabilir veya <strong>Sanala Dön (10.000$ Demo)</strong> butonuna tıklayabilirsiniz.`;
+      banner.style.borderLeftColor = 'var(--profit)';
+      bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
+      bannerIcon.style.color = 'var(--profit)';
+      bannerIcon.textContent = '⚡';
+      if (exChoice === 'BINANCE_TR' || exChoice === 'BINANCETR') {
+        bannerTitle.textContent = `Canlı Binance TR Modu Aktif (Serbest: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
+        bannerDesc.textContent = `Bot doğrudan resmi Binance TR (trbinance.com) API'niz üzerinden serbest bakiye ile canlı pozisyon almaktadır.`;
+      } else if (exChoice === 'BINANCE') {
+        bannerTitle.textContent = `Canlı Binance Spot Modu Aktif (Serbest: $${cashUsd.toFixed(2)} USDT)`;
+        bannerDesc.textContent = `Bot doğrudan resmi Binance API'niz üzerinden serbest USDT bakiyesiyle canlı pozisyon almaktadır.`;
       } else {
-        banner.style.borderLeftColor = 'var(--profit)';
-        bannerIcon.style.background = 'rgba(16, 185, 129, 0.15)';
-        bannerIcon.style.color = 'var(--profit)';
-        bannerIcon.textContent = '⚡';
         bannerTitle.textContent = `Canlı Çoklu Borsa Modu Aktif (${exLabel} - Serbest: $${cashUsd.toFixed(2)} USDT)`;
-        bannerDesc.textContent = `Bot kayıtlı borsa API'leriniz (Binance, MEXC, OKX) üzerinden serbest USDT bakiyesiyle akıllı pozisyon almaktadır. Sanal öğrenme moduna dönmek için butona tıklayabilirsiniz.`;
+        bannerDesc.textContent = `Bot kayıtlı borsa API'leriniz (Binance TR, Binance, MEXC, OKX) üzerinden serbest bakiye ile akıllı pozisyon almaktadır.`;
       }
       bannerActionBtn.textContent = 'Sanala Dön (Öğrenme) 🧪';
       bannerActionBtn.style.borderColor = 'var(--profit)';
@@ -418,7 +425,7 @@ function renderDashboard(data) {
       bannerIcon.style.color = 'var(--accent-cyan)';
       bannerIcon.textContent = '🧪';
       bannerTitle.textContent = 'Sanal Öğrenme Modu Aktif ($10,000 Sanal Kasa)';
-      bannerDesc.textContent = `Bot gerçek Binance piyasa verileri üzerinde stratejilerini ve sepet dengesini test ediyor. Binance API bağlantınız hazır ve onaylıdır (Key: ${binance.masked_key || 'Kayıtlı'}); dilediğiniz an tek tıkla Canlı Moda geçebilirsiniz.`;
+      bannerDesc.textContent = `Bot canlı piyasa verileri üzerinde $10,000 sanal kasa ile stratejilerini test eder. Dilediğiniz an tek tıkla Canlı Moda geçebilirsiniz.`;
       bannerActionBtn.textContent = 'Canlı Moda Geç ⚡';
       bannerActionBtn.style.borderColor = 'var(--accent-cyan)';
     }
@@ -436,6 +443,25 @@ function renderDashboard(data) {
       badgeBinance.textContent = 'Tanımlı Değil';
       badgeBinance.style.color = 'var(--loss)';
       currentBinanceKey.textContent = 'Girilmedi';
+    }
+  }
+
+  // Binance TR Durum Göstergelerini Güncelle
+  const badgeBinanceTr = document.getElementById('badge-binancetr-status');
+  const currentBinanceTrKey = document.getElementById('current-binancetr-key');
+  if (badgeBinanceTr && currentBinanceTrKey) {
+    if (binanceTr.enabled) {
+      badgeBinanceTr.textContent = '✅ Doğrulandı (Spot Yetkili)';
+      badgeBinanceTr.style.color = 'var(--profit)';
+      currentBinanceTrKey.textContent = binanceTr.masked_key || 'Tanımlı';
+    } else if (binanceTr.configured) {
+      badgeBinanceTr.textContent = '⚠️ Bağlantı Hatası';
+      badgeBinanceTr.style.color = 'var(--warning)';
+      currentBinanceTrKey.textContent = binanceTr.masked_key || 'Tanımlı';
+    } else {
+      badgeBinanceTr.textContent = 'Tanımlı Değil';
+      badgeBinanceTr.style.color = 'var(--loss)';
+      currentBinanceTrKey.textContent = 'Girilmedi';
     }
   }
 
@@ -1225,7 +1251,12 @@ async function toggleTradingMode() {
   const prevMode = currentTradingMode;
 
   // 1. İyimser anında UI güncellemesi (0.01 sn tepki süresi!)
+  localStorage.setItem('deepseek_trading_mode', newMode);
+  currentTradingMode = newMode;
   applyModeUIToDOM(newMode);
+  if (lastDashboardData) {
+    renderDashboard(lastDashboardData);
+  }
 
   // 2. Arka planda ultra-hızlı API çağrısı
   try {
@@ -1236,7 +1267,10 @@ async function toggleTradingMode() {
     });
     const data = await res.json();
     if (!res.ok || data.status !== 'SUCCESS') {
+      localStorage.setItem('deepseek_trading_mode', prevMode);
+      currentTradingMode = prevMode;
       applyModeUIToDOM(prevMode);
+      if (lastDashboardData) renderDashboard(lastDashboardData);
       alert('Mod değiştirilemedi: ' + (data.message || 'Bilinmeyen hata'));
       return;
     }
@@ -1284,7 +1318,8 @@ async function openSettingsModal() {
       if (selModel && c.deepseek_model) selModel.value = c.deepseek_model;
 
       const selMode = document.getElementById('select-trading-mode');
-      if (selMode && c.trading_mode) selMode.value = c.trading_mode;
+      const savedMode = localStorage.getItem('deepseek_trading_mode') || c.trading_mode;
+      if (selMode && savedMode) selMode.value = savedMode;
 
       const selExchange = document.getElementById('select-trading-exchange');
       const savedExchange = localStorage.getItem('deepseek_trading_exchange') || c.trading_exchange;
@@ -1321,7 +1356,7 @@ async function openSettingsModal() {
         if (inputDs) { inputDs.value = ''; inputDs.placeholder = 'sk-... (DeepSeek API Key)'; }
       }
 
-      // Binance
+      // Binance Global
       const badgeBin = document.getElementById('badge-binance-status');
       const curBin = document.getElementById('current-binance-key');
       const inBinKey = document.getElementById('input-binance-key');
@@ -1337,6 +1372,24 @@ async function openSettingsModal() {
         if (curBin) curBin.textContent = 'Girilmedi';
         if (inBinKey) { inBinKey.value = ''; inBinKey.placeholder = 'Binance API Key...'; }
         if (inBinSec) { inBinSec.value = ''; inBinSec.placeholder = 'Binance Secret Key...'; }
+      }
+
+      // Binance TR
+      const badgeBinTr = document.getElementById('badge-binancetr-status');
+      const curBinTr = document.getElementById('current-binancetr-key');
+      const inBinTrKey = document.getElementById('input-binancetr-key');
+      const inBinTrSec = document.getElementById('input-binancetr-secret');
+      const hasBinTr = Boolean(c.binance_tr_configured);
+      if (hasBinTr) {
+        if (badgeBinTr) { badgeBinTr.textContent = '✅ Doğrulandı (Spot Yetkili)'; badgeBinTr.style.color = 'var(--profit)'; }
+        if (curBinTr) curBinTr.textContent = c.binance_tr_masked_key || 'Kayıtlı';
+        if (inBinTrKey) { inBinTrKey.value = ''; inBinTrKey.placeholder = c.binance_tr_masked_key ? (c.binance_tr_masked_key + ' (Kayıtlı - değiştirmek için yeni girin)') : 'Binance TR API Key...'; }
+        if (inBinTrSec) { inBinTrSec.value = ''; inBinTrSec.placeholder = '●●●●●●●● (Kayıtlı - değiştirmek için yeni girin)'; }
+      } else {
+        if (badgeBinTr) { badgeBinTr.textContent = 'Tanımlı Değil'; badgeBinTr.style.color = 'var(--loss)'; }
+        if (curBinTr) curBinTr.textContent = 'Girilmedi';
+        if (inBinTrKey) { inBinTrKey.value = ''; inBinTrKey.placeholder = 'Binance TR API Key...'; }
+        if (inBinTrSec) { inBinTrSec.value = ''; inBinTrSec.placeholder = 'Binance TR Secret Key...'; }
       }
 
       // OKX
@@ -1562,10 +1615,13 @@ async function openDepositModal(exchange = 'BINANCE') {
   modal.style.display = 'flex';
   
   const exUpper = exchange.toUpperCase();
-  let exName = 'Binance';
+  let exName = 'Binance Global';
   let endpoint = '/api/wallet/deposit-addresses';
   
-  if (exUpper === 'OKX') {
+  if (exUpper === 'BINANCE_TR' || exUpper === 'BINANCETR') {
+    exName = 'Binance TR';
+    endpoint = '/api/wallet/binancetr-deposit-addresses';
+  } else if (exUpper === 'OKX') {
     exName = 'OKX';
     endpoint = '/api/wallet/okx-deposit-addresses';
   } else if (exUpper === 'MEXC') {
@@ -1602,47 +1658,21 @@ async function openDepositModal(exchange = 'BINANCE') {
       });
       container.innerHTML = html;
     } else {
-      let customHtml = '';
-      if (exUpper === 'MEXC') {
-        customHtml = `
-          <div style="text-align: left; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.5;">
-            <div style="font-weight: 700; color: #10b981; margin-bottom: 6px; font-size: 14px;">🟢 MEXC Borsa Bağlantısı Aktif</div>
-            <div style="color: var(--text-secondary); margin-bottom: 10px;">
-              MEXC cüzdan bakiyeniz, coinleriniz ve serbest USDT miktarınız başarıyla okunmakta ve Ana Kasa'ya tam hassasiyetle dahil edilmektedir.
-            </div>
-            <div style="background: var(--bg-surface); padding: 10px 12px; border-radius: 6px; font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
-              💡 <strong>Yatırma Bilgisi:</strong> MEXC API anahtarınızda 'Yatırma Adresi Okuma' izni henüz açık değildir. Para yatırmak için MEXC uygulamasından (veya web sitesinden) <em>Varlıklar &rarr; Yatır</em> adımlarını izleyerek dilediğiniz adrese yatırma yapabilirsiniz. Yatırdığınız tutar otomatik olarak bu panelde belirecektir.
-            </div>
-          </div>
-        `;
-      } else if (exUpper === 'OKX') {
-        customHtml = `
-          <div style="text-align: center; color: var(--warning); padding: 20px;">
-            ${data.message || 'OKX API parolası (passphrase) girilmediği için yatırma adresleri listelenemedi.'}
-            <div style="color: var(--text-muted); font-size: 11px; margin-top: 8px;">Ayarlar menüsünden OKX parolanızı kaydedebilirsiniz.</div>
-          </div>
-        `;
-      } else {
-        customHtml = `
-          <div style="text-align: center; color: var(--loss); padding: 20px;">
-            ${data.message || exName + ' yatırma adresleri alınamadı.'}
-          </div>
-        `;
-      }
-      container.innerHTML = customHtml;
+      container.innerHTML = `<div style="text-align: center; color: var(--warning); padding: 20px;">${data.message || 'Yatırma adresleri alınamadı. Lütfen API anahtarlarınızı kontrol edin.'}</div>`;
     }
   } catch (err) {
-    container.innerHTML = `<div style="text-align: center; color: var(--loss); padding: 20px;">Hata: ${err.message}</div>`;
+    container.innerHTML = `<div style="text-align: center; color: var(--loss); padding: 20px;">Adresler çekilirken ağ hatası oluştu: ${err}</div>`;
   }
 }
 
 function closeDepositModal() {
-  document.getElementById('deposit-modal').style.display = 'none';
+  const modal = document.getElementById('deposit-modal');
+  if (modal) modal.style.display = 'none';
 }
 
 function copyAddress(text, el) {
   navigator.clipboard.writeText(text).then(() => {
-    if (el.tagName === 'BUTTON') {
+    if (el) {
       const originalText = el.textContent;
       el.textContent = 'Kopyalandı! ✅';
       el.style.background = 'var(--profit)';
@@ -1679,6 +1709,8 @@ async function saveSettings(e) {
   const riskLimitVal = document.getElementById('select-risk-limit') ? parseFloat(document.getElementById('select-risk-limit').value) : 5.0;
   const binanceKey = (document.getElementById('input-binance-key').value || '').trim();
   const binanceSecret = (document.getElementById('input-binance-secret').value || '').trim();
+  const binanceTrKey = document.getElementById('input-binancetr-key') ? document.getElementById('input-binancetr-key').value.trim() : '';
+  const binanceTrSecret = document.getElementById('input-binancetr-secret') ? document.getElementById('input-binancetr-secret').value.trim() : '';
   const okxKey = document.getElementById('input-okx-key') ? document.getElementById('input-okx-key').value.trim() : '';
   const okxSecret = document.getElementById('input-okx-secret') ? document.getElementById('input-okx-secret').value.trim() : '';
   const okxPassphrase = document.getElementById('input-okx-passphrase') ? document.getElementById('input-okx-passphrase').value.trim() : '';
@@ -1688,6 +1720,7 @@ async function saveSettings(e) {
   const coingeckoKey = document.getElementById('input-coingecko-key') ? document.getElementById('input-coingecko-key').value.trim() : '';
   const fredKey = document.getElementById('input-fred-key') ? document.getElementById('input-fred-key').value.trim() : '';
 
+  localStorage.setItem('deepseek_trading_mode', tradingMode);
   localStorage.setItem('deepseek_ai_risk_profile', riskProfile);
   localStorage.setItem('deepseek_max_risk_limit', riskLimitVal);
   localStorage.setItem('deepseek_trading_exchange', tradingExchange);
@@ -1704,6 +1737,8 @@ async function saveSettings(e) {
   if (tgChat) payload.telegram_chat_id = tgChat;
   if (binanceKey) payload.binance_api_key = binanceKey;
   if (binanceSecret) payload.binance_secret_key = binanceSecret;
+  if (binanceTrKey) payload.binance_tr_api_key = binanceTrKey;
+  if (binanceTrSecret) payload.binance_tr_secret_key = binanceTrSecret;
   if (okxKey) payload.okx_api_key = okxKey;
   if (okxSecret) payload.okx_secret_key = okxSecret;
   if (okxPassphrase) payload.okx_passphrase = okxPassphrase;
