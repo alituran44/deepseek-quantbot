@@ -155,16 +155,19 @@ class BinanceTRLiveExecutor(BaseExchange):
             if tot <= 0:
                 continue
 
+            current_px = 0.0
             if asset == "USDT":
+                current_px = 1.0
                 val_usd = tot
             elif asset == "TRY":
+                current_px = round(1.0 / rate, 4)
                 val_usd = tot / rate
             else:
                 try:
                     px_resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={asset}USDT", timeout=3)
                     if px_resp.status_code == 200:
-                        px = float(px_resp.json().get("price", 0.0))
-                        val_usd = tot * px
+                        current_px = float(px_resp.json().get("price", 0.0))
+                        val_usd = tot * current_px
                     else:
                         val_usd = 0.0
                 except Exception:
@@ -177,6 +180,7 @@ class BinanceTRLiveExecutor(BaseExchange):
                 "free": data.get("free", 0.0),
                 "locked": data.get("locked", 0.0),
                 "units": tot,
+                "current_price": current_px,
                 "value_usd": round(val_usd, 2),
                 "value_try": round(val_usd * rate, 2),
                 "exchange": "Binance TR"

@@ -1030,12 +1030,41 @@ function renderPositions(positions, isLive = true) {
         valStr = formatCryptoMoney(pos.position_value || 0) + ' USD';
       }
 
+      const entryPxStr = isTry ? '₺1.00 TL' : (pos.entry_price ? formatCryptoMoney(pos.entry_price) : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-'));
       const pxStr = isTry ? '₺1.00 TL' : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-');
       const unitsVal = typeof pos.units === 'number' ? pos.units : parseFloat(pos.units || pos.free || 0);
       const unitsStr = unitsVal >= 1 ? unitsVal.toLocaleString('tr-TR', {maximumFractionDigits: 4}) : unitsVal.toFixed(6);
       const walletTag = pos.wallet_type || 'Spot Cüzdanı';
       const displayName = isTry ? 'Türk Lirası (Nakit)' : (pos.asset || pos.symbol);
       const displaySymbol = isTry ? 'TRY' : (pos.symbol || pos.asset);
+
+      // Kâr / Zarar (PnL) Göstergesi
+      let pnlHtml = '';
+      if (isTry || pos.asset === 'USDT') {
+        pnlHtml = `<span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">Nakit Rezervi</span>`;
+      } else if (pos.unrealized_pnl !== undefined && pos.unrealized_pnl !== 0) {
+        const pnl = pos.unrealized_pnl;
+        const pnlPct = pos.unrealized_pnl_pct || 0;
+        const pnlClass = pnl >= 0 ? 'text-profit' : 'text-loss';
+        pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
+      } else if (pos.unrealized_pnl_pct !== undefined && pos.unrealized_pnl_pct !== 0) {
+        const pnlPct = pos.unrealized_pnl_pct;
+        const pnlClass = pnlPct >= 0 ? 'text-profit' : 'text-loss';
+        pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}</span>`;
+      } else {
+        pnlHtml = `<span class="text-profit" style="font-weight: 600; font-family: var(--font-mono); font-size: 11px;">Kullanılabilir (Başabaş)</span>`;
+      }
+
+      // Stop-Loss & Take-Profit Göstergesi
+      let slTpHtml = '';
+      if (pos.stop_loss > 0 && pos.take_profit > 0) {
+        slTpHtml = `
+          <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
+            <span style="color: var(--loss);">SL: ${formatCryptoMoney(pos.stop_loss)}</span> | 
+            <span style="color: var(--profit);">TP: ${formatCryptoMoney(pos.take_profit)}</span>
+          </div>
+        `;
+      }
 
       html += `
         <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}')" title="Canlı grafiği ve detayları açmak için tıklayın">
@@ -1050,15 +1079,16 @@ function renderPositions(positions, isLive = true) {
           </td>
           <td><span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">${walletTag}</span></td>
           <td><span class="badge badge-buy">CÜZDANDA</span></td>
-          <td>-</td>
-          <td>${pxStr}</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">${entryPxStr}</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">${pxStr}</td>
           <td>
             <span style="color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
               ${unitsStr} ${pos.asset || ''}
             </span>
+            ${slTpHtml}
           </td>
           <td style="font-family: var(--font-mono); font-weight: 700; color: var(--profit);">${valStr}</td>
-          <td class="text-profit">Kullanılabilir</td>
+          <td>${pnlHtml}</td>
           <td style="text-align: right;">
             <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}')">
               Grafik & Al-Sat ↗
@@ -1126,28 +1156,32 @@ function formatTradeTime(timeStr) {
 
 function renderTrades(trades) {
   const tbody = document.getElementById('trades-body');
+  if (!tbody) return;
   if (!trades || trades.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir sepet işlemi yok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Henüz kapanmış bir işlem kaydı yok.</td></tr>`;
     return;
   }
 
   let html = '';
   trades.forEach(t => {
-    const pnl = t.pnl_usd || 0;
-    const pnlPct = t.pnl_pct || 0;
+    const pnl = t.pnl_usd !== undefined ? t.pnl_usd : 0;
+    const pnlPct = t.pnl_pct !== undefined ? t.pnl_pct : 0;
     const pnlClass = pnl >= 0 ? 'text-profit' : 'text-loss';
-    const reasonTr = t.exit_reason === 'TAKE_PROFIT_HIT' ? 'Hedef (TP)' : (t.exit_reason === 'STOP_LOSS_HIT' ? 'Stop (SL)' : (t.exit_reason === 'PORTFOLIO_CRYPTO_BASKET_TRANSITION' ? 'Sepet Geçişi' : 'Manuel'));
+    const reasonTr = t.exit_reason === 'TAKE_PROFIT_HIT' ? 'Hedef (TP)' : (t.exit_reason === 'STOP_LOSS_HIT' ? 'Stop (SL)' : (t.exit_reason === 'PORTFOLIO_CRYPTO_BASKET_TRANSITION' ? 'Sepet Geçişi' : (t.exit_reason || 'Kâr/Zarar Kapanışı')));
     const closeTimeStr = t.close_time || t.open_time || '';
     const formattedTime = formatTradeTime(closeTimeStr);
     const tooltip = `Giriş Zamanı: ${t.open_time || '-'} | Kapanış Zamanı: ${t.close_time || '-'}`;
+    const entryPx = typeof t.entry_price === 'number' ? formatCryptoMoney(t.entry_price) : (t.entry_price ? '$' + t.entry_price : '-');
+    const exitPx = typeof t.exit_price === 'number' ? formatCryptoMoney(t.exit_price) : (t.exit_price ? '$' + t.exit_price : '-');
+    const actionBadge = (t.action || 'BUY').toUpperCase() === 'BUY' ? '<span class="badge badge-buy">AL</span>' : '<span class="badge badge-sell">SAT</span>';
 
     html += `
       <tr>
         <td><strong>${t.symbol}</strong></td>
-        <td>${t.action}</td>
-        <td>$${t.entry_price.toLocaleString('en-US')}</td>
-        <td>$${t.exit_price.toLocaleString('en-US')}</td>
-        <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct.toFixed(2)})</td>
+        <td>${actionBadge}</td>
+        <td>${entryPx}</td>
+        <td>${exitPx}</td>
+        <td class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono);">${pnl >= 0 ? '+' : ''}$${Number(pnl).toFixed(2)} (%${Number(pnlPct).toFixed(2)})</td>
         <td style="color: var(--text-muted); font-size: 11px;">${reasonTr}</td>
         <td style="color: var(--text-secondary); font-size: 11px; font-family: var(--font-mono); white-space: nowrap;" title="${tooltip}">
           <span style="opacity: 0.75;">⏱️</span> ${formattedTime}

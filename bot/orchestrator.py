@@ -667,18 +667,80 @@ class BotOrchestrator:
                 ac["exchange"] = "MEXC"
                 combined_assets.append(ac)
 
+        # Open positions lookup map
+        pos_by_sym = {}
+        for p in self.wallet.open_positions:
+            s_clean = p.get("symbol", "").replace("USDT", "").replace("TRY", "").upper()
+            pos_by_sym[s_clean] = p
+            pos_by_sym[p.get("symbol", "").upper()] = p
+
+        total_unrealized_pnl = 0.0
+
+        # Her canlı varlık için Giriş Fiyatı, Anlık Fiyat ve Kâr/Zarar (PnL) zenginleştirmesi
+        for ac in combined_assets:
+            ast = ac.get("asset", "").upper()
+            if ast in ["USDT", "TRY"]:
+                ac["entry_price"] = 1.0 if ast == "USDT" else round(1.0 / usd_try, 4)
+                ac["current_price"] = 1.0 if ast == "USDT" else round(1.0 / usd_try, 4)
+                ac["unrealized_pnl"] = 0.0
+                ac["unrealized_pnl_pct"] = 0.0
+                ac["stop_loss"] = 0.0
+                ac["take_profit"] = 0.0
+                continue
+            
+            matched_pos = pos_by_sym.get(ast) or pos_by_sym.get(f"{ast}USDT")
+            analysis = self.latest_analyses.get(f"{ast}USDT") or self.latest_analyses.get(ast)
+            
+            cur_px = ac.get("current_price") or (matched_pos.get("current_price", 0.0) if matched_pos else 0.0)
+            if not cur_px and analysis:
+                cur_px = analysis.get("current_price", 0.0)
+
+            if matched_pos and matched_pos.get("entry_price"):
+                entry_px = matched_pos.get("entry_price", cur_px)
+                sl = matched_pos.get("stop_loss", 0.0)
+                tp = matched_pos.get("take_profit", 0.0)
+            else:
+                entry_px = cur_px
+                sl = round(cur_px * 0.95, 4) if cur_px > 0 else 0.0
+                tp = round(cur_px * 1.10, 4) if cur_px > 0 else 0.0
+            
+            ac["current_price"] = cur_px
+            ac["entry_price"] = entry_px
+            ac["stop_loss"] = sl
+            ac["take_profit"] = tp
+            
+            units = float(ac.get("units", 0) or 0)
+            if entry_px > 0 and cur_px > 0 and units > 0 and entry_px != cur_px:
+                pnl_usd = (cur_px - entry_px) * units
+                pnl_pct = ((cur_px - entry_px) / entry_px) * 100
+            elif analysis and analysis.get("change_24h") is not None:
+                pnl_pct = float(analysis.get("change_24h", 0.0))
+                pnl_usd = (ac.get("value_usd", 0.0) * pnl_pct) / 100.0
+            else:
+                pnl_usd = 0.0
+                pnl_pct = 0.0
+                
+            ac["unrealized_pnl"] = round(pnl_usd, 2)
+            ac["unrealized_pnl_pct"] = round(pnl_pct, 2)
+            total_unrealized_pnl += ac["unrealized_pnl"]
+
+        closed_trades = self.wallet.closed_trades
+        total_trades = len(closed_trades)
+        winning_trades = [t for t in closed_trades if t.get("pnl_usd", 0) > 0]
+        win_rate = round((len(winning_trades) / total_trades * 100), 1) if total_trades > 0 else 0.0
+
         wallet_summary = {
             "total_value": round(master_total_usd, 4 if master_total_usd < 1 else 2),
             "total_value_try": master_total_try,
             "cash_balance": round(master_cash_usd, 4 if master_cash_usd < 1 else 2),
             "cash_balance_try": master_cash_try,
-            "unrealized_pnl": 0.0,
-            "unrealized_pnl_pct": 0.0,
+            "unrealized_pnl": round(total_unrealized_pnl, 2),
+            "unrealized_pnl_pct": round((total_unrealized_pnl / master_total_usd * 100), 2) if master_total_usd > 0 else 0.0,
             "open_positions": binance_summary.get("open_positions", []) + binance_tr_summary.get("open_positions", []) + okx_summary.get("open_positions", []) + mexc_summary.get("open_positions", []),
-            "recent_closed_trades": [],
-            "win_rate": 0.0,
-            "total_trades": 0,
-            "winning_trades": 0,
+            "recent_closed_trades": closed_trades[:30],
+            "win_rate": win_rate,
+            "total_trades": total_trades,
+            "winning_trades": len(winning_trades),
             "is_live": True,
             "live_assets": combined_assets
         }
