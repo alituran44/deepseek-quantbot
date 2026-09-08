@@ -634,65 +634,54 @@ class BotOrchestrator:
         live_cash_usd = binance_summary.get("free_usdt", 0.0) + binance_tr_summary.get("cash_balance", 0.0) + okx_summary.get("free_usdt", 0.0) + mexc_summary.get("free_usdt", 0.0)
         live_cash_try = round(live_cash_usd * usd_try, 2)
 
-        # Çalışma Moduna Göre Portföy Verisi
-        active_mode = (mode or config.TRADING_MODE or "LIVE").strip().upper()
-        if active_mode == "LIVE":
-            master_total_usd = live_total_usd
-            master_total_try = live_total_try
-            master_cash_usd = live_cash_usd
-            master_cash_try = live_cash_try
+        # Çalışma Moduna Göre Portföy Verisi - 100% Canlı Spot Kripto Portföyü
+        active_mode = "LIVE"
+        master_total_usd = live_total_usd
+        master_total_try = live_total_try
+        master_cash_usd = live_cash_usd
+        master_cash_try = live_cash_try
 
-            combined_assets = []
-            for a in binance_summary.get("live_assets", []):
-                units = float(a.get("units", a.get("free", 0)) or 0)
-                if units > 0.00000001:
-                    ac = dict(a)
-                    ac["exchange"] = "Binance"
-                    combined_assets.append(ac)
-            for a in binance_tr_summary.get("live_assets", []):
-                units = float(a.get("units", a.get("free", 0)) or 0)
-                if units > 0.00000001:
-                    ac = dict(a)
-                    ac["exchange"] = "Binance TR"
-                    combined_assets.append(ac)
-            for a in okx_summary.get("live_assets", []):
-                units = float(a.get("units", a.get("free", 0)) or 0)
-                if units > 0.00000001:
-                    ac = dict(a)
-                    ac["exchange"] = "OKX"
-                    combined_assets.append(ac)
-            for a in mexc_summary.get("live_assets", []):
-                units = float(a.get("units", a.get("free", 0)) or 0)
-                if units > 0.00000001:
-                    ac = dict(a)
-                    ac["exchange"] = "MEXC"
-                    combined_assets.append(ac)
+        combined_assets = []
+        for a in binance_summary.get("live_assets", []):
+            units = float(a.get("units", a.get("free", 0)) or 0)
+            if units > 0.00000001:
+                ac = dict(a)
+                ac["exchange"] = "Binance"
+                combined_assets.append(ac)
+        for a in binance_tr_summary.get("live_assets", []):
+            units = float(a.get("units", a.get("free", 0)) or 0)
+            if units > 0.00000001:
+                ac = dict(a)
+                ac["exchange"] = "Binance TR"
+                combined_assets.append(ac)
+        for a in okx_summary.get("live_assets", []):
+            units = float(a.get("units", a.get("free", 0)) or 0)
+            if units > 0.00000001:
+                ac = dict(a)
+                ac["exchange"] = "OKX"
+                combined_assets.append(ac)
+        for a in mexc_summary.get("live_assets", []):
+            units = float(a.get("units", a.get("free", 0)) or 0)
+            if units > 0.00000001:
+                ac = dict(a)
+                ac["exchange"] = "MEXC"
+                combined_assets.append(ac)
 
-            wallet_summary = {
-                "total_value": round(master_total_usd, 4 if master_total_usd < 1 else 2),
-                "total_value_try": master_total_try,
-                "cash_balance": round(master_cash_usd, 4 if master_cash_usd < 1 else 2),
-                "cash_balance_try": master_cash_try,
-                "unrealized_pnl": 0.0,
-                "unrealized_pnl_pct": 0.0,
-                "open_positions": binance_summary.get("open_positions", []) + binance_tr_summary.get("open_positions", []) + okx_summary.get("open_positions", []) + mexc_summary.get("open_positions", []),
-                "recent_closed_trades": [],
-                "win_rate": 0.0,
-                "total_trades": 0,
-                "winning_trades": 0,
-                "is_live": True,
-                "live_assets": combined_assets
-            }
-        else:
-            # SANAL KASA & ÖĞRENME VERİLERİ ($10,000 Sanal Simülasyon)
-            wallet_summary = self.wallet.get_portfolio_summary()
-            wallet_summary["is_live"] = False
-            master_total_usd = wallet_summary.get("total_equity", 10000.0)
-            master_total_try = round(master_total_usd * usd_try, 2)
-            master_cash_usd = wallet_summary.get("cash_balance", 10000.0)
-            master_cash_try = round(master_cash_usd * usd_try, 2)
-            wallet_summary["total_value_try"] = master_total_try
-            wallet_summary["cash_balance_try"] = master_cash_try
+        wallet_summary = {
+            "total_value": round(master_total_usd, 4 if master_total_usd < 1 else 2),
+            "total_value_try": master_total_try,
+            "cash_balance": round(master_cash_usd, 4 if master_cash_usd < 1 else 2),
+            "cash_balance_try": master_cash_try,
+            "unrealized_pnl": 0.0,
+            "unrealized_pnl_pct": 0.0,
+            "open_positions": binance_summary.get("open_positions", []) + binance_tr_summary.get("open_positions", []) + okx_summary.get("open_positions", []) + mexc_summary.get("open_positions", []),
+            "recent_closed_trades": [],
+            "win_rate": 0.0,
+            "total_trades": 0,
+            "winning_trades": 0,
+            "is_live": True,
+            "live_assets": combined_assets
+        }
 
         basket_metrics = BasketManager.calculate_basket_metrics(wallet_summary)
 

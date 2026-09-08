@@ -185,8 +185,9 @@ let modalTradingMode = 'PAPER';
 
 async function fetchState() {
   try {
-    const activeMode = localStorage.getItem('deepseek_trading_mode') || currentTradingMode || 'LIVE';
-    const res = await fetch(`/api/state?mode=${encodeURIComponent(activeMode)}`);
+    currentTradingMode = 'LIVE';
+    localStorage.setItem('deepseek_trading_mode', 'LIVE');
+    const res = await fetch(`/api/state?mode=LIVE&_t=${Date.now()}`);
     if (!res.ok) return;
     const data = await res.json();
     lastDashboardData = data;
@@ -503,11 +504,11 @@ function renderDashboard(data) {
 
   // 6. Açık Pozisyonlar / Canlı Cüzdan Varlıkları Tablosu
   if (posCardTitle) {
-    posCardTitle.textContent = isLive ? 'Canlı Çoklu Borsa Cüzdan Varlıkları (Anlık Varlık & Bakiye Detayı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
+    posCardTitle.textContent = 'Canlı Çoklu Borsa Cüzdan Varlıkları (Anlık Varlık & Bakiye Detayı)';
   }
-  const displayItems = isLive ? ((w.live_assets && w.live_assets.length > 0) ? w.live_assets : (w.open_positions || [])) : (w.open_positions || []);
+  const displayItems = (w.live_assets && w.live_assets.length > 0) ? w.live_assets : (w.open_positions || []);
   try {
-    renderPositions(displayItems, isLive);
+    renderPositions(displayItems, true);
   } catch (e) {
     console.error('renderPositions error:', e);
   }
@@ -960,7 +961,7 @@ function formatCryptoMoney(val) {
 
 let currentExchangeFilter = 'ALL';
 let lastPositions = [];
-let lastIsLive = false;
+let lastIsLive = true;
 
 function setExchangeFilter(ex, btn) {
   currentExchangeFilter = ex;
@@ -978,25 +979,29 @@ function setExchangeFilter(ex, btn) {
     else if (ex === 'OKX') statusLabel.textContent = '⚫ OKX Spot Varlıkları';
     else if (ex === 'MEXC') statusLabel.textContent = '🟢 MEXC Spot Varlıkları';
   }
-  renderPositions(lastPositions, lastIsLive);
+  renderPositions(lastPositions, true);
 }
 
-function renderPositions(positions, isLive) {
-  lastPositions = positions;
-  lastIsLive = isLive;
+function renderPositions(positions, isLive = true) {
+  lastPositions = Array.isArray(positions) ? positions : [];
+  lastIsLive = true;
   const tbody = document.getElementById('positions-body');
+  if (!tbody) return;
 
-  let filtered = positions;
-  if (isLive && currentExchangeFilter !== 'ALL') {
-    filtered = positions.filter(p => {
-      const pEx = (p.exchange || 'Binance').toUpperCase().replace('_', ' ');
-      const curEx = currentExchangeFilter.toUpperCase().replace('_', ' ');
+  let filtered = lastPositions;
+  if (currentExchangeFilter !== 'ALL') {
+    filtered = lastPositions.filter(p => {
+      const pEx = (p.exchange || 'Binance').toUpperCase().replace('_', ' ').trim();
+      const curEx = currentExchangeFilter.toUpperCase().replace('_', ' ').trim();
       return pEx === curEx;
     });
   }
 
   if (!filtered || filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">${currentExchangeFilter !== 'ALL' ? currentExchangeFilter + ' borsasında varlık bulunamadı.' : (isLive ? 'Borsalarda bakiye bulunamadı.' : 'Aktif açık sepet varlığı bulunmuyor.')}</td></tr>`;
+    const msg = currentExchangeFilter !== 'ALL' 
+      ? `${currentExchangeFilter} borsasında açık bakiye veya varlık bulunamadı.` 
+      : 'Borsalarda açık varlık veya bakiye bulunamadı.';
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">${msg}</td></tr>`;
     return;
   }
 
