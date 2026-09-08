@@ -553,9 +553,10 @@ function renderDashboard(data) {
 
   // 6. Açık Pozisyonlar / Canlı Cüzdan Varlıkları Tablosu
   if (posCardTitle) {
-    posCardTitle.textContent = isLive ? 'Canlı Binance Cüzdan Varlıkları (Anlık Varlık & Bakiye Detayı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
+    posCardTitle.textContent = isLive ? 'Canlı Çoklu Borsa Cüzdan Varlıkları (Anlık Varlık & Bakiye Detayı)' : 'Aktif Sepet Varlıkları (Canlı PnL & Risk Takibi)';
   }
-  renderPositions(w.open_positions || [], isLive);
+  const displayItems = isLive ? ((w.live_assets && w.live_assets.length > 0) ? w.live_assets : (w.open_positions || [])) : (w.open_positions || []);
+  renderPositions(displayItems, isLive);
 
   // 7. Kapanan İşlemler Tablosu
   renderTrades(w.recent_closed_trades || []);
@@ -990,7 +991,7 @@ let lastIsLive = false;
 
 function setExchangeFilter(ex, btn) {
   currentExchangeFilter = ex;
-  ['filter-ex-all', 'filter-ex-binance', 'filter-ex-okx', 'filter-ex-mexc'].forEach(id => {
+  ['filter-ex-all', 'filter-ex-binance', 'filter-ex-binancetr', 'filter-ex-okx', 'filter-ex-mexc'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
@@ -1000,6 +1001,7 @@ function setExchangeFilter(ex, btn) {
   if (statusLabel) {
     if (ex === 'ALL') statusLabel.textContent = 'Konsolide Çoklu Borsa';
     else if (ex === 'Binance') statusLabel.textContent = '🟡 Binance Spot Varlıkları';
+    else if (ex === 'Binance TR' || ex === 'BINANCE_TR') statusLabel.textContent = '🇹🇷 Binance TR Spot Varlıkları';
     else if (ex === 'OKX') statusLabel.textContent = '⚫ OKX Spot Varlıkları';
     else if (ex === 'MEXC') statusLabel.textContent = '🟢 MEXC Spot Varlıkları';
   }
@@ -1013,7 +1015,11 @@ function renderPositions(positions, isLive) {
 
   let filtered = positions;
   if (isLive && currentExchangeFilter !== 'ALL') {
-    filtered = positions.filter(p => (p.exchange || 'Binance').toUpperCase() === currentExchangeFilter.toUpperCase());
+    filtered = positions.filter(p => {
+      const pEx = (p.exchange || 'Binance').toUpperCase().replace('_', ' ');
+      const curEx = currentExchangeFilter.toUpperCase().replace('_', ' ');
+      return pEx === curEx;
+    });
   }
 
   if (!filtered || filtered.length === 0) {
@@ -1023,10 +1029,13 @@ function renderPositions(positions, isLive) {
 
   let html = '';
   filtered.forEach(pos => {
-    const lookupSym = pos.symbol.includes('USDT') ? pos.symbol : (pos.asset ? pos.asset + 'USDT' : 'BTCUSDT');
+    const isTry = (pos.asset === 'TRY');
+    const lookupSym = isTry ? 'USDTTRY' : (pos.symbol ? (pos.symbol.includes('USDT') ? pos.symbol : pos.symbol + 'USDT') : (pos.asset ? pos.asset + 'USDT' : 'BTCUSDT'));
     const exName = (pos.exchange || 'Binance').toUpperCase();
     let exBadge = `<span class="indicator-pill" style="color: #f3ba2f; border-color: rgba(243, 186, 47, 0.4); font-weight: 700; margin-right: 6px;">🟡 Binance</span>`;
-    if (exName === 'OKX') {
+    if (exName.includes('TR')) {
+      exBadge = `<span class="indicator-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-weight: 700; margin-right: 6px;">🇹🇷 Binance TR</span>`;
+    } else if (exName === 'OKX') {
       exBadge = `<span class="indicator-pill" style="color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.4); font-weight: 700; margin-right: 6px;">⚫ OKX</span>`;
     } else if (exName === 'MEXC') {
       exBadge = `<span class="indicator-pill" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4); font-weight: 700; margin-right: 6px;">🟢 MEXC</span>`;
@@ -1034,10 +1043,21 @@ function renderPositions(positions, isLive) {
 
     if (isLive) {
       // CANLI ÇOKLU BORSA CÜZDAN VARLIKLARI (Eksiksiz ve tam tamına)
-      const valStr = formatCryptoMoney(pos.position_value);
-      const pxStr = formatCryptoMoney(pos.current_price);
-      const unitsStr = typeof pos.units === 'number' ? pos.units.toFixed(8).replace(/\.?0+$/, '') : pos.units;
+      let valStr;
+      if (isTry && pos.value_try !== undefined) {
+        valStr = `₺${pos.value_try.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL`;
+      } else if (pos.value_usd !== undefined) {
+        valStr = `$${pos.value_usd.toFixed(2)} USD`;
+      } else {
+        valStr = formatCryptoMoney(pos.position_value || 0) + ' USD';
+      }
+
+      const pxStr = isTry ? '₺1.00 TL' : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-');
+      const unitsVal = typeof pos.units === 'number' ? pos.units : parseFloat(pos.units || pos.free || 0);
+      const unitsStr = unitsVal >= 1 ? unitsVal.toLocaleString('tr-TR', {maximumFractionDigits: 4}) : unitsVal.toFixed(6);
       const walletTag = pos.wallet_type || 'Spot Cüzdanı';
+      const displayName = isTry ? 'Türk Lirası (Nakit)' : (pos.asset || pos.symbol);
+      const displaySymbol = isTry ? 'TRY' : (pos.symbol || pos.asset);
 
       html += `
         <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}')" title="Canlı grafiği ve detayları açmak için tıklayın">
@@ -1045,8 +1065,8 @@ function renderPositions(positions, isLive) {
             <div style="display: flex; align-items: center;">
               ${exBadge}
               <div>
-                <strong>${pos.asset || pos.symbol}</strong>
-                <div style="font-size: 11px; color: var(--text-muted);">${pos.symbol}</div>
+                <strong>${displayName}</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">${displaySymbol}</div>
               </div>
             </div>
           </td>
@@ -1060,7 +1080,7 @@ function renderPositions(positions, isLive) {
             </span>
           </td>
           <td style="font-family: var(--font-mono); font-weight: 700; color: var(--profit);">${valStr}</td>
-          <td class="text-profit">Tam Bakiye</td>
+          <td class="text-profit">Kullanılabilir</td>
           <td style="text-align: right;">
             <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}')">
               Grafik & Al-Sat ↗

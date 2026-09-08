@@ -128,12 +128,17 @@ class BotOrchestrator:
             })
         if self.binance_tr_executor.enabled:
             tr_bal = self.binance_tr_executor.get_account_balances()
+            usd_try = self.get_usd_try_rate() or 48.40
+            free_u = float(tr_bal.get("free_usdt", 0.0)) if tr_bal.get("success") else 0.0
+            free_t = float(tr_bal.get("free_try", 0.0)) if tr_bal.get("success") else 0.0
+            total_u = round(free_u + (free_t / usd_try), 2)
             exchanges.append({
                 "id": "BINANCE_TR",
                 "name": "Binance TR (trbinance.com)",
                 "enabled": True,
-                "free_usdt": float(tr_bal.get("free_usdt", 0.0)) if tr_bal.get("success") else 0.0,
-                "free_try": float(tr_bal.get("free_try", 0.0)) if tr_bal.get("success") else 0.0,
+                "free_usdt": total_u,
+                "raw_free_usdt": free_u,
+                "free_try": free_t,
                 "executor": self.binance_tr_executor
             })
         if self.mexc_executor.enabled:
@@ -639,21 +644,29 @@ class BotOrchestrator:
 
             combined_assets = []
             for a in binance_summary.get("live_assets", []):
-                ac = dict(a)
-                ac["exchange"] = "Binance"
-                combined_assets.append(ac)
+                units = float(a.get("units", a.get("free", 0)) or 0)
+                if units > 0.00000001:
+                    ac = dict(a)
+                    ac["exchange"] = "Binance"
+                    combined_assets.append(ac)
             for a in binance_tr_summary.get("live_assets", []):
-                ac = dict(a)
-                ac["exchange"] = "Binance TR"
-                combined_assets.append(ac)
+                units = float(a.get("units", a.get("free", 0)) or 0)
+                if units > 0.00000001:
+                    ac = dict(a)
+                    ac["exchange"] = "Binance TR"
+                    combined_assets.append(ac)
             for a in okx_summary.get("live_assets", []):
-                ac = dict(a)
-                ac["exchange"] = "OKX"
-                combined_assets.append(ac)
+                units = float(a.get("units", a.get("free", 0)) or 0)
+                if units > 0.00000001:
+                    ac = dict(a)
+                    ac["exchange"] = "OKX"
+                    combined_assets.append(ac)
             for a in mexc_summary.get("live_assets", []):
-                ac = dict(a)
-                ac["exchange"] = "MEXC"
-                combined_assets.append(ac)
+                units = float(a.get("units", a.get("free", 0)) or 0)
+                if units > 0.00000001:
+                    ac = dict(a)
+                    ac["exchange"] = "MEXC"
+                    combined_assets.append(ac)
 
             wallet_summary = {
                 "total_value": round(master_total_usd, 4 if master_total_usd < 1 else 2),
