@@ -31,7 +31,7 @@ class Config:
     TRADING_MODE = os.getenv("TRADING_MODE", "LIVE").upper()
     TRADING_EXCHANGE = os.getenv("TRADING_EXCHANGE", "AUTO").upper() # AUTO, BINANCE, MEXC, OKX
     INITIAL_BALANCE = float(os.getenv("INITIAL_BALANCE", "10000.0"))
-    MAX_RISK_PER_TRADE_PERCENT = float(os.getenv("MAX_RISK_PER_TRADE_PERCENT", "5.0"))
+    MAX_RISK_PER_TRADE_PERCENT = float(os.getenv("MAX_RISK_PER_TRADE_PERCENT", "20.0"))
     AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "AGGRESSIVE_ALPHA").upper() # AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
 
     # Binance Live Exchange Configuration

@@ -509,7 +509,7 @@
           </div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
             <span style="color: var(--text-muted);">Risk Limiti:</span>
-            <span id="agent-rules-risk-limit" style="font-family: var(--font-mono); color: var(--warning); font-weight: 700;">Maks %5.0 / İşlem</span>
+            <span id="agent-rules-risk-limit" style="font-family: var(--font-mono); color: var(--warning); font-weight: 700;">Maks %20.0 / İşlem</span>
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span style="color: var(--text-muted);">Otomatik SL / TP:</span>
@@ -811,16 +811,16 @@
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label class="form-label" style="margin-bottom: 0;">İşlem Başına Risk Limiti (% Kasa Riski)</label>
-            <span id="badge-risk-limit-display" class="indicator-pill" style="font-size: 11px; color: var(--warning); font-weight: 700;">%5.0</span>
+            <span id="badge-risk-limit-display" class="indicator-pill" style="font-size: 11px; color: var(--warning); font-weight: 700;">%20.0</span>
           </div>
           <select id="select-risk-limit" class="form-input">
             <option value="2.0">%2.0 / İşlem (Sıkı Risk)</option>
             <option value="3.0">%3.0 / İşlem (Standart Risk)</option>
-            <option value="5.0" selected>%5.0 / İşlem (⚡ Agresif Finans Uzmanı - Önerilen)</option>
+            <option value="5.0">%5.0 / İşlem (⚡ Agresif Finans Uzmanı)</option>
             <option value="7.5">%7.5 / İşlem (Yüksek Büyüme & Risk)</option>
             <option value="10.0">%10.0 / İşlem (Maksimum Alpha Avcısı)</option>
             <option value="15.0">%15.0 / İşlem (🔥 Ultra Degen - Yüksek Volatilite)</option>
-            <option value="20.0">%20.0 / İşlem (🚀 Maksimum Sermaye Riski)</option>
+            <option value="20.0" selected>%20.0 / İşlem (🚀 Maksimum Sermaye Riski - Aktif)</option>
           </select>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
             Yapay zekanın tek bir pozisyonda ana kasadan göze alabileceği maksimum risk yüzdesi.

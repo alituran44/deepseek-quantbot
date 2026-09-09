@@ -488,7 +488,7 @@ def get_config():
         "trading_mode": config.TRADING_MODE,
         "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
         "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
-        "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 5.0),
+        "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 20.0),
         "binance_configured": bool(config.BINANCE_API_KEY),
         "binance_masked_key": masked_binance,
         "binance_secret_set": bool(config.BINANCE_SECRET_KEY),
@@ -545,7 +545,7 @@ async def update_settings(req: ConfigUpdateRequest):
     if req.ai_risk_profile is not None and req.ai_risk_profile.strip():
         config.AI_RISK_PROFILE = req.ai_risk_profile.strip().upper()
         from bot.trading.risk_guard import RiskGuard
-        orchestrator.risk_guard = RiskGuard(max_risk_pct=getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 5.0))
+        orchestrator.risk_guard = RiskGuard(max_risk_pct=getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 20.0))
         env_updates["AI_RISK_PROFILE"] = config.AI_RISK_PROFILE
 
     if req.max_risk_per_trade_percent is not None and req.max_risk_per_trade_percent > 0:

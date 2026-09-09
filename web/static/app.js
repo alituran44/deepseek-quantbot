@@ -467,7 +467,8 @@ function renderDashboard(data) {
   }
 
   // Risk Limiti Göstergesi (Sepet Ajanı Kuralları & Ayarlar)
-  const riskLimitVal = data.max_risk_per_trade_percent || 5.0;
+  const savedRiskLimit = localStorage.getItem('deepseek_max_risk_limit');
+  const riskLimitVal = savedRiskLimit ? parseFloat(savedRiskLimit) : (data.max_risk_per_trade_percent || 20.0);
   const agentRulesRiskEl = document.getElementById('agent-rules-risk-limit');
   if (agentRulesRiskEl) {
     agentRulesRiskEl.textContent = `Maks %${riskLimitVal.toFixed(1)} / İşlem`;
@@ -475,6 +476,10 @@ function renderDashboard(data) {
   const badgeRiskLimit = document.getElementById('badge-risk-limit-display');
   if (badgeRiskLimit) {
     badgeRiskLimit.textContent = `%${riskLimitVal.toFixed(1)}`;
+  }
+  const selRiskLimitEl = document.getElementById('select-risk-limit');
+  if (selRiskLimitEl && document.activeElement !== selRiskLimitEl) {
+    selRiskLimitEl.value = String(riskLimitVal.toFixed(1));
   }
 
   // 2. Kripto Sepet Dağılımı ve Sektör Çubuğu
@@ -1665,6 +1670,10 @@ function initSettingsAutoListeners() {
       localStorage.setItem('deepseek_max_risk_limit', val);
       const badge = document.getElementById('badge-risk-limit-display');
       if (badge) badge.textContent = `%${val.toFixed(1)}`;
+      const agentRulesRiskEl = document.getElementById('agent-rules-risk-limit');
+      if (agentRulesRiskEl) {
+        agentRulesRiskEl.textContent = `Maks %${val.toFixed(1)} / İşlem`;
+      }
 
       showAutoSaveFeedback(`Risk Limiti %${val.toFixed(1)} olarak güncellendi`);
       try {
