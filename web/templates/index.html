@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=2.7.0">
+  <link rel="stylesheet" href="/static/style.css?v=2.19.0">
   <script>
     (function() {
       const savedTheme = localStorage.getItem('app-theme') || 'light';
@@ -510,7 +510,7 @@
           </div>
           <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
             <span style="color: var(--text-muted);">Risk Limiti:</span>
-            <span id="agent-rules-risk-limit" style="font-family: var(--font-mono); color: var(--warning); font-weight: 700;">Maks %20.0 / İşlem</span>
+            <span id="agent-rules-risk-limit" style="font-family: var(--font-mono); color: #38bdf8; font-weight: 700;">Maks %20.0 / İşlem (🧠 Akıllı Agresif)</span>
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span style="color: var(--text-muted);">Otomatik SL / TP:</span>
@@ -827,16 +827,17 @@
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label class="form-label" style="margin-bottom: 0;">İşlem Başına Risk Limiti (% Kasa Riski)</label>
-            <span id="badge-risk-limit-display" class="indicator-pill" style="font-size: 11px; color: var(--warning); font-weight: 700;">%20.0</span>
+            <span id="badge-risk-limit-display" class="indicator-pill" style="font-size: 11px; color: #38bdf8; font-weight: 700; border-color: rgba(56, 189, 248, 0.4);">%20.0 🧠 Akıllı Agresif</span>
           </div>
           <select id="select-risk-limit" class="form-input">
-            <option value="2.0">%2.0 / İşlem (Sıkı Risk)</option>
-            <option value="3.0">%3.0 / İşlem (Standart Risk)</option>
-            <option value="5.0">%5.0 / İşlem (⚡ Agresif Finans Uzmanı)</option>
-            <option value="7.5">%7.5 / İşlem (Yüksek Büyüme & Risk)</option>
-            <option value="10.0">%10.0 / İşlem (Maksimum Alpha Avcısı)</option>
+            <option value="2.0">%2.0 / İşlem (🛡️ Temkinli - Sıkı Risk)</option>
+            <option value="3.0">%3.0 / İşlem (⚖️ Dengeli Portföy Yönetimi)</option>
+            <option value="5.0">%5.0 / İşlem (⚡ Klasik Agresif Alpha)</option>
+            <option value="7.5">%7.5 / İşlem (📈 Yüksek Büyüme & Momentum)</option>
+            <option value="10.0">%10.0 / İşlem (🎯 Asimetrik Alpha - 1:3.5 Hedef)</option>
             <option value="15.0">%15.0 / İşlem (🔥 Ultra Degen - Yüksek Volatilite)</option>
-            <option value="20.0" selected>%20.0 / İşlem (🚀 Maksimum Sermaye Riski - Aktif)</option>
+            <option value="20.0" selected>%20.0 / İşlem (🧠 Akıllı Agresif - Dinamik Kasa & Trailing Stop - Aktif)</option>
+            <option value="25.0">%25.0 / İşlem (🚀 Maksimum Sermaye Riski - Tam Güç)</option>
           </select>
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
             Yapay zekanın tek bir pozisyonda ana kasadan göze alabileceği maksimum risk yüzdesi.
@@ -1025,6 +1026,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.17.0_{{ state.last_scan_time | default('1') | replace(' ', '_') | replace(':', '_') }}_live"></script>
+  <script src="/static/app.js?v=2.19.0_smart_aggression_force"></script>
 </body>
 </html>

@@ -475,11 +475,25 @@ function renderDashboard(data) {
   const riskLimitVal = savedRiskLimit ? parseFloat(savedRiskLimit) : (data.max_risk_per_trade_percent || 20.0);
   const agentRulesRiskEl = document.getElementById('agent-rules-risk-limit');
   if (agentRulesRiskEl) {
-    agentRulesRiskEl.textContent = `Maks %${riskLimitVal.toFixed(1)} / İşlem`;
+    if (riskLimitVal >= 20.0) {
+      agentRulesRiskEl.textContent = `Maks %${riskLimitVal.toFixed(1)} / İşlem (🧠 Akıllı Agresif)`;
+      agentRulesRiskEl.style.color = '#38bdf8';
+    } else {
+      agentRulesRiskEl.textContent = `Maks %${riskLimitVal.toFixed(1)} / İşlem`;
+      agentRulesRiskEl.style.color = 'var(--warning)';
+    }
   }
   const badgeRiskLimit = document.getElementById('badge-risk-limit-display');
   if (badgeRiskLimit) {
-    badgeRiskLimit.textContent = `%${riskLimitVal.toFixed(1)}`;
+    if (riskLimitVal >= 20.0) {
+      badgeRiskLimit.textContent = `%${riskLimitVal.toFixed(1)} 🧠 Akıllı Agresif`;
+      badgeRiskLimit.style.color = '#38bdf8';
+      badgeRiskLimit.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+    } else {
+      badgeRiskLimit.textContent = `%${riskLimitVal.toFixed(1)}`;
+      badgeRiskLimit.style.color = 'var(--warning)';
+      badgeRiskLimit.style.borderColor = '';
+    }
   }
   const selRiskLimitEl = document.getElementById('select-risk-limit');
   if (selRiskLimitEl && document.activeElement !== selRiskLimitEl) {
@@ -1800,6 +1814,16 @@ function initSettingsAutoListeners() {
       }
 
       showAutoSaveFeedback('Risk Profili kaydedildi: ' + selRisk.options[selRisk.selectedIndex].text.split('(')[0].trim());
+      
+      // Akıllı Agresif seçildiğinde risk limitini de %20.0 Akıllı Agresif olarak ayarla
+      if (val === 'SMART_AGGRESSIVE' || val === 'AKILLI_AGRESIF' || val === 'SMART') {
+        const selLimit = document.getElementById('select-risk-limit');
+        if (selLimit && selLimit.value !== '20.0') {
+          selLimit.value = '20.0';
+          selLimit.dispatchEvent(new Event('change'));
+        }
+      }
+
       try {
         await fetch('/api/config/update', {
           method: 'POST',
@@ -1819,13 +1843,29 @@ function initSettingsAutoListeners() {
       const val = parseFloat(this.value);
       localStorage.setItem('deepseek_max_risk_limit', val);
       const badge = document.getElementById('badge-risk-limit-display');
-      if (badge) badge.textContent = `%${val.toFixed(1)}`;
+      if (badge) {
+        if (val >= 20.0) {
+          badge.textContent = `%${val.toFixed(1)} 🧠 Akıllı Agresif`;
+          badge.style.color = '#38bdf8';
+          badge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+        } else {
+          badge.textContent = `%${val.toFixed(1)}`;
+          badge.style.color = 'var(--warning)';
+          badge.style.borderColor = '';
+        }
+      }
       const agentRulesRiskEl = document.getElementById('agent-rules-risk-limit');
       if (agentRulesRiskEl) {
-        agentRulesRiskEl.textContent = `Maks %${val.toFixed(1)} / İşlem`;
+        if (val >= 20.0) {
+          agentRulesRiskEl.textContent = `Maks %${val.toFixed(1)} / İşlem (🧠 Akıllı Agresif)`;
+          agentRulesRiskEl.style.color = '#38bdf8';
+        } else {
+          agentRulesRiskEl.textContent = `Maks %${val.toFixed(1)} / İşlem`;
+          agentRulesRiskEl.style.color = 'var(--warning)';
+        }
       }
 
-      showAutoSaveFeedback(`Risk Limiti %${val.toFixed(1)} olarak güncellendi`);
+      showAutoSaveFeedback(`Risk Limiti %${val.toFixed(1)} (Akıllı Agresif) olarak güncellendi`);
       try {
         await fetch('/api/config/update', {
           method: 'POST',
