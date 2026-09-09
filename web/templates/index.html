@@ -39,8 +39,8 @@
       </div>
 
       <!-- Finans Uzmanı Risk Rozeti -->
-      <div id="badge-risk-mode" class="indicator-pill" style="color: var(--accent-cyan); font-weight: 700; border-color: rgba(2, 132, 199, 0.4); cursor: pointer;" onclick="openSettingsModal()" title="Risk ve Finans Uzmanı Stratejisini Değiştir">
-        ⚡ Finans Uzmanı: Agresif Alpha
+      <div id="badge-risk-mode" class="indicator-pill" style="color: #38bdf8; font-weight: 700; border-color: rgba(56, 189, 248, 0.4); cursor: pointer;" onclick="openSettingsModal()" title="Risk ve Finans Uzmanı Stratejisini Değiştir">
+        🧠 Finans Uzmanı: Akıllı Agresif (Dinamik & Trailing)
       </div>
 
       <!-- Canlı Kripto Modu Rozeti -->
@@ -813,8 +813,9 @@
         <div class="form-group">
           <label class="form-label">Yapay Zeka Risk & Finans Uzmanı Profili</label>
           <select id="select-risk-profile" class="form-input">
+            <option value="SMART_AGGRESSIVE" selected>🧠 Akıllı Agresif (Smart Aggression - Dinamik Büyüklük & Trailing Stop)</option>
             <option value="ULTRA_DEGEN">🔥 Ultra Degen (Maksimum Volatilite & 1:4+ Hızlı Kırılım Avcısı)</option>
-            <option value="AGGRESSIVE_ALPHA" selected>⚡ Agresif Finans Uzmanı (Asimetrik 1:3+ Fırsat Avcısı)</option>
+            <option value="AGGRESSIVE_ALPHA">⚡ Agresif Finans Uzmanı (Asimetrik 1:3+ Fırsat Avcısı)</option>
             <option value="BALANCED">⚖️ Dengeli Portföy Yöneticisi (1:2.4 Hedef / Standart Risk)</option>
             <option value="CONSERVATIVE">🛡️ Temkinli Sermaye Koruyucu (Sıkı Stop / Minimum Risk)</option>
           </select>

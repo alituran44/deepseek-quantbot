@@ -192,14 +192,16 @@ class DeepSeekQuantAgent:
         ema50 = indicators.get("moving_averages", {}).get("ema_50", price)
         bb_pos = indicators.get("bollinger_bands", {}).get("position", "INSIDE")
         
-        profile = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA").upper()
+        profile = getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper()
         is_ultra = profile in ["ULTRA_DEGEN", "DEGEN_ALPHA", "DEGEN"]
-        is_aggressive = is_ultra or profile == "AGGRESSIVE_ALPHA"
+        is_smart = profile in ["SMART_AGGRESSIVE", "AKILLI_AGRESIF", "SMART"]
+        is_aggressive = is_ultra or is_smart or profile == "AGGRESSIVE_ALPHA"
         
         # 1. HESAPLANMIŞ ALIM (BUY) SENARYOLARI (Trend Devamı, Dip Toparlanması veya Hacim Kırılımı)
         buy_condition = (
-            ("BULLISH" in summary and (rsi < 84 if is_ultra else (rsi < 76 if is_aggressive else rsi < 70))) or
+            ("BULLISH" in summary and (rsi < 84 if is_ultra else (rsi < 80 if is_smart else (rsi < 76 if is_aggressive else rsi < 70)))) or
             (is_ultra and (vol_surge or (rsi > 40 and rsi < 85) or price > ema50)) or
+            (is_smart and (vol_surge or (rsi > 42 and rsi < 78 and price > ema20) or summary in ["BULLISH", "STRONG_BULLISH"])) or
             (is_aggressive and (price > ema20 or vol_surge or (rsi > 44 and rsi < 74))) or
             (rsi < 38 and price >= support * 0.985) # Aşırı satımdan asimetrik dip tepkisi
         )
@@ -212,10 +214,13 @@ class DeepSeekQuantAgent:
 
         if buy_condition and not sell_condition:
             action = "BUY"
-            # Asimetrik Risk/Ödül: Ultra modda 1:4.2+, Agresif modda 1:3.2, Dengeli modda 1:2.4
+            # Asimetrik Risk/Ödül: Ultra modda 1:4.2+, Akıllı Agresif modda 1:3.5, Agresif modda 1:3.2, Dengeli modda 1:2.4
             if is_ultra:
                 rr_mult = 4.2
                 stop_distance = max(atr * 1.5, price * 0.032)
+            elif is_smart:
+                rr_mult = 3.5
+                stop_distance = max(atr * 1.3, price * 0.024)
             elif is_aggressive:
                 rr_mult = 3.2
                 stop_distance = max(atr * 1.2, price * 0.022)
@@ -226,12 +231,17 @@ class DeepSeekQuantAgent:
             stop_loss = round(max(support * 0.99, price - stop_distance), 4 if price < 1 else 2)
             risk = price - stop_loss
             take_profit = round(price + (risk * rr_mult), 4 if price < 1 else 2)
-            confidence = 0.92 if is_ultra else (0.88 if (summary == "STRONG_BULLISH" or vol_surge) else 0.78)
+            confidence = 0.92 if is_ultra else (0.90 if is_smart and vol_surge else (0.86 if is_smart else (0.88 if (summary == "STRONG_BULLISH" or vol_surge) else 0.78)))
             
             if is_ultra:
                 thesis = (
                     f"🔥 Ultra Degen Finans Uzmanı: {symbol} için yüksek momentum ve volatilite kırılımı tespit edildi. "
                     f"Maksimum kâr arayışı kapsamında 1:{rr_mult:.1f} asimetrik hedefle agresif pozisyonlanma öneriliyor."
+                )
+            elif is_smart:
+                thesis = (
+                    f"🧠 Akıllı Agresif Finans Uzmanı: {symbol} için güçlü momentum ve hacim onayı tespit edildi. "
+                    f"Dinamik koruma (Başabaş Kilidi +%4 ve İz Süren Stop +%8) güvencesiyle 1:{rr_mult:.1f} asimetrik hedefle pozisyonlanma öneriliyor."
                 )
             else:
                 thesis = (
@@ -243,7 +253,7 @@ class DeepSeekQuantAgent:
                 f"Piyasa Yapısı & Momentum: Algoritmik Trend {summary} - RSI 14 Seviyesi {rsi:.1f}",
                 f"Likidite & Hacim Dinamiği: {'🔥 Hacim patlaması ve kurumsal para girişi tespit edildi' if vol_surge else 'Dengeli emir akışı ve fiyat konsolidasyonu'}",
                 f"Asimetrik Risk Yönetimi: Stop-Loss ${stop_loss} seviyesinde sınırlandırıldı, hedef 1:{rr_mult:.1f} getiri oranı ile ${take_profit}",
-                f"Volatilite Analizi: ATR dinamik mesafesiyle sahte fitil (whipsaw) koruması devrede"
+                f"Akıllı Agresiflik Koruma: +%4 kârda başabaş stop kilidi (breakeven), +%8 zirvede %4 iz süren stop (trailing) devrede"
             ]
             warning = "Ani Bitcoin dominans hareketlerine ve BTC volatilitesine karşı tanımlı stop-loss seviyesi sıkı korunmalıdır."
             rr_str = f"1:{rr_mult:.1f}"

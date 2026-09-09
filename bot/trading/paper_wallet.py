@@ -93,6 +93,8 @@ class PaperWallet:
             "action": action.upper(),
             "entry_price": entry_price,
             "current_price": entry_price,
+            "highest_price": entry_price,
+            "lowest_price": entry_price,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "units": units,
@@ -100,7 +102,10 @@ class PaperWallet:
             "unrealized_pnl": 0.0,
             "unrealized_pnl_pct": 0.0,
             "open_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "thesis": thesis
+            "thesis": thesis,
+            "is_risk_free": False,
+            "is_trailing_active": False,
+            "sl_note": ""
         }
 
         if not is_live_record:
@@ -179,26 +184,72 @@ class PaperWallet:
 
             # Anlık PnL
             if action == "BUY":
+                # Zirve fiyat takibi
+                prev_highest = pos.get("highest_price", entry)
+                highest = max(prev_highest, current_price)
+                pos["highest_price"] = highest
+
                 unrealized = (current_price - entry) * units
                 unrealized_pct = ((current_price - entry) / entry) * 100
                 pos["unrealized_pnl"] = round(unrealized, 2)
                 pos["unrealized_pnl_pct"] = round(unrealized_pct, 2)
 
-                # Stop-Loss kontrolü
+                # 1. AKILLI BAŞABAŞ KİLİDİ: +%4 veya daha fazla kârda stop-loss'u başabaş (+%0.5 komisyon kârı) seviyesine taşı
+                if unrealized_pct >= 4.0:
+                    breakeven_sl = round(entry * 1.005, 4 if entry < 1 else 2)
+                    if pos["stop_loss"] < breakeven_sl:
+                        pos["stop_loss"] = breakeven_sl
+                        pos["is_risk_free"] = True
+                        pos["sl_note"] = "Başabaş Kilitlendi (Breakeven +0.5%)"
+
+                # 2. AKILLI İZ SÜREN STOP (TRAILING STOP): Zirve kazancı +%8 veya üzerine çıktığında stop-loss'u zirvenin %4 altına kilitle
+                peak_gain_pct = ((highest - entry) / entry) * 100
+                if peak_gain_pct >= 8.0:
+                    trailing_sl = round(highest * 0.96, 4 if entry < 1 else 2)
+                    if trailing_sl > pos["stop_loss"]:
+                        pos["stop_loss"] = trailing_sl
+                        pos["is_trailing_active"] = True
+                        pos["sl_note"] = f"İz Süren Stop Devrede (Zirve: {highest:.2f} - %4 Trailing: {trailing_sl})"
+
+                # Stop-Loss / Trailing kontrolü
                 if current_price <= pos["stop_loss"]:
-                    positions_to_close.append((pos["id"], current_price, "STOP_LOSS_HIT"))
+                    reason = "TRAILING_STOP_HIT" if pos.get("is_trailing_active") else ("BREAKEVEN_STOP_HIT" if pos.get("is_risk_free") else "STOP_LOSS_HIT")
+                    positions_to_close.append((pos["id"], current_price, reason))
                 # Take-Profit kontrolü
                 elif current_price >= pos["take_profit"]:
                     positions_to_close.append((pos["id"], current_price, "TAKE_PROFIT_HIT"))
 
             elif action == "SELL":
+                # Dip fiyat takibi
+                prev_lowest = pos.get("lowest_price", entry)
+                lowest = min(prev_lowest, current_price)
+                pos["lowest_price"] = lowest
+
                 unrealized = (entry - current_price) * units
                 unrealized_pct = ((entry - current_price) / entry) * 100
                 pos["unrealized_pnl"] = round(unrealized, 2)
                 pos["unrealized_pnl_pct"] = round(unrealized_pct, 2)
 
+                # 1. AKILLI BAŞABAŞ KİLİDİ (Short): +%4 düşüşte stop-loss'u başabaş altına çek
+                if unrealized_pct >= 4.0:
+                    breakeven_sl = round(entry * 0.995, 4 if entry < 1 else 2)
+                    if pos["stop_loss"] > breakeven_sl:
+                        pos["stop_loss"] = breakeven_sl
+                        pos["is_risk_free"] = True
+                        pos["sl_note"] = "Başabaş Kilitlendi (Breakeven Short +0.5%)"
+
+                # 2. AKILLI İZ SÜREN STOP (Short): Dip kazancı +%8 veya üzerine çıktığında stop-loss'u dip seviyesinin %4 üzerine kilitle
+                peak_drop_pct = ((entry - lowest) / entry) * 100
+                if peak_drop_pct >= 8.0:
+                    trailing_sl = round(lowest * 1.04, 4 if entry < 1 else 2)
+                    if trailing_sl < pos["stop_loss"]:
+                        pos["stop_loss"] = trailing_sl
+                        pos["is_trailing_active"] = True
+                        pos["sl_note"] = f"İz Süren Stop Devrede (Dip: {lowest:.2f} - %4 Trailing: {trailing_sl})"
+
                 if current_price >= pos["stop_loss"]:
-                    positions_to_close.append((pos["id"], current_price, "STOP_LOSS_HIT"))
+                    reason = "TRAILING_STOP_HIT" if pos.get("is_trailing_active") else ("BREAKEVEN_STOP_HIT" if pos.get("is_risk_free") else "STOP_LOSS_HIT")
+                    positions_to_close.append((pos["id"], current_price, reason))
                 elif current_price <= pos["take_profit"]:
                     positions_to_close.append((pos["id"], current_price, "TAKE_PROFIT_HIT"))
 

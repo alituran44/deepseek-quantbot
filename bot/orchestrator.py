@@ -798,7 +798,7 @@ class BotOrchestrator:
             "trading_mode": active_mode,
             "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
             "available_trading_exchanges": [ex["id"] for ex in self.get_registered_exchanges()],
-            "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA"),
+            "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE"),
             "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 20.0),
             "deepseek_model": config.DEEPSEEK_MODEL,
             "api_key_configured": bool(config.DEEPSEEK_API_KEY),

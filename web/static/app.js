@@ -307,9 +307,13 @@ function renderDashboard(data) {
 
   // Finans Uzmanı & Risk Rozeti Senkronizasyonu
   const riskBadge = document.getElementById('badge-risk-mode');
-  const riskProfile = localStorage.getItem('deepseek_ai_risk_profile') || data.ai_risk_profile || 'AGGRESSIVE_ALPHA';
+  const riskProfile = localStorage.getItem('deepseek_ai_risk_profile') || data.ai_risk_profile || 'SMART_AGGRESSIVE';
   if (riskBadge) {
-    if (riskProfile === 'ULTRA_DEGEN' || riskProfile === 'DEGEN_ALPHA') {
+    if (riskProfile === 'SMART_AGGRESSIVE' || riskProfile === 'AKILLI_AGRESIF' || riskProfile === 'SMART') {
+      riskBadge.innerHTML = '🧠 Finans Uzmanı: Akıllı Agresif (Dinamik & Trailing)';
+      riskBadge.style.color = '#38bdf8';
+      riskBadge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+    } else if (riskProfile === 'ULTRA_DEGEN' || riskProfile === 'DEGEN_ALPHA') {
       riskBadge.innerHTML = '🔥 Finans Uzmanı: Ultra Degen (1:4+ Maksimum Volatilite)';
       riskBadge.style.color = '#f43f5e';
       riskBadge.style.borderColor = 'rgba(244, 63, 94, 0.5)';
@@ -1275,6 +1279,7 @@ function renderPositions(positions, isLive = true) {
       // Stop-Loss & Take-Profit Göstergesi
       let slTpHtml = '';
       if (pos.stop_loss > 0 && pos.take_profit > 0) {
+        const trailingBadge = pos.is_trailing_active ? `<span class="indicator-pill" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 9px; margin-left: 4px;">⚡ Trailing</span>` : (pos.is_risk_free ? `<span class="indicator-pill" style="color: var(--profit); border-color: rgba(16, 185, 129, 0.4); font-size: 9px; margin-left: 4px;">🛡️ Başabaş</span>` : '');
         if (showInTry) {
           const slTry = pos.stop_loss * usdRate;
           const tpTry = pos.take_profit * usdRate;
@@ -1282,6 +1287,7 @@ function renderPositions(positions, isLive = true) {
             <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
               <span style="color: var(--loss);">SL: ${formatTryPrice(slTry)}</span> | 
               <span style="color: var(--profit);">TP: ${formatTryPrice(tpTry)}</span>
+              ${trailingBadge}
             </div>
           `;
         } else {
@@ -1289,6 +1295,7 @@ function renderPositions(positions, isLive = true) {
             <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
               <span style="color: var(--loss);">SL: ${formatCryptoMoney(pos.stop_loss)}</span> | 
               <span style="color: var(--profit);">TP: ${formatCryptoMoney(pos.take_profit)}</span>
+              ${trailingBadge}
             </div>
           `;
         }
@@ -1346,6 +1353,7 @@ function renderPositions(positions, isLive = true) {
           <td>
             <span style="color: var(--loss); font-size: 11px;">SL: ${formatCryptoMoney(pos.stop_loss)}</span><br>
             <span style="color: var(--profit); font-size: 11px;">TP: ${formatCryptoMoney(pos.take_profit)}</span>
+            ${pos.is_trailing_active ? `<span class="indicator-pill" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 9px; display: block; margin-top: 2px;">⚡ İz Süren Stop</span>` : (pos.is_risk_free ? `<span class="indicator-pill" style="color: var(--profit); border-color: rgba(16, 185, 129, 0.4); font-size: 9px; display: block; margin-top: 2px;">🛡️ Başabaş Kilit</span>` : '')}
           </td>
           <td>${formatCryptoMoney(pos.position_value)}</td>
           <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct.toFixed(2)})</td>
@@ -1768,7 +1776,11 @@ function initSettingsAutoListeners() {
       // Anında arayüzdeki rozeti güncelle
       const riskBadge = document.getElementById('badge-risk-mode');
       if (riskBadge) {
-        if (val === 'ULTRA_DEGEN') {
+        if (val === 'SMART_AGGRESSIVE' || val === 'AKILLI_AGRESIF' || val === 'SMART') {
+          riskBadge.innerHTML = '🧠 Finans Uzmanı: Akıllı Agresif (Dinamik & Trailing)';
+          riskBadge.style.color = '#38bdf8';
+          riskBadge.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        } else if (val === 'ULTRA_DEGEN') {
           riskBadge.innerHTML = '🔥 Finans Uzmanı: Ultra Degen (1:4+ Maksimum Volatilite)';
           riskBadge.style.color = '#f43f5e';
           riskBadge.style.borderColor = 'rgba(244, 63, 94, 0.5)';
@@ -1942,7 +1954,7 @@ async function saveSettings(e) {
   const tgChat = (document.getElementById('input-tg-chat').value || '').trim();
   const tradingMode = document.getElementById('select-trading-mode').value;
   const tradingExchange = document.getElementById('select-trading-exchange') ? document.getElementById('select-trading-exchange').value : 'AUTO';
-  const riskProfile = document.getElementById('select-risk-profile') ? document.getElementById('select-risk-profile').value : 'AGGRESSIVE_ALPHA';
+  const riskProfile = document.getElementById('select-risk-profile') ? document.getElementById('select-risk-profile').value : 'SMART_AGGRESSIVE';
   const riskLimitVal = document.getElementById('select-risk-limit') ? parseFloat(document.getElementById('select-risk-limit').value) : 5.0;
   const binanceKey = (document.getElementById('input-binance-key').value || '').trim();
   const binanceSecret = (document.getElementById('input-binance-secret').value || '').trim();

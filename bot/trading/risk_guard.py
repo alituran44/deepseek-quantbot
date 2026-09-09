@@ -7,15 +7,21 @@ class RiskGuard:
     Hatalı, aşırı riskli veya kurallara uymayan emirleri engeller.
     """
     def __init__(self, max_risk_pct: float = None):
-        profile = getattr(config, "AI_RISK_PROFILE", "AGGRESSIVE_ALPHA").upper()
+        profile = getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper()
         is_ultra = profile in ["ULTRA_DEGEN", "DEGEN_ALPHA", "DEGEN"]
-        is_aggressive = is_ultra or profile == "AGGRESSIVE_ALPHA"
+        is_smart = profile in ["SMART_AGGRESSIVE", "AKILLI_AGRESIF", "SMART"]
+        is_aggressive = is_ultra or is_smart or profile == "AGGRESSIVE_ALPHA"
         
         if is_ultra:
             default_limit = 10.0
             self.max_open_positions = 15
             self.max_wallet_allocation_per_trade = 0.50  # Degen modda kasanın %50'sine kadar alım desteği
             self.min_rr_ratio = 1.2
+        elif is_smart:
+            default_limit = 7.5
+            self.max_open_positions = 12
+            self.max_wallet_allocation_per_trade = 0.40  # Temel %40, yüksek inançta %45'e genişler
+            self.min_rr_ratio = 1.5
         elif is_aggressive:
             default_limit = 5.0
             self.max_open_positions = 10
@@ -27,6 +33,7 @@ class RiskGuard:
             self.max_wallet_allocation_per_trade = 0.25
             self.min_rr_ratio = 1.6
 
+        self.profile = profile
         self.max_risk_pct = max_risk_pct or getattr(config, "MAX_RISK_PER_TRADE_PERCENT", default_limit)
 
     def validate_and_size_position(
@@ -86,8 +93,18 @@ class RiskGuard:
         units = risk_budget_usd / risk_per_unit
         position_value_usd = units * entry
         
-        # Tek işleme kasanın en fazla %25'i ayrılabilir tavan kontrolü
-        max_position_value = current_balance * self.max_wallet_allocation_per_trade
+        # Dinamik Cüzdan Tavan Kontrolü
+        # Akıllı Agresif modda yüksek güven veya hacim patlamasında cüzdanın %45'ine kadar dinamik ölçekleme
+        allocation_ratio = self.max_wallet_allocation_per_trade
+        if getattr(self, "profile", "") in ["SMART_AGGRESSIVE", "AKILLI_AGRESIF", "SMART"]:
+            confidence = float(signal.get("confidence", 0.0))
+            reasoning = str(signal.get("reasoning_points", "")) + " " + str(signal.get("thesis_summary", ""))
+            if confidence >= 0.82 or "patlama" in reasoning.lower() or "hacim" in reasoning.lower():
+                allocation_ratio = 0.45
+            else:
+                allocation_ratio = 0.35
+
+        max_position_value = current_balance * allocation_ratio
         if position_value_usd > max_position_value:
             position_value_usd = max_position_value
             units = position_value_usd / entry
