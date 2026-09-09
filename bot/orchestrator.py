@@ -179,6 +179,11 @@ class BotOrchestrator:
             if not found:
                 return None, pref, 0.0, f"Seçilen {pref} borsasının API anahtarları tanımlı veya aktif değil."
             if required_amount_usd > 0 and found["free_usdt"] < required_amount_usd:
+                if pref == "BINANCE_TR":
+                    usd_try = self.get_usd_try_rate() or 48.40
+                    free_tl = found.get("free_try", found["free_usdt"] * usd_try)
+                    req_tl = required_amount_usd * usd_try
+                    return None, found["id"], found["free_usdt"], f"Binance TR hesabınızda yetersiz TL bakiye (Mevcut: ₺{free_tl:.2f} TL, Gerekli: ₺{req_tl:.2f} TL)"
                 return None, found["id"], found["free_usdt"], f"{pref} borsasında yetersiz USDT bakiyesi (Mevcut: ${found['free_usdt']:.2f}, Gerekli: ${required_amount_usd:.2f})"
             return found["executor"], found["id"], found["free_usdt"], "OK"
 
@@ -202,10 +207,11 @@ class BotOrchestrator:
         stop_loss: float = 0.0, 
         take_profit: float = 0.0, 
         preferred_exchange: Optional[str] = None,
-        thesis: str = ""
+        thesis: str = "",
+        quote_order_qty: Optional[float] = None
     ) -> tuple[bool, Dict[str, Any], str]:
         """
-        Kayıtlı borsalar (Binance, MEXC, OKX) arasından seçilen borsada canlı emir iletir.
+        Kayıtlı borsalar (Binance, MEXC, OKX, Binance TR) arasından seçilen borsada canlı emir iletir.
         Döner: (success, order_result, exchange_name)
         """
         needed_usd = units * entry_price
@@ -232,7 +238,10 @@ class BotOrchestrator:
                     except Exception:
                         pass
             elif ex_id == "BINANCE_TR":
-                ok, order_res = executor.place_market_order(symbol=symbol, side=action, quantity=units)
+                if action == "BUY" and quote_order_qty and quote_order_qty > 0:
+                    ok, order_res = executor.place_market_order(symbol=symbol, side=action, quote_order_qty=quote_order_qty)
+                else:
+                    ok, order_res = executor.place_market_order(symbol=symbol, side=action, quantity=units)
             elif ex_id in ["MEXC", "OKX"]:
                 ok, order_res = executor.place_market_order(symbol=symbol, side=action, amount=units)
             else:
@@ -240,6 +249,10 @@ class BotOrchestrator:
 
             if ok:
                 if action == "BUY":
+                    if order_res and isinstance(order_res, dict):
+                        exec_qty = float(order_res.get("executedQty", 0.0) or order_res.get("origQty", 0.0) or 0.0)
+                        if exec_qty > 0:
+                            units = exec_qty
                     self.wallet.open_position(
                         symbol=symbol,
                         action="BUY",
@@ -252,8 +265,8 @@ class BotOrchestrator:
                         is_live_record=True
                     )
                 elif action == "SELL":
-                    clean = symbol.replace("USDT", "")
-                    pos = next((p for p in self.wallet.open_positions if p.get("symbol") in [symbol, clean, f"{clean}USDT"]), None)
+                    clean = symbol.replace("USDT", "").replace("TRY", "").replace("_", "")
+                    pos = next((p for p in self.wallet.open_positions if p.get("symbol") in [symbol, clean, f"{clean}USDT", f"{clean}_TRY"]), None)
                     if pos:
                         self.wallet.close_position(pos["id"], entry_price, exit_reason=f"CANLI_SATIS_{ex_id}")
                 return True, order_res, ex_id

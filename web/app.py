@@ -96,7 +96,9 @@ class CloseTradeRequest(BaseModel):
 class ManualOrderRequest(BaseModel):
     symbol: str
     action: str  # BUY veya SELL
-    amount_usd: float
+    amount_usd: Optional[float] = 0.0
+    amount_try: Optional[float] = None
+    currency: Optional[str] = "USD"
     exchange: Optional[str] = "AUTO"
     mode: Optional[str] = None  # LIVE veya PAPER
 
@@ -239,32 +241,46 @@ async def execute_manual_order(req: ManualOrderRequest):
     if order_mode not in ["LIVE", "PAPER"]:
         order_mode = config.TRADING_MODE or "PAPER"
 
+    usd_try_rate = orchestrator.get_usd_try_rate() or 48.40
+    currency = (req.currency or "USD").strip().upper()
+
+    # Binance TR seçildiğinde veya TRY para birimi belirtildiğinde
+    if req_exchange == "BINANCE_TR":
+        if currency == "TRY" or (req.amount_try is not None and req.amount_try > 0) or (req.amount_usd and req.amount_usd > 100):
+            currency = "TRY"
+
+    if currency == "TRY":
+        amt_try = float(req.amount_try if (req.amount_try is not None and req.amount_try > 0) else (req.amount_usd or 0.0))
+        amt_usd = amt_try / usd_try_rate
+    else:
+        amt_usd = float(req.amount_usd or 0.0)
+        amt_try = amt_usd * usd_try_rate
+
     ticker = orchestrator.crypto_feed.get_ticker_24h(sym)
     px = ticker.get("price", 0.0)
     if px <= 0:
         return JSONResponse(status_code=400, content={"status": "ERROR", "message": f"{sym} için güncel fiyat alınamadı."})
         
-    units = req.amount_usd / px if px > 0 else 0.0
-    clean_sym = sym.replace("USDT", "")
+    units = amt_usd / px if px > 0 else 0.0
+    clean_sym = sym.replace("USDT", "").replace("TRY", "").replace("_", "")
 
     if order_mode == "LIVE":
         # 1. Borsa API ve Doğrulama Kontrolleri (Çoklu Borsa & Binance TR)
         executor, ex_id, free_usdt, sel_msg = orchestrator.select_execution_exchange(
             symbol=sym, 
-            required_amount_usd=req.amount_usd if action == "BUY" else 0.0, 
+            required_amount_usd=amt_usd if action == "BUY" else 0.0, 
             preferred_exchange=req_exchange
         )
         if not executor:
             return JSONResponse(status_code=400, content={"status": "ERROR", "message": sel_msg})
 
         if action == "BUY":
-            if req.amount_usd < 1.0:
-                return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Minimum işlem tutarı $1.00 USD / ~50 TL olmalıdır."})
-            if free_usdt < req.amount_usd:
-                return JSONResponse(status_code=400, content={
-                    "status": "ERROR", 
-                    "message": f"{ex_id} hesabınızda serbest bakiye yetersiz! (Mevcut: ${free_usdt:.2f}, İstenen: ${req.amount_usd:.2f})."
-                })
+            if ex_id == "BINANCE_TR" or currency == "TRY":
+                if amt_try < 50.0:
+                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance TR minimum işlem tutarı ₺50 TL olmalıdır."})
+            else:
+                if amt_usd < 1.0:
+                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Minimum işlem tutarı $1.00 USD olmalıdır."})
         elif action == "SELL":
             b_bal = executor.get_account_balances()
             assets = b_bal.get("assets", {})
@@ -275,13 +291,14 @@ async def execute_manual_order(req: ManualOrderRequest):
                     "status": "ERROR", 
                     "message": f"{ex_id} cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym})."
                 })
-            if req.amount_usd > 0:
-                calc_units = req.amount_usd / px
+            if amt_usd > 0:
+                calc_units = amt_usd / px
                 units = min(calc_units, free_coin)
             else:
                 units = free_coin
 
         # Canlı Emri Gerçekleştir
+        quote_qty = amt_try if (ex_id == "BINANCE_TR" and action == "BUY") else None
         ok, res, used_ex = orchestrator.execute_live_order(
             symbol=sym,
             action=action,
@@ -290,20 +307,25 @@ async def execute_manual_order(req: ManualOrderRequest):
             stop_loss=px * 0.95,
             take_profit=px * 1.10,
             preferred_exchange=req_exchange,
-            thesis=f"[KULLANICI MANUEL CANLI EMİR - {req_exchange}]"
+            thesis=f"[KULLANICI MANUEL CANLI EMİR - {req_exchange} - {currency}]",
+            quote_order_qty=quote_qty
         )
         if ok:
             action_tr = "Alım" if action == "BUY" else "Satım"
+            if used_ex == "BINANCE_TR" or currency == "TRY":
+                msg = f"⚡ {used_ex} Canlı {action_tr} Emri Gerçekleşti! ({units:.4f} {clean_sym} - ₺{amt_try:.2f} TL / ~${amt_usd:.2f})"
+            else:
+                msg = f"⚡ {used_ex} Canlı {action_tr} Emri Gerçekleşti! ({units:.4f} {clean_sym} - ~${amt_usd:.2f})"
             return JSONResponse(content={
                 "status": "SUCCESS", 
-                "message": f"⚡ {used_ex} Canlı {action_tr} Emri Gerçekleşti! ({units:.4f} {clean_sym} - ~${units * px:.2f})", 
+                "message": msg, 
                 "order": res, 
                 "exchange": used_ex
             })
         else:
             return JSONResponse(status_code=400, content={
                 "status": "ERROR", 
-                "message": f"❌ {used_ex} Canlı İşlem Hatası: {res.get('msg', str(res))}"
+                "message": f"❌ {used_ex} Canlı İşlem Hatası: {res.get('msg') or res.get('error') or str(res)}"
             })
     else:
         # Sanal Kasa İşlemi

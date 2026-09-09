@@ -673,13 +673,13 @@
               </select>
             </div>
             <div style="flex: 1; min-width: 140px; position: relative;">
-              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700; font-size: 13px;">$</span>
-              <input type="number" id="modal-trade-amount" class="form-input" placeholder="Tutar (USDT)" value="50" min="5" step="5" style="padding-left: 24px; font-weight: 700; font-family: var(--font-mono); height: 38px;">
+              <span id="modal-currency-symbol" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700; font-size: 13px;">₺</span>
+              <input type="number" id="modal-trade-amount" class="form-input" placeholder="Tutar (TL)" value="500" min="50" step="50" style="padding-left: 24px; font-weight: 700; font-family: var(--font-mono); height: 38px;">
             </div>
-            <div style="display: flex; gap: 6px;">
-              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 25">$25</button>
-              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 50">$50</button>
-              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modal-trade-amount').value = 100">$100</button>
+            <div id="modal-quick-amounts" style="display: flex; gap: 6px;">
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(250)">₺250</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(500)">₺500</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(1000)">₺1.000</button>
               <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
             </div>
           </div>

@@ -673,17 +673,22 @@ function renderSignals(analyses) {
   container.innerHTML = html;
 }
 
-function openAssetModal(symbol, exchange = 'BINANCE') {
+function openAssetModal(symbol, exchange = null) {
   currentModalSymbol = symbol;
-  const ex = (exchange || currentMarketExchange || 'BINANCE').toUpperCase();
+  const exSelect = document.getElementById('modal-trade-exchange');
+  if (exchange && exSelect) {
+    exSelect.value = exchange.toUpperCase();
+  }
+  const ex = (exSelect ? exSelect.value : (exchange || 'BINANCE_TR')).toUpperCase();
+  const tvEx = (ex === 'BINANCE_TR' || ex === 'AUTO') ? 'BINANCE' : ex;
   const item = currentAnalyses.find(a => a.symbol === symbol) || { symbol: symbol };
   const sig = item.signal || {};
   const ind = item.indicators || {};
-  const cleanSym = symbol.replace('USDT', '');
+  const cleanSym = symbol.replace('USDT', '').replace('TRY', '').replace('_', '');
 
   document.getElementById('modal-asset-icon').textContent = cleanSym.slice(0, 4);
-  document.getElementById('modal-asset-title').textContent = `${symbol} (${ex})`;
-  document.getElementById('modal-asset-sector').textContent = `${ex} SPOT`;
+  document.getElementById('modal-asset-title').textContent = `${symbol} (${ex === 'BINANCE_TR' ? 'Binance TR' : ex})`;
+  document.getElementById('modal-asset-sector').textContent = `${ex === 'BINANCE_TR' ? '🇹🇷 BINANCE TR' : ex} SPOT`;
   document.getElementById('modal-asset-price').textContent = formatCryptoMoney(item.current_price || 0);
   
   const chgEl = document.getElementById('modal-asset-change');
@@ -750,7 +755,7 @@ function openAssetModal(symbol, exchange = 'BINANCE') {
     tvContainer.style.background = currentTheme === 'light' ? '#ffffff' : '#131722';
     tvContainer.innerHTML = `
       <iframe 
-        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${ex}%3A${symbol}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=${tvBg}&studies=%5B%5D&theme=${tvTheme}&style=1&timezone=Europe%2FIstanbul&locale=tr" 
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${tvEx}%3A${symbol}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=${tvBg}&studies=%5B%5D&theme=${tvTheme}&style=1&timezone=Europe%2FIstanbul&locale=tr" 
         style="width: 100%; height: 100%; border: none;"
         allowtransparency="true" 
         scrolling="no">
@@ -808,14 +813,62 @@ function setModalTradeMode(mode) {
   updateModalBalanceInfo();
 }
 
+function setModalTradeAmount(amt) {
+  const amtInput = document.getElementById('modal-trade-amount');
+  if (amtInput) amtInput.value = amt;
+}
+
 function updateModalBalanceInfo() {
   if (!currentModalSymbol) return;
   const freeCashEl = document.getElementById('modal-free-cash');
   const ownedQtyEl = document.getElementById('modal-owned-qty');
   const depositHintEl = document.getElementById('modal-deposit-hint');
   const exEl = document.getElementById('modal-trade-exchange');
-  const selectedEx = (exEl ? exEl.value : 'BINANCE').toUpperCase();
-  const cleanSym = currentModalSymbol.replace('USDT', '');
+  const selectedEx = (exEl ? exEl.value : 'BINANCE_TR').toUpperCase();
+  const cleanSym = currentModalSymbol.replace('USDT', '').replace('TRY', '').replace('_', '');
+  const currencySymbolEl = document.getElementById('modal-currency-symbol');
+  const amtInput = document.getElementById('modal-trade-amount');
+  const quickAmountsEl = document.getElementById('modal-quick-amounts');
+
+  const isTr = selectedEx === 'BINANCE_TR';
+
+  // Para Birimi ve Hızlı Tutar Düğmeleri Dinamik Güncelleme
+  if (currencySymbolEl) {
+    currencySymbolEl.textContent = isTr ? '₺' : '$';
+  }
+  if (amtInput) {
+    amtInput.placeholder = isTr ? 'Tutar (TL)' : 'Tutar (USDT)';
+    amtInput.min = isTr ? '50' : '5';
+    amtInput.step = isTr ? '50' : '5';
+    const curVal = parseFloat(amtInput.value);
+    if (isTr) {
+      if (!curVal || curVal === 25 || curVal === 50 || curVal === 100) {
+        amtInput.value = 500;
+      }
+    } else {
+      if (curVal === 250 || curVal === 500 || curVal === 1000) {
+        amtInput.value = 50;
+      }
+    }
+  }
+
+  if (quickAmountsEl) {
+    if (isTr) {
+      quickAmountsEl.innerHTML = `
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(250)">₺250</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(500)">₺500</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(1000)">₺1.000</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
+      `;
+    } else {
+      quickAmountsEl.innerHTML = `
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(25)">$25</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(50)">$50</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(100)">$100</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
+      `;
+    }
+  }
 
   if (!lastDashboardData) return;
 
@@ -831,10 +884,10 @@ function updateModalBalanceInfo() {
       const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
       const usdRate = lastDashboardData.usd_try_rate || 48.34;
       const btrUsd = btr.total_usd !== undefined ? btr.total_usd : (freeTry / usdRate);
-      if (freeCashEl) freeCashEl.textContent = `₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL (~$${btrUsd.toFixed(2)})`;
+      if (freeCashEl) freeCashEl.innerHTML = `<span style="color: var(--profit); font-weight: 800;">₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL</span> <span style="color: var(--text-muted); font-size: 11px;">(~$${btrUsd.toFixed(2)})</span>`;
       
       const liveAssets = Array.isArray(lastDashboardData.wallet?.live_assets) ? lastDashboardData.wallet.live_assets : [];
-      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.symbol === currentModalSymbol);
+      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.asset === cleanSym || a.symbol === currentModalSymbol);
       if (foundAsset) {
         ownedUnits = foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0);
       }
@@ -846,7 +899,7 @@ function updateModalBalanceInfo() {
       const totalCashTry = (mt && mt.cash_try !== undefined) ? mt.cash_try : 0;
       if (freeCashEl) freeCashEl.textContent = `$${totalCashUsd.toFixed(2)} (₺${totalCashTry.toFixed(2)})`;
       const liveAssets = Array.isArray(lastDashboardData.wallet?.live_assets) ? lastDashboardData.wallet.live_assets : [];
-      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.symbol === currentModalSymbol);
+      const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.asset === cleanSym || a.symbol === currentModalSymbol);
       if (foundAsset) {
         ownedUnits = foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0);
       }
@@ -879,56 +932,90 @@ function updateModalBalanceInfo() {
 
 function setModalAmountMax() {
   const amtInput = document.getElementById('modal-trade-amount');
+  const exEl = document.getElementById('modal-trade-exchange');
+  const selectedEx = (exEl ? exEl.value : 'BINANCE_TR').toUpperCase();
   if (!amtInput || !lastDashboardData) return;
   const mt = lastDashboardData.master_treasury || {};
-  const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
-  amtInput.value = cashUsd >= 5 ? Math.floor(cashUsd) : 25;
+
+  if (selectedEx === 'BINANCE_TR') {
+    const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
+    const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
+    amtInput.value = freeTry >= 50 ? Math.floor(freeTry) : 250;
+  } else {
+    const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
+    amtInput.value = cashUsd >= 5 ? Math.floor(cashUsd) : 25;
+  }
 }
 
 async function submitManualOrder(action) {
   if (!currentModalSymbol) return;
-  const amtInput = document.getElementById('modal-trade-amount');
-  const amt = parseFloat(amtInput ? amtInput.value : 50) || 50;
   const exEl = document.getElementById('modal-trade-exchange');
   const exVal = exEl ? exEl.value : 'AUTO';
+  const isTr = exVal === 'BINANCE_TR';
+  const amtInput = document.getElementById('modal-trade-amount');
+  const defaultAmt = isTr ? 500 : 50;
+  const amt = parseFloat(amtInput ? amtInput.value : defaultAmt) || defaultAmt;
   const statusEl = document.getElementById('modal-trade-status');
   
   statusEl.style.display = 'block';
   statusEl.style.background = 'rgba(2, 132, 199, 0.1)';
   statusEl.style.border = '1px solid rgba(2, 132, 199, 0.3)';
-  statusEl.innerHTML = `<span style="color: var(--accent-cyan); font-weight: 600;">⏳ Canlı borsa emri iletiliyor (${action} $${amt})...</span>`;
+  const curSymbol = isTr ? '₺' : '$';
+  const curSuffix = isTr ? ' TL' : ' USDT';
+  statusEl.innerHTML = `<span style="color: var(--accent-cyan); font-weight: 600;">⏳ Canlı borsa emri iletiliyor (${action} ${curSymbol}${amt.toLocaleString('tr-TR')}${curSuffix})...</span>`;
 
   // Frontend ön kontrol: Bakiyeyi kontrol et
   if (action === 'BUY' && lastDashboardData) {
     const mt = lastDashboardData.master_treasury || {};
-    const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
-    if (cashUsd < 1.0) {
-      statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
-      statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-      statusEl.innerHTML = `
-        <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Borsa Serbest Bakiyesi Yetersiz</div>
-        <div style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">
-          Hesabınızda serbest bakiye bulunmuyor. Canlı alım yapabilmek için lütfen Binance TR veya Binance hesabınıza bakiye yatırın.
-        </div>
-        <button type="button" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; height: 28px; color: var(--warning); border-color: rgba(245, 158, 11, 0.5);" onclick="openDepositModal('BINANCE_TR')">
-          📥 Binance TR Kripto / TL Yatırma Adresleri
-        </button>
-      `;
-      return;
+    if (isTr) {
+      const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
+      const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
+      if (freeTry < 50.0 || freeTry < amt) {
+        statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+        statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        statusEl.innerHTML = `
+          <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Binance TR Serbest TL Bakiyesi Yetersiz</div>
+          <div style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">
+            Mevcut TL bakiyeniz: ₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. İstenen tutar: ₺${amt.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. Lütfen hesabınıza TL yatırın veya tutarı düşürün.
+          </div>
+          <button type="button" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; height: 28px; color: var(--warning); border-color: rgba(245, 158, 11, 0.5);" onclick="openDepositModal('BINANCE_TR')">
+            📥 Binance TR TL / Kripto Yatırma Adresleri
+          </button>
+        `;
+        return;
+      }
+    } else {
+      const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
+      if (cashUsd < 1.0 || cashUsd < amt) {
+        statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+        statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        statusEl.innerHTML = `
+          <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Borsa Serbest Bakiyesi Yetersiz</div>
+          <div style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">
+            Mevcut serbest bakiye: $${cashUsd.toFixed(2)}. İstenen: $${amt.toFixed(2)}. Lütfen hesabınıza bakiye yatırın.
+          </div>
+        `;
+        return;
+      }
     }
   }
+
+  const usdRate = (lastDashboardData && lastDashboardData.usd_try_rate) ? lastDashboardData.usd_try_rate : 48.34;
+  const payload = {
+    symbol: currentModalSymbol,
+    action: action,
+    amount_usd: isTr ? (amt / usdRate) : amt,
+    amount_try: isTr ? amt : (amt * usdRate),
+    currency: isTr ? 'TRY' : 'USD',
+    exchange: exVal,
+    mode: modalTradingMode
+  };
 
   try {
     const res = await fetch('/api/trade/order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        symbol: currentModalSymbol,
-        action: action,
-        amount_usd: amt,
-        exchange: exVal,
-        mode: modalTradingMode
-      })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (res.ok && data.status === 'SUCCESS') {
@@ -2211,6 +2298,7 @@ window.submitManualOrder = submitManualOrder;
 window.setModalTradeMode = setModalTradeMode;
 window.updateModalBalanceInfo = updateModalBalanceInfo;
 window.setModalAmountMax = setModalAmountMax;
+window.setModalTradeAmount = setModalTradeAmount;
 window.setExchangeFilter = setExchangeFilter;
 window.copyAddress = copyAddress;
 window.toggleTheme = toggleTheme;

@@ -253,11 +253,19 @@ class BinanceTRLiveExecutor(BaseExchange):
             val = round(quantity, 3)
             return val, str(val)
 
-    def place_market_order(self, symbol: str, side: str, quantity: float) -> Tuple[bool, Dict[str, Any]]:
+    def place_market_order(
+        self, 
+        symbol: str, 
+        side: str, 
+        quantity: Optional[float] = None, 
+        quote_order_qty: Optional[float] = None
+    ) -> Tuple[bool, Dict[str, Any]]:
         """
         Binance TR uzerinde anlik piyasa fiyatindan emir iletir.
         side: "BUY" (0) veya "SELL" (1)
         type: 2 (MARKET)
+        quantity: Base varlik miktari (orn: XRP)
+        quote_order_qty: Quote varlik tutari (orn: TRY ile dogrudan alim)
         """
         if not self.enabled:
             return False, {"error": "Binance TR API anahtarlari tanimli degil."}
@@ -273,17 +281,23 @@ class BinanceTRLiveExecutor(BaseExchange):
 
         numeric_side = 0 if side.upper() == "BUY" else 1
 
-        formatted_float, formatted_str = self.format_quantity(clean_sym, quantity)
-        if formatted_float <= 0:
-            return False, {"error": f"Gecersiz islem miktari: {quantity} -> {formatted_str}"}
-
-        params = {
+        params: Dict[str, Any] = {
             "symbol": clean_sym,
             "side": numeric_side,
             "type": 2,
-            "quantity": formatted_str,
             "timestamp": int(time.time() * 1000)
         }
+
+        # BUY isleminde dogrudan TRY tutari (quoteOrderQty) ile alim onceliklidir
+        if numeric_side == 0 and quote_order_qty is not None and float(quote_order_qty) > 0:
+            params["quoteOrderQty"] = f"{float(quote_order_qty):.2f}"
+        else:
+            if quantity is None or float(quantity) <= 0:
+                return False, {"error": f"Gecersiz islem miktari: {quantity}"}
+            formatted_float, formatted_str = self.format_quantity(clean_sym, float(quantity))
+            if formatted_float <= 0:
+                return False, {"error": f"Gecersiz islem miktari: {quantity} -> {formatted_str}"}
+            params["quantity"] = formatted_str
 
         query_string = urllib.parse.urlencode(params)
         sig = self._sign(params)
