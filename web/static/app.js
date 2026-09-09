@@ -694,7 +694,16 @@ function openAssetModal(symbol, exchange = null) {
   document.getElementById('modal-asset-icon').textContent = cleanSym.slice(0, 4);
   document.getElementById('modal-asset-title').textContent = `${symbol} (${ex === 'BINANCE_TR' ? 'Binance TR' : ex})`;
   document.getElementById('modal-asset-sector').textContent = `${ex === 'BINANCE_TR' ? '🇹🇷 BINANCE TR' : ex} SPOT`;
-  document.getElementById('modal-asset-price').textContent = formatCryptoMoney(item.current_price || 0);
+  
+  const isTrModal = (ex === 'BINANCE_TR' || symbol.includes('TRY'));
+  const usdRate = (lastDashboardData && lastDashboardData.usd_try_rate) ? lastDashboardData.usd_try_rate : 48.48;
+  const rawPx = item.current_price || 0;
+  if (isTrModal) {
+    const pxTry = (symbol.includes('TRY') && rawPx > 50 && !symbol.startsWith('USDT')) ? rawPx : (rawPx * usdRate);
+    document.getElementById('modal-asset-price').textContent = formatTryPrice(pxTry);
+  } else {
+    document.getElementById('modal-asset-price').textContent = formatCryptoMoney(rawPx);
+  }
   
   const chgEl = document.getElementById('modal-asset-change');
   const chg = item.change_24h || 0;
@@ -1105,6 +1114,20 @@ function formatCryptoMoney(val) {
   return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatTryPrice(val) {
+  const n = Number(val);
+  if (isNaN(n) || n === 0) return '₺0,00 TL';
+  if (n >= 1000) {
+    return '₺' + n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+  } else if (n >= 1) {
+    return '₺' + n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+  } else if (n >= 0.001) {
+    return '₺' + n.toFixed(4) + ' TL';
+  } else {
+    return '₺' + n.toFixed(6) + ' TL';
+  }
+}
+
 let currentExchangeFilter = 'ALL';
 let lastPositions = [];
 let lastIsLive = true;
@@ -1117,11 +1140,21 @@ function setExchangeFilter(ex, btn) {
   });
   if (btn) btn.classList.add('active');
 
+  const isTr = (ex === 'Binance TR' || ex === 'BINANCE_TR');
+  const thEntry = document.getElementById('th-pos-entry');
+  const thCurrent = document.getElementById('th-pos-current');
+  const thVal = document.getElementById('th-pos-val');
+  const thPnl = document.getElementById('th-pos-pnl');
+  if (thEntry) thEntry.textContent = isTr ? 'Giriş Fiyatı (TL)' : 'Giriş Fiyatı';
+  if (thCurrent) thCurrent.textContent = isTr ? 'Anlık Fiyat (TL)' : 'Anlık Fiyat';
+  if (thVal) thVal.textContent = isTr ? 'Toplam Değer (TL)' : 'Toplam Değer';
+  if (thPnl) thPnl.textContent = isTr ? 'Açık PnL / Bakiye (TL)' : 'Açık PnL / Bakiye';
+
   const statusLabel = document.getElementById('positions-active-filter-label');
   if (statusLabel) {
     if (ex === 'ALL') statusLabel.textContent = 'Konsolide Çoklu Borsa';
     else if (ex === 'Binance') statusLabel.textContent = '🟡 Binance Spot Varlıkları';
-    else if (ex === 'Binance TR' || ex === 'BINANCE_TR') statusLabel.textContent = '🇹🇷 Binance TR Spot Varlıkları';
+    else if (isTr) statusLabel.textContent = '🇹🇷 Binance TR Spot Varlıkları (TL)';
     else if (ex === 'OKX') statusLabel.textContent = '⚫ OKX Spot Varlıkları';
     else if (ex === 'MEXC') statusLabel.textContent = '🟢 MEXC Spot Varlıkları';
   }
@@ -1151,11 +1184,25 @@ function renderPositions(positions, isLive = true) {
     return;
   }
 
+  const usdRate = (lastDashboardData && lastDashboardData.usd_try_rate) ? lastDashboardData.usd_try_rate : 48.48;
+  const isTrFilterActive = (currentExchangeFilter === 'Binance TR' || currentExchangeFilter === 'BINANCE_TR');
+
   let html = '';
   filtered.forEach(pos => {
     const isTry = (pos.asset === 'TRY');
-    const lookupSym = isTry ? 'USDTTRY' : (pos.symbol ? (pos.symbol.includes('USDT') ? pos.symbol : pos.symbol + 'USDT') : (pos.asset ? pos.asset + 'USDT' : 'BTCUSDT'));
     const exName = (pos.exchange || 'Binance').toUpperCase();
+    const isPosBinanceTR = exName.includes('TR');
+    const showInTry = isTrFilterActive || isPosBinanceTR || isTry;
+
+    let lookupSym;
+    if (isTry) {
+      lookupSym = 'USDT_TRY';
+    } else if (showInTry) {
+      lookupSym = pos.asset ? `${pos.asset}_TRY` : (pos.symbol ? (pos.symbol.includes('TRY') ? pos.symbol : `${pos.symbol.replace('USDT', '')}_TRY`) : 'BTC_TRY');
+    } else {
+      lookupSym = pos.symbol ? (pos.symbol.includes('USDT') ? pos.symbol : pos.symbol + 'USDT') : (pos.asset ? pos.asset + 'USDT' : 'BTCUSDT');
+    }
+
     let exBadge = `<span class="indicator-pill" style="color: #f3ba2f; border-color: rgba(243, 186, 47, 0.4); font-weight: 700; margin-right: 6px;">🟡 Binance</span>`;
     if (exName.includes('TR')) {
       exBadge = `<span class="indicator-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-weight: 700; margin-right: 6px;">🇹🇷 Binance TR</span>`;
@@ -1168,16 +1215,33 @@ function renderPositions(positions, isLive = true) {
     if (isLive) {
       // CANLI ÇOKLU BORSA CÜZDAN VARLIKLARI (Eksiksiz ve tam tamına)
       let valStr;
-      if (isTry && pos.value_try !== undefined) {
-        valStr = `₺${pos.value_try.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL`;
+      if (showInTry) {
+        let valTry = pos.value_try;
+        if (valTry === undefined || valTry === null || isNaN(valTry)) {
+          valTry = (pos.value_usd !== undefined ? pos.value_usd : (pos.position_value || 0)) * usdRate;
+        }
+        valStr = formatTryPrice(valTry);
       } else if (pos.value_usd !== undefined) {
         valStr = `$${pos.value_usd.toFixed(2)} USD`;
       } else {
         valStr = formatCryptoMoney(pos.position_value || 0) + ' USD';
       }
 
-      const entryPxStr = isTry ? '₺1.00 TL' : (pos.entry_price ? formatCryptoMoney(pos.entry_price) : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-'));
-      const pxStr = isTry ? '₺1.00 TL' : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-');
+      let entryPxStr;
+      let pxStr;
+      if (isTry) {
+        entryPxStr = '₺1,00 TL';
+        pxStr = '₺1,00 TL';
+      } else if (showInTry) {
+        const entryUsd = (pos.entry_price || pos.current_price || 0);
+        entryPxStr = entryUsd > 0 ? formatTryPrice(entryUsd * usdRate) : '-';
+        const pxUsd = (pos.current_price || 0);
+        pxStr = pxUsd > 0 ? formatTryPrice(pxUsd * usdRate) : '-';
+      } else {
+        entryPxStr = pos.entry_price ? formatCryptoMoney(pos.entry_price) : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-');
+        pxStr = pos.current_price ? formatCryptoMoney(pos.current_price) : '-';
+      }
+
       const unitsVal = typeof pos.units === 'number' ? pos.units : parseFloat(pos.units || pos.free || 0);
       const unitsStr = unitsVal >= 1 ? unitsVal.toLocaleString('tr-TR', {maximumFractionDigits: 4}) : unitsVal.toFixed(6);
       const walletTag = pos.wallet_type || 'Spot Cüzdanı';
@@ -1189,10 +1253,17 @@ function renderPositions(positions, isLive = true) {
       if (isTry || pos.asset === 'USDT') {
         pnlHtml = `<span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">Nakit Rezervi</span>`;
       } else if (pos.unrealized_pnl !== undefined && pos.unrealized_pnl !== 0) {
-        const pnl = pos.unrealized_pnl;
+        const pnlUsd = pos.unrealized_pnl;
         const pnlPct = pos.unrealized_pnl_pct || 0;
-        const pnlClass = pnl >= 0 ? 'text-profit' : 'text-loss';
-        pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
+        const pnlClass = pnlUsd >= 0 ? 'text-profit' : 'text-loss';
+        const sign = pnlUsd >= 0 ? '+' : '-';
+        if (showInTry) {
+          const pnlTry = pnlUsd * usdRate;
+          const absTry = Math.abs(pnlTry).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${sign}₺${absTry} TL (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
+        } else {
+          pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${sign}$${Math.abs(pnlUsd).toFixed(2)} (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
+        }
       } else if (pos.unrealized_pnl_pct !== undefined && pos.unrealized_pnl_pct !== 0) {
         const pnlPct = pos.unrealized_pnl_pct;
         const pnlClass = pnlPct >= 0 ? 'text-profit' : 'text-loss';
@@ -1204,16 +1275,29 @@ function renderPositions(positions, isLive = true) {
       // Stop-Loss & Take-Profit Göstergesi
       let slTpHtml = '';
       if (pos.stop_loss > 0 && pos.take_profit > 0) {
-        slTpHtml = `
-          <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
-            <span style="color: var(--loss);">SL: ${formatCryptoMoney(pos.stop_loss)}</span> | 
-            <span style="color: var(--profit);">TP: ${formatCryptoMoney(pos.take_profit)}</span>
-          </div>
-        `;
+        if (showInTry) {
+          const slTry = pos.stop_loss * usdRate;
+          const tpTry = pos.take_profit * usdRate;
+          slTpHtml = `
+            <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
+              <span style="color: var(--loss);">SL: ${formatTryPrice(slTry)}</span> | 
+              <span style="color: var(--profit);">TP: ${formatTryPrice(tpTry)}</span>
+            </div>
+          `;
+        } else {
+          slTpHtml = `
+            <div style="font-size: 10px; font-family: var(--font-mono); margin-top: 2px;">
+              <span style="color: var(--loss);">SL: ${formatCryptoMoney(pos.stop_loss)}</span> | 
+              <span style="color: var(--profit);">TP: ${formatCryptoMoney(pos.take_profit)}</span>
+            </div>
+          `;
+        }
       }
 
+      const rowEx = showInTry ? 'BINANCE_TR' : (pos.exchange || 'BINANCE');
+
       html += `
-        <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}')" title="Canlı grafiği ve detayları açmak için tıklayın">
+        <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}', '${rowEx}')" title="Canlı grafiği ve detayları açmak için tıklayın">
           <td>
             <div style="display: flex; align-items: center;">
               ${exBadge}
@@ -1236,7 +1320,7 @@ function renderPositions(positions, isLive = true) {
           <td style="font-family: var(--font-mono); font-weight: 700; color: var(--profit);">${valStr}</td>
           <td>${pnlHtml}</td>
           <td style="text-align: right;">
-            <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}')">
+            <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}', '${rowEx}')">
               Grafik & Al-Sat ↗
             </button>
           </td>
@@ -2401,6 +2485,7 @@ window.switchMarketExchange = switchMarketExchange;
 window.filterAllMarketCoins = filterAllMarketCoins;
 window.sortMarketCoins = sortMarketCoins;
 window.setExchangeFilter = setExchangeFilter;
+window.formatTryPrice = formatTryPrice;
 window.copyAddress = copyAddress;
 window.toggleTheme = toggleTheme;
 window.setTheme = setTheme;
