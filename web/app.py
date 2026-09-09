@@ -276,8 +276,8 @@ async def execute_manual_order(req: ManualOrderRequest):
 
         if action == "BUY":
             if ex_id == "BINANCE_TR" or currency == "TRY":
-                if amt_try < 50.0:
-                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance TR minimum işlem tutarı ₺50 TL olmalıdır."})
+                if amt_try < 10.0:
+                    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance TR minimum işlem tutarı ₺10 TL olmalıdır."})
             else:
                 if amt_usd < 1.0:
                     return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Minimum işlem tutarı $1.00 USD olmalıdır."})
@@ -425,14 +425,22 @@ async def get_all_market_coins(
     elif sort_by == "alphabetical":
         tickers = sorted(tickers, key=lambda x: x["symbol"])
     else:
-        tickers = sorted(tickers, key=lambda x: x["volume_usd"], reverse=True)
+        tickers = sorted(tickers, key=lambda x: x.get("volume_try", x.get("volume_usd", 0.0)), reverse=True)
     return JSONResponse(content={"status": "SUCCESS", "exchange": (exchange or "BINANCE").upper(), "total": len(tickers), "coins": tickers})
 
 @app.post("/api/market/analyze-coin")
 async def analyze_single_coin(req: SingleCoinAnalysisRequest):
-    """Herhangi bir Binance altcoinini anlık olarak derinlemesine analiz eder."""
+    """Herhangi bir Binance / Binance TR altcoinini anlık olarak derinlemesine analiz eder."""
     sym = req.symbol.strip().upper()
-    if not sym.endswith("USDT"):
+    if sym.endswith("_TRY") or sym.endswith("TRY"):
+        # TRY paritesini veya karşılık USDT sembolünü analiz et
+        base = sym.replace("_TRY", "").replace("TRY", "")
+        usdt_sym = f"{base}USDT"
+        analysis = orchestrator.scan_asset(usdt_sym)
+        if analysis.get("status") != "FAILED":
+            analysis["display_symbol"] = sym
+            return JSONResponse(content={"status": "SUCCESS", "analysis": analysis})
+    elif not sym.endswith("USDT"):
         sym += "USDT"
     analysis = orchestrator.scan_asset(sym)
     return JSONResponse(content={"status": "SUCCESS", "analysis": analysis})

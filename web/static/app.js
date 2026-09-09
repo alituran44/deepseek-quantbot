@@ -756,11 +756,12 @@ function openAssetModal(symbol, exchange = null) {
   const tvTheme = currentTheme === 'light' ? 'light' : 'dark';
   const tvBg = currentTheme === 'light' ? 'ffffff' : '131722';
   const tvContainer = document.getElementById('tradingview-container');
+  const tvSymbol = symbol.replace('_', '');
   if (tvContainer) {
     tvContainer.style.background = currentTheme === 'light' ? '#ffffff' : '#131722';
     tvContainer.innerHTML = `
       <iframe 
-        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${tvEx}%3A${symbol}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=${tvBg}&studies=%5B%5D&theme=${tvTheme}&style=1&timezone=Europe%2FIstanbul&locale=tr" 
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${tvEx}%3A${tvSymbol}&interval=15&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=${tvBg}&studies=%5B%5D&theme=${tvTheme}&style=1&timezone=Europe%2FIstanbul&locale=tr" 
         style="width: 100%; height: 100%; border: none;"
         allowtransparency="true" 
         scrolling="no">
@@ -843,11 +844,11 @@ function updateModalBalanceInfo() {
   }
   if (amtInput) {
     amtInput.placeholder = isTr ? 'Tutar (TL)' : 'Tutar (USDT)';
-    amtInput.min = isTr ? '50' : '5';
-    amtInput.step = isTr ? '50' : '5';
+    amtInput.min = isTr ? '10' : '1';
+    amtInput.step = isTr ? '1' : '1';
     const curVal = parseFloat(amtInput.value);
     if (isTr) {
-      if (!curVal || curVal === 25 || curVal === 50 || curVal === 100) {
+      if (!curVal || curVal === 25 || curVal === 50 || curVal === 100 || curVal === 500) {
         amtInput.value = 500;
       }
     } else {
@@ -897,7 +898,14 @@ function updateModalBalanceInfo() {
         ownedUnits = foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0);
       }
       if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
-      if (depositHintEl) depositHintEl.style.display = (freeTry < 50) ? 'block' : 'none';
+      if (depositHintEl) depositHintEl.style.display = (freeTry < 10) ? 'block' : 'none';
+
+      // Eğer kullanıcının bakiyesi 500 TL altındaysa (örn 15.80 TL), otomatik olarak tam bakiyesini öner
+      if (amtInput && (!parseFloat(amtInput.value) || parseFloat(amtInput.value) === 500)) {
+        if (freeTry >= 10.0 && freeTry < 500.0) {
+          amtInput.value = (Math.floor(freeTry * 100) / 100).toFixed(2);
+        }
+      }
       return;
     } else if (selectedEx === 'AUTO') {
       const totalCashUsd = (mt && mt.cash_usd !== undefined) ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
@@ -935,20 +943,66 @@ function updateModalBalanceInfo() {
   }
 }
 
-function setModalAmountMax() {
+function setModalAmountPercent(pct) {
   const amtInput = document.getElementById('modal-trade-amount');
   const exEl = document.getElementById('modal-trade-exchange');
   const selectedEx = (exEl ? exEl.value : 'BINANCE_TR').toUpperCase();
   if (!amtInput || !lastDashboardData) return;
   const mt = lastDashboardData.master_treasury || {};
+  const ratio = (Number(pct) || 100) / 100.0;
 
   if (selectedEx === 'BINANCE_TR') {
     const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
-    const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
-    amtInput.value = freeTry >= 50 ? Math.floor(freeTry) : 250;
+    const freeTry = Number(btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0));
+    if (freeTry > 0) {
+      const calc = freeTry * ratio;
+      amtInput.value = (Math.floor(calc * 100) / 100).toFixed(2);
+    } else {
+      amtInput.value = '10.00';
+    }
   } else {
-    const cashUsd = mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0);
-    amtInput.value = cashUsd >= 5 ? Math.floor(cashUsd) : 25;
+    const cashUsd = Number(mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0));
+    if (cashUsd > 0) {
+      const calc = cashUsd * ratio;
+      amtInput.value = (Math.floor(calc * 100) / 100).toFixed(2);
+    } else {
+      amtInput.value = '5.00';
+    }
+  }
+}
+
+function setModalAmountMax() {
+  setModalAmountPercent(100);
+}
+
+function setModalAmountSellAll() {
+  if (!currentModalSymbol || !lastDashboardData) return;
+  const cleanSym = currentModalSymbol.replace('USDT', '').replace('TRY', '').replace('_', '');
+  const liveAssets = Array.isArray(lastDashboardData.wallet?.live_assets) ? lastDashboardData.wallet.live_assets : [];
+  const foundAsset = liveAssets.find(a => a.symbol === cleanSym || a.asset === cleanSym || a.symbol === currentModalSymbol);
+  
+  const ownedUnits = foundAsset ? (foundAsset.free !== undefined ? foundAsset.free : (foundAsset.units || 0)) : 0;
+  const ownedValTry = foundAsset ? (foundAsset.value_try || 0) : 0;
+  const ownedValUsd = foundAsset ? (foundAsset.value_usd || 0) : 0;
+  
+  const exEl = document.getElementById('modal-trade-exchange');
+  const selectedEx = (exEl ? exEl.value : 'BINANCE_TR').toUpperCase();
+  const amtInput = document.getElementById('modal-trade-amount');
+  
+  if (amtInput) {
+    if (selectedEx === 'BINANCE_TR') {
+      amtInput.value = ownedValTry > 0 ? (Math.floor(ownedValTry * 100) / 100).toFixed(2) : '10.00';
+    } else {
+      amtInput.value = ownedValUsd > 0 ? (Math.floor(ownedValUsd * 100) / 100).toFixed(2) : '5.00';
+    }
+  }
+  
+  const statusEl = document.getElementById('modal-trade-status');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(239, 68, 68, 0.08)';
+    statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+    statusEl.innerHTML = `<span style="color: var(--loss); font-weight: 700;">🪙 Cüzdandaki Tüm ${cleanSym} (${Number(ownedUnits).toFixed(4)} Adet) Satış İçin Seçildi. "🔴 Hızlı Sat (SELL)" butonuna basarak işlemi iletebilirsiniz.</span>`;
   }
 }
 
@@ -975,13 +1029,13 @@ async function submitManualOrder(action) {
     if (isTr) {
       const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
       const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
-      if (freeTry < 50.0 || freeTry < amt) {
+      if (freeTry < 10.0 || amt > (freeTry + 0.05)) {
         statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
         statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
         statusEl.innerHTML = `
           <div style="color: var(--loss); font-weight: 700; margin-bottom: 4px;">❌ Binance TR Serbest TL Bakiyesi Yetersiz</div>
           <div style="color: var(--text-secondary); font-size: 11px; line-height: 1.4;">
-            Mevcut TL bakiyeniz: ₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. İstenen tutar: ₺${amt.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. Lütfen hesabınıza TL yatırın veya tutarı düşürün.
+            Mevcut TL bakiyeniz: ₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. İstenen tutar: ₺${amt.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL. (Binance TR minimum işlem tutarı ₺10 TL'dir).
           </div>
           <button type="button" class="btn btn-secondary" style="margin-top: 8px; font-size: 11px; height: 28px; color: var(--warning); border-color: rgba(245, 158, 11, 0.5);" onclick="openDepositModal('BINANCE_TR')">
             📥 Binance TR TL / Kripto Yatırma Adresleri
@@ -1922,22 +1976,32 @@ let currentMarketExchange = 'BINANCE';
 
 function switchMarketExchange(exchange, btn) {
   currentMarketExchange = (exchange || 'BINANCE').toUpperCase();
-  ['market-tab-binance', 'market-tab-okx', 'market-tab-mexc'].forEach(id => {
+  ['market-tab-binance-tr', 'market-tab-binance', 'market-tab-okx', 'market-tab-mexc'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('active');
   });
   if (btn) btn.classList.add('active');
 
+  const isTr = currentMarketExchange === 'BINANCE_TR';
+  const priceCol = document.getElementById('market-col-price');
+  const volCol = document.getElementById('market-col-vol');
+  if (priceCol) priceCol.textContent = isTr ? 'Anlık Fiyat (₺ TL)' : 'Anlık Fiyat (USDT)';
+  if (volCol) volCol.textContent = isTr ? '24s Hacim (₺ TL)' : '24s Hacim ($)';
+
   const input = document.getElementById('market-search-input');
   if (input) {
     input.value = '';
-    const name = currentMarketExchange === 'BINANCE' ? 'Binance (650+)' : (currentMarketExchange === 'OKX' ? 'OKX (390+)' : 'MEXC (1.650+)');
+    let name = 'Binance (650+)';
+    if (currentMarketExchange === 'BINANCE_TR') name = 'Binance TR (300+ TRY)';
+    else if (currentMarketExchange === 'OKX') name = 'OKX (390+)';
+    else if (currentMarketExchange === 'MEXC') name = 'MEXC (1.650+)';
     input.placeholder = `🔍 ${name} Altcoini İçinde Ara... (örn: BTC, PEPE, SUI, DOGE, SOL, RENDER)`;
   }
 
   const tbody = document.getElementById('market-coins-body');
   if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">${currentMarketExchange} altcoinleri taranıyor...</td></tr>`;
+    const exDisplay = isTr ? 'Binance TR' : currentMarketExchange;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">${exDisplay} altcoinleri taranıyor...</td></tr>`;
   }
 
   loadAllMarketCoins();
@@ -1952,7 +2016,7 @@ async function loadAllMarketCoins() {
       allMarketCoins = data.coins;
       const cntEl = document.getElementById('market-total-count');
       if (cntEl) {
-        const exLabel = currentMarketExchange === 'BINANCE' ? 'Binance' : (currentMarketExchange === 'OKX' ? 'OKX' : 'MEXC');
+        const exLabel = currentMarketExchange === 'BINANCE_TR' ? 'Binance TR (TRY)' : (currentMarketExchange === 'BINANCE' ? 'Binance' : (currentMarketExchange === 'OKX' ? 'OKX' : 'MEXC'));
         cntEl.textContent = `${data.total} ${exLabel} Altcoini Aktif`;
       }
       renderMarketCoins(allMarketCoins);
@@ -1987,7 +2051,11 @@ function sortMarketCoins(mode, btn) {
   } else if (mode === 'alphabetical') {
     allMarketCoins.sort((a, b) => a.symbol.localeCompare(b.symbol));
   } else {
-    allMarketCoins.sort((a, b) => b.volume_usd - a.volume_usd);
+    allMarketCoins.sort((a, b) => {
+      const volA = a.volume_try !== undefined ? a.volume_try : (a.volume_usd || 0);
+      const volB = b.volume_try !== undefined ? b.volume_try : (b.volume_usd || 0);
+      return volB - volA;
+    });
   }
 
   filterAllMarketCoins();
@@ -2001,22 +2069,41 @@ function renderMarketCoins(coins) {
     return;
   }
 
+  const isTrUniverse = currentMarketExchange === 'BINANCE_TR';
   let html = '';
   // İlk 100 tanesini hızlıca bas (performans koruması)
   const slice = coins.slice(0, 100);
   slice.forEach(c => {
     const chgClass = c.change_24h >= 0 ? 'text-profit' : 'text-loss';
-    const volMillions = (c.volume_usd / 1e6).toFixed(2);
     const exName = (c.exchange || currentMarketExchange).toUpperCase();
+    const isTr = exName === 'BINANCE TR' || exName === 'BINANCE_TR' || c.currency === 'TRY' || isTrUniverse;
+    
     let exBadge = `<span class="indicator-pill" style="color: #f3ba2f; border-color: rgba(243, 186, 47, 0.4); font-size: 10px; font-weight: 700; margin-right: 6px;">🟡</span>`;
-    if (exName === 'OKX') {
+    if (isTr) {
+      exBadge = `<span class="indicator-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 10px; font-weight: 700; margin-right: 6px;">🇹🇷</span>`;
+    } else if (exName === 'OKX') {
       exBadge = `<span class="indicator-pill" style="color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.4); font-size: 10px; font-weight: 700; margin-right: 6px;">⚫</span>`;
     } else if (exName === 'MEXC') {
       exBadge = `<span class="indicator-pill" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4); font-size: 10px; font-weight: 700; margin-right: 6px;">🟢</span>`;
     }
 
+    let priceDisplay = '';
+    let volDisplay = '';
+    if (isTr) {
+      priceDisplay = c.price >= 1 ? `₺${c.price.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `₺${c.price.toFixed(4)}`;
+      const volTry = c.volume_try !== undefined ? c.volume_try : (c.volume_usd * 48.48);
+      const volMillionsTry = (volTry / 1e6).toFixed(2);
+      volDisplay = `₺${volMillionsTry}M TL`;
+    } else {
+      priceDisplay = formatCryptoMoney(c.price);
+      const volMillions = (c.volume_usd / 1e6).toFixed(2);
+      volDisplay = `$${volMillions}M`;
+    }
+
+    const clickEx = isTr ? 'BINANCE_TR' : exName;
+
     html += `
-      <tr style="cursor: pointer;" onclick="openAndAnalyzeAsset('${c.symbol}', '${exName}')" title="${exName} canlı analiz ve grafiğini açmak için tıklayın">
+      <tr style="cursor: pointer;" onclick="openAndAnalyzeAsset('${c.symbol}', '${clickEx}')" title="${isTr ? 'Binance TR' : exName} canlı analiz ve grafiğini açmak için tıklayın">
         <td>
           <div style="display: flex; align-items: center;">
             ${exBadge}
@@ -2026,11 +2113,11 @@ function renderMarketCoins(coins) {
             </div>
           </div>
         </td>
-        <td style="font-family: var(--font-mono); font-weight: 600;">${formatCryptoMoney(c.price)}</td>
+        <td style="font-family: var(--font-mono); font-weight: 600;">${priceDisplay}</td>
         <td class="${chgClass}" style="font-weight: 600;">${c.change_24h >= 0 ? '+' : ''}%${c.change_24h.toFixed(2)}</td>
-        <td style="color: var(--text-secondary); font-family: var(--font-mono);">$${volMillions}M</td>
+        <td style="color: var(--text-secondary); font-family: var(--font-mono);">${volDisplay}</td>
         <td style="text-align: right;">
-          <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAndAnalyzeAsset('${c.symbol}', '${exName}')">
+          <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAndAnalyzeAsset('${c.symbol}', '${clickEx}')">
             İncele & Grafik ↗
           </button>
         </td>
@@ -2307,7 +2394,12 @@ window.submitManualOrder = submitManualOrder;
 window.setModalTradeMode = setModalTradeMode;
 window.updateModalBalanceInfo = updateModalBalanceInfo;
 window.setModalAmountMax = setModalAmountMax;
+window.setModalAmountPercent = setModalAmountPercent;
+window.setModalAmountSellAll = setModalAmountSellAll;
 window.setModalTradeAmount = setModalTradeAmount;
+window.switchMarketExchange = switchMarketExchange;
+window.filterAllMarketCoins = filterAllMarketCoins;
+window.sortMarketCoins = sortMarketCoins;
 window.setExchangeFilter = setExchangeFilter;
 window.copyAddress = copyAddress;
 window.toggleTheme = toggleTheme;

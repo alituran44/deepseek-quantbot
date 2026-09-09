@@ -321,15 +321,16 @@
                 <line x1="2" y1="12" x2="22" y2="12"></line>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
               </svg>
-              Çoklu Borsa Kripto Evreni (2.700+ Canlı Altcoin)
+              Çoklu Borsa Kripto Evreni (3.000+ Canlı Altcoin)
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-              Binance, OKX ve MEXC borsalarındaki tüm altcoinler anlık fiyat ve 24s hacimle taranır. İstediğiniz coin'e tıklayarak yapay zeka analizini ve canlı grafiğini açabilirsiniz.
+              Binance TR, Binance Global, OKX ve MEXC borsalarındaki tüm altcoinler anlık fiyat ve 24s hacimle taranır. İstediğiniz coin'e tıklayarak yapay zeka analizini ve canlı grafiğini açabilirsiniz.
             </div>
           </div>
 
           <!-- Borsa Seçici & Sayaç -->
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-filter" id="market-tab-binance-tr" onclick="switchMarketExchange('BINANCE_TR', this)" style="border-color: rgba(239, 68, 68, 0.5); color: #ef4444; font-weight: 700;">🇹🇷 Binance TR (300+)</button>
             <button class="btn-filter active" id="market-tab-binance" onclick="switchMarketExchange('BINANCE', this)" style="border-color: rgba(243, 186, 47, 0.5); color: #f3ba2f;">🟡 Binance (650+)</button>
             <button class="btn-filter" id="market-tab-okx" onclick="switchMarketExchange('OKX', this)" style="border-color: rgba(2, 132, 199, 0.5); color: var(--accent-cyan);">⚫ OKX (390+)</button>
             <button class="btn-filter" id="market-tab-mexc" onclick="switchMarketExchange('MEXC', this)" style="border-color: rgba(16, 185, 129, 0.5); color: #10b981;">🟢 MEXC (1.650+)</button>
@@ -350,20 +351,20 @@
           </div>
         </div>
 
-        <!-- 650+ Coin Listesi (Scrollable & Responsive) -->
+        <!-- 3000+ Coin Listesi (Scrollable & Responsive) -->
         <div style="max-height: 420px; overflow-y: auto; padding: 0 4px;" class="table-wrapper">
           <table>
             <thead>
               <tr>
                 <th>Altcoin / Sembol</th>
-                <th>Anlık Fiyat (USDT)</th>
+                <th id="market-col-price">Anlık Fiyat (USDT)</th>
                 <th>24s Değişim</th>
-                <th>24s Hacim ($)</th>
+                <th id="market-col-vol">24s Hacim ($)</th>
                 <th style="text-align: right;">Detay & Grafik</th>
               </tr>
             </thead>
             <tbody id="market-coins-body">
-              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Tüm Binance altcoinleri taranıyor...</td></tr>
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Tüm borsa altcoinleri taranıyor...</td></tr>
             </tbody>
           </table>
         </div>
@@ -680,8 +681,22 @@
               <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(250)">₺250</button>
               <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(500)">₺500</button>
               <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(1000)">₺1.000</button>
-              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
+              <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 700; color: var(--profit);" onclick="setModalAmountMax()">Maks</button>
             </div>
+          </div>
+
+          <!-- Yüzdelik Hızlı Bakiye Seçimi (Tüm Parayı Ekle / %25 / %50 / %75 / %100) -->
+          <div id="modal-percent-bar" style="display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; font-size: 11px;">
+            <span style="color: var(--text-muted); font-weight: 600;">Hızlı Bakiye:</span>
+            <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 28px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(25)">%25</button>
+            <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 28px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(50)">%50</button>
+            <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 28px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(75)">%75</button>
+            <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 28px; font-size: 11px; font-weight: 800; color: var(--profit); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);" onclick="setModalAmountMax()">
+              💰 Tüm Parayı Ekle (%100)
+            </button>
+            <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 28px; font-size: 11px; font-weight: 700; color: var(--loss); border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06); margin-left: auto;" onclick="setModalAmountSellAll()">
+              🪙 Tüm Varlığı Sat (%100)
+            </button>
           </div>
 
           <!-- Al / Sat Eylem Düğmeleri (Dengeli 2 Sütun, Asla Alta Kırılmaz) -->

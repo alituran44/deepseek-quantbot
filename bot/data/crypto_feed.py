@@ -167,10 +167,112 @@ class CryptoFeed:
             return cls._cache.get("MEXC", [])
 
     @classmethod
+    def get_all_binance_tr_market_tickers(cls) -> list:
+        """
+        Binance TR (trbinance.com) spot piyasasında listelenen 300+ aktif TRY çiftini
+        anlık TL fiyatı, 24 saatlik değişim ve TL işlem hacmiyle tek seferde getirir.
+        30 saniyelik akıllı önbellek ile rate-limit koruması sağlar.
+        """
+        import time
+        now = time.time()
+        if "BINANCE_TR" in cls._cache and (now - cls._cache_time.get("BINANCE_TR", 0) < 30.0):
+            return cls._cache["BINANCE_TR"]
+
+        tr_symbols_map = {}
+        try:
+            resp_syms = requests.get("https://www.trbinance.com/open/v1/common/symbols", timeout=6)
+            if resp_syms.status_code == 200:
+                raw_syms = resp_syms.json().get("data", {}).get("list", [])
+                for s in raw_syms:
+                    sym_clean = s.get("symbol", "").replace("_", "")
+                    tr_symbols_map[sym_clean] = s
+        except Exception as e:
+            print(f"[CryptoFeed] Binance TR sembolleri alınamadı: {e}")
+
+        tickers = []
+        for base in cls.BASE_URLS:
+            try:
+                url = f"{base}/ticker/24hr"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        tickers = data
+                        break
+            except Exception:
+                continue
+
+        usd_rate = 48.48
+        for t in tickers:
+            if t.get("symbol") == "USDTTRY":
+                try:
+                    px_u = float(t.get("lastPrice", 0))
+                    if px_u > 0:
+                        usd_rate = px_u
+                except Exception:
+                    pass
+                break
+
+        valid = []
+        for t in tickers:
+            sym = t.get("symbol", "")
+            is_in_tr = sym in tr_symbols_map
+            is_try_pair = sym.endswith("TRY")
+
+            if (is_in_tr or is_try_pair) and not any(x in sym for x in ["UPTRY", "DOWNTRY"]):
+                px = float(t.get("lastPrice", 0.0))
+                vol_try = float(t.get("quoteVolume", 0.0))
+                if px <= 0:
+                    continue
+
+                if is_in_tr:
+                    meta = tr_symbols_map[sym]
+                    display_symbol = meta.get("symbol", f"{meta.get('baseAsset', '')}_TRY")
+                    asset_name = meta.get("baseAsset", sym.replace("TRY", ""))
+                else:
+                    asset_name = sym.replace("TRY", "")
+                    display_symbol = f"{asset_name}_TRY"
+
+                change_pct = round(float(t.get("priceChangePercent", 0.0)), 2)
+                vol_usd = round(vol_try / usd_rate, 2)
+
+                valid.append({
+                    "exchange": "Binance TR",
+                    "symbol": display_symbol,
+                    "global_symbol": sym,
+                    "asset": asset_name,
+                    "quote": "TRY",
+                    "currency": "TRY",
+                    "price": px,
+                    "change_24h": change_pct,
+                    "volume_usd": vol_usd,
+                    "volume_try": round(vol_try, 2),
+                    "high_24h": float(t.get("highPrice", 0.0)),
+                    "low_24h": float(t.get("lowPrice", 0.0))
+                })
+
+        seen = set()
+        deduped = []
+        for v in valid:
+            if v["symbol"] not in seen:
+                seen.add(v["symbol"])
+                deduped.append(v)
+
+        deduped.sort(key=lambda x: x["volume_try"], reverse=True)
+        if deduped:
+            cls._cache["BINANCE_TR"] = deduped
+            cls._cache_time["BINANCE_TR"] = now
+            return deduped
+
+        return cls._cache.get("BINANCE_TR", [])
+
+    @classmethod
     def get_market_tickers(cls, exchange: str = "BINANCE") -> list:
-        """Belirtilen borsanın tüm USDT spot paritelerini getirir."""
-        ex = (exchange or "BINANCE").upper()
-        if ex == "OKX":
+        """Belirtilen borsanın (BINANCE_TR, BINANCE, OKX, MEXC) tüm spot paritelerini getirir."""
+        ex = (exchange or "BINANCE").upper().replace("-", "_")
+        if ex in ["BINANCE_TR", "BINANCETR", "TR"]:
+            return cls.get_all_binance_tr_market_tickers()
+        elif ex == "OKX":
             return cls.get_all_okx_market_tickers()
         elif ex == "MEXC":
             return cls.get_all_mexc_market_tickers()
@@ -179,9 +281,10 @@ class CryptoFeed:
     @classmethod
     def get_ticker_24h(cls, symbol: str = "BTCUSDT") -> Dict[str, Any]:
         """24 saatlik fiyat değişimi, en yüksek, en düşük ve hacim verisi."""
+        clean_sym = symbol.replace("_", "").upper()
         for base in cls.BASE_URLS:
             try:
-                url = f"{base}/ticker/24hr?symbol={symbol}"
+                url = f"{base}/ticker/24hr?symbol={clean_sym}"
                 resp = requests.get(url, timeout=8)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -226,9 +329,10 @@ class CryptoFeed:
         Mum verilerini (Open, High, Low, Close, Volume) çeker.
         interval: 15m, 1h, 4h, 1d vb.
         """
+        clean_sym = symbol.replace("_", "").upper()
         for base in cls.BASE_URLS:
             try:
-                url = f"{base}/klines?symbol={symbol}&interval={interval}&limit={limit}"
+                url = f"{base}/klines?symbol={clean_sym}&interval={interval}&limit={limit}"
                 resp = requests.get(url, timeout=8)
                 if resp.status_code == 200:
                     raw = resp.json()
@@ -246,7 +350,7 @@ class CryptoFeed:
 
         # Fallback to MEXC klines
         try:
-            mexc_url = f"https://api.mexc.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+            mexc_url = f"https://api.mexc.com/api/v3/klines?symbol={clean_sym}&interval={interval}&limit={limit}"
             resp = requests.get(mexc_url, timeout=8)
             if resp.status_code == 200:
                 raw = resp.json()
