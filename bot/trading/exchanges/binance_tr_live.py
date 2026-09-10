@@ -312,7 +312,10 @@ class BinanceTRLiveExecutor(BaseExchange):
             res_data = resp.json()
             if resp.status_code == 200 and res_data.get("code") == 0:
                 return True, res_data.get("data", {})
-            return False, {"error": res_data.get("msg", "Emir iletilemedi"), "code": res_data.get("code")}
+            err_msg = res_data.get("msg", "Emir iletilemedi")
+            if "Insufficient balance" in err_msg or res_data.get("code") in [-2010, 2010]:
+                err_msg = "Binance TR hesabınızda yetersiz serbest bakiye! Cüzdanınızdaki serbest TL veya coin miktarını aşan tutarda işlem yapılamaz."
+            return False, {"error": err_msg, "code": res_data.get("code")}
         except Exception as e:
             return False, {"error": f"Binance TR emir hatasi: {e}"}
 

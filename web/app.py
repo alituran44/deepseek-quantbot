@@ -276,6 +276,18 @@ async def execute_manual_order(req: ManualOrderRequest):
 
         if action == "BUY":
             if ex_id == "BINANCE_TR" or currency == "TRY":
+                b_bal = executor.get_account_balances()
+                free_try = float(b_bal.get("free_try", 0.0))
+                if free_try < 10.0:
+                    return JSONResponse(status_code=400, content={
+                        "status": "ERROR", 
+                        "message": f"❌ Binance TR Serbest TL Bakiyesi Yetersiz! Cüzdanınızda serbest ₺{free_try:.2f} TL bulunuyor. Binance TR minimum işlem tutarı ₺10 TL'dir. Lütfen hesabınıza TL yatırın veya mevcut varlıklarınızdan satış yapın."
+                    })
+                if amt_try > free_try:
+                    return JSONResponse(status_code=400, content={
+                        "status": "ERROR", 
+                        "message": f"❌ Binance TR Serbest TL Bakiyesi Yetersiz! Cüzdanınızda serbest ₺{free_try:.2f} TL bulunuyor, ancak istenen alım tutarı ₺{amt_try:.2f} TL. Lütfen tutarı ₺{free_try:.2f} TL veya altına çekin."
+                    })
                 if amt_try < 10.0:
                     return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Binance TR minimum işlem tutarı ₺10 TL olmalıdır."})
             else:
@@ -289,16 +301,27 @@ async def execute_manual_order(req: ManualOrderRequest):
             if free_coin <= 0:
                 return JSONResponse(status_code=400, content={
                     "status": "ERROR", 
-                    "message": f"{ex_id} cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym})."
+                    "message": f"❌ {ex_id} cüzdanınızda satılabilir {clean_sym} bulunmuyor (Mevcut Bakiye: 0.00 {clean_sym})."
                 })
-            if amt_usd > 0:
-                calc_units = amt_usd / px
-                units = min(calc_units, free_coin)
-            else:
+            px_in_try = px if (px > 50 and not sym.startswith("USDT")) else (px * usd_try_rate)
+            coin_total_val_try = free_coin * px_in_try
+            if amt_try >= (coin_total_val_try * 0.95):
                 units = free_coin
+            else:
+                calc_units = amt_try / px_in_try if px_in_try > 0 else free_coin
+                units = min(calc_units, free_coin)
 
         # Canlı Emri Gerçekleştir
-        quote_qty = amt_try if (ex_id == "BINANCE_TR" and action == "BUY") else None
+        if ex_id == "BINANCE_TR" and action == "BUY":
+            b_bal = executor.get_account_balances()
+            free_try = float(b_bal.get("free_try", 0.0))
+            if amt_try >= (free_try * 0.98):
+                quote_qty = round(free_try * 0.985, 2)
+            else:
+                quote_qty = round(amt_try, 2)
+        else:
+            quote_qty = None
+
         ok, res, used_ex = orchestrator.execute_live_order(
             symbol=sym,
             action=action,

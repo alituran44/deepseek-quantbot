@@ -873,25 +873,16 @@ function updateModalBalanceInfo() {
     amtInput.placeholder = isTr ? 'Tutar (TL)' : 'Tutar (USDT)';
     amtInput.min = isTr ? '10' : '1';
     amtInput.step = isTr ? '1' : '1';
-    const curVal = parseFloat(amtInput.value);
-    if (isTr) {
-      if (!curVal || curVal === 25 || curVal === 50 || curVal === 100 || curVal === 500) {
-        amtInput.value = 500;
-      }
-    } else {
-      if (curVal === 250 || curVal === 500 || curVal === 1000) {
-        amtInput.value = 50;
-      }
-    }
   }
 
   if (quickAmountsEl) {
     if (isTr) {
       quickAmountsEl.innerHTML = `
-        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(250)">₺250</button>
-        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(500)">₺500</button>
-        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalTradeAmount(1000)">₺1.000</button>
-        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 38px; font-size: 12px; font-weight: 600;" onclick="setModalAmountMax()">Maks</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 32px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(25)">%25</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 32px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(50)">%50</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 8px; height: 32px; font-size: 11px; font-weight: 600;" onclick="setModalAmountPercent(75)">%75</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 32px; font-size: 11px; font-weight: 700; color: var(--profit); border-color: rgba(16, 185, 129, 0.4);" onclick="setModalAmountMax()">💰 Tüm Parayı Al (%100)</button>
+        <button type="button" class="btn btn-secondary" style="padding: 0 10px; height: 32px; font-size: 11px; font-weight: 700; color: var(--loss); border-color: rgba(239, 68, 68, 0.4);" onclick="setModalAmountSellAll()">🪙 Tüm Varlığı Sat (%100)</button>
       `;
     } else {
       quickAmountsEl.innerHTML = `
@@ -914,7 +905,7 @@ function updateModalBalanceInfo() {
 
     if (selectedEx === 'BINANCE_TR') {
       const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
-      const freeTry = btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0);
+      const freeTry = Number(btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0));
       const usdRate = lastDashboardData.usd_try_rate || 48.34;
       const btrUsd = btr.total_usd !== undefined ? btr.total_usd : (freeTry / usdRate);
       if (freeCashEl) freeCashEl.innerHTML = `<span style="color: var(--profit); font-weight: 800;">₺${freeTry.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} TL</span> <span style="color: var(--text-muted); font-size: 11px;">(~$${btrUsd.toFixed(2)})</span>`;
@@ -927,10 +918,17 @@ function updateModalBalanceInfo() {
       if (ownedQtyEl) ownedQtyEl.textContent = `${Number(ownedUnits).toFixed(4)} ${cleanSym}`;
       if (depositHintEl) depositHintEl.style.display = (freeTry < 10) ? 'block' : 'none';
 
-      // Eğer kullanıcının bakiyesi 500 TL altındaysa (örn 15.80 TL), otomatik olarak tam bakiyesini öner
-      if (amtInput && (!parseFloat(amtInput.value) || parseFloat(amtInput.value) === 500)) {
-        if (freeTry >= 10.0 && freeTry < 500.0) {
-          amtInput.value = (Math.floor(freeTry * 100) / 100).toFixed(2);
+      // Kullanıcının mevcut serbest bakiyesine göre akıllı başlangıç tutarı öner
+      if (amtInput) {
+        const curVal = parseFloat(amtInput.value);
+        if (!curVal || curVal === 500 || curVal > (freeTry + 0.1)) {
+          if (freeTry >= 10.0) {
+            amtInput.value = (Math.floor(freeTry * 0.985 * 100) / 100).toFixed(2);
+          } else if (freeTry > 0) {
+            amtInput.value = freeTry.toFixed(2);
+          } else {
+            amtInput.value = '10.00';
+          }
         }
       }
       return;
@@ -982,7 +980,8 @@ function setModalAmountPercent(pct) {
     const btr = (mt && mt.binance_tr) ? mt.binance_tr : (lastDashboardData.binance_tr_status || {});
     const freeTry = Number(btr.free_try !== undefined ? btr.free_try : (btr.cash_balance_try || 0));
     if (freeTry > 0) {
-      const calc = freeTry * ratio;
+      const effectiveRatio = (ratio >= 1.0) ? 0.985 : ratio;
+      const calc = freeTry * effectiveRatio;
       amtInput.value = (Math.floor(calc * 100) / 100).toFixed(2);
     } else {
       amtInput.value = '10.00';
@@ -990,7 +989,8 @@ function setModalAmountPercent(pct) {
   } else {
     const cashUsd = Number(mt.cash_usd !== undefined ? mt.cash_usd : (lastDashboardData.wallet?.cash_balance || 0));
     if (cashUsd > 0) {
-      const calc = cashUsd * ratio;
+      const effectiveRatio = (ratio >= 1.0) ? 0.99 : ratio;
+      const calc = cashUsd * effectiveRatio;
       amtInput.value = (Math.floor(calc * 100) / 100).toFixed(2);
     } else {
       amtInput.value = '5.00';
