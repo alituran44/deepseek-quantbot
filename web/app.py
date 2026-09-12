@@ -517,6 +517,36 @@ async def get_radar_breakouts():
     """Binance, MEXC ve OKX borsalarını tarayarak günlük yükseliş fırsatlarını döner."""
     return JSONResponse(content=orchestrator.radar.get_summary())
 
+@app.get("/api/intelligence/summary")
+async def get_intelligence_summary():
+    """BtcTurk Arbitraj, CoinGecko Trendler, Mempool ve DEX özetini döndürür."""
+    summary = orchestrator.get_market_intelligence_summary()
+    return JSONResponse(content=summary)
+
+@app.get("/api/intelligence/arbitrage")
+async def get_arbitrage_radar():
+    """Binance TR vs BtcTurk canlı arbitraj fırsatlarını döndürür."""
+    summary = orchestrator.get_market_intelligence_summary()
+    return JSONResponse(content={"status": "SUCCESS", "arbitrage": summary.get("arbitrage_radar", [])})
+
+@app.get("/api/intelligence/trending")
+async def get_trending_coins():
+    """CoinGecko küresel trend kripto paraları döndürür."""
+    summary = orchestrator.get_market_intelligence_summary()
+    return JSONResponse(content={"status": "SUCCESS", "trending": summary.get("trending_coins", [])})
+
+@app.get("/api/intelligence/mempool")
+async def get_mempool_health():
+    """Bitcoin ağ işlem ücretleri ve tıkanıklık durumunu döndürür."""
+    summary = orchestrator.get_market_intelligence_summary()
+    return JSONResponse(content={"status": "SUCCESS", "mempool": summary.get("network_health", {})})
+
+@app.get("/api/intelligence/dex")
+async def get_dex_comparison():
+    """CEX vs DEX fiyat kıyaslamasını döndürür."""
+    summary = orchestrator.get_market_intelligence_summary()
+    return JSONResponse(content={"status": "SUCCESS", "dex": summary.get("dex_comparison", [])})
+
 @app.post("/api/radar/scan")
 async def scan_radar():
     """Tüm borsaları (Binance, MEXC, OKX) anlık olarak canlı tarar."""

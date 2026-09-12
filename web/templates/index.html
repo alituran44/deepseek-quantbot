@@ -231,6 +231,119 @@
         </div>
       </div>
 
+      <!-- 🌐 4 Harici Kripto API İstihbarat ve Arbitraj Merkezi -->
+      <div class="card" id="card-market-intelligence">
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; color: var(--profit);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="card-title" style="margin-bottom: 0;">Kripto İstihbarat & Canlı Arbitraj Radarı</div>
+              <div style="font-size: 11px; color: var(--text-muted);">BtcTurk Arbitrajı • CoinGecko Trendleri • Mempool Gas • CEX/DEX Farkları</div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span id="intel-live-badge" class="indicator-pill" style="color: var(--profit); border-color: rgba(16, 185, 129, 0.4); font-size: 11px; padding: 2px 8px;">
+              🟢 Canlı Veri Akışı
+            </span>
+            <button class="btn btn-secondary" onclick="fetchIntelligenceSummary(true)" style="font-size: 11px; height: 28px; padding: 0 10px; display: flex; align-items: center; gap: 4px;" title="Verileri Tazeleyin">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="intel-refresh-icon">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Yenile</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Sekme Butonları -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;" id="intel-tabs">
+          <button class="btn-filter active" id="tab-btn-arbitrage" onclick="switchIntelTab('arbitrage')">🇹🇷 TR Arbitraj Radarı (Binance TR vs BtcTurk)</button>
+          <button class="btn-filter" id="tab-btn-trending" onclick="switchIntelTab('trending')">🔥 Global Trendler (CoinGecko)</button>
+          <button class="btn-filter" id="tab-btn-mempool" onclick="switchIntelTab('mempool')">⛽ Bitcoin Ağ Sağlığı (Mempool)</button>
+          <button class="btn-filter" id="tab-btn-dex" onclick="switchIntelTab('dex')">🔄 CEX vs DEX Farkı (Raydium/Uniswap)</button>
+        </div>
+
+        <!-- Sekme İçerikleri -->
+        <!-- 1. Arbitraj Radarı -->
+        <div id="intel-content-arbitrage" class="intel-tab-content">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; gap: 8px;">
+            <span>Binance TR ile BtcTurk arasındaki anlık fiyat makasları taranıyor. %0.8 ve üzeri farklar arbitraj fırsatıdır.</span>
+            <span id="arbitrage-summary-pill" class="indicator-pill" style="color: var(--accent-cyan); font-weight: 700;">10 Çift Taranıyor</span>
+          </div>
+          <div class="table-wrapper" style="max-height: 280px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Varlık</th>
+                  <th>Binance TR Fiyatı</th>
+                  <th>BtcTurk Fiyatı</th>
+                  <th>Fiyat Makası (TL)</th>
+                  <th>Arbitraj Makası (%)</th>
+                  <th>Daha Ucuz Borsa</th>
+                  <th>Fırsat Derecesi</th>
+                </tr>
+              </thead>
+              <tbody id="arbitrage-table-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Arbitraj verisi taranıyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. CoinGecko Global Trendler -->
+        <div id="intel-content-trending" class="intel-tab-content" style="display: none;">
+          <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+            CoinGecko'da dünya çapında son saatlerde en çok aranan ve ilgi patlaması yaşayan trend kripto paralar:
+          </div>
+          <div id="trending-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Trend coinler yükleniyor...</div>
+          </div>
+        </div>
+
+        <!-- 3. Mempool Ağ Sağlığı & Madenci Ücretleri -->
+        <div id="intel-content-mempool" class="intel-tab-content" style="display: none;">
+          <div style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+            Bitcoin blokzincirinde bekleyen işlemler ve madenci transfer komisyonları (sat/vB):
+          </div>
+          <div id="mempool-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Ağ verileri çekiliyor...</div>
+          </div>
+        </div>
+
+        <!-- 4. CEX vs DEX Fiyat Kıyaslama -->
+        <div id="intel-content-dex" class="intel-tab-content" style="display: none;">
+          <div style="margin-bottom: 10px; font-size: 12px; color: var(--text-muted);">
+            Merkezi borsa (CEX) fiyatları ile zincir üstü likidite havuzları (Raydium, Uniswap) arasındaki anlık fiyat farkları:
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Varlık</th>
+                  <th>Blokzincir</th>
+                  <th>DEX Havuzu</th>
+                  <th>Borsa Fiyatı (CEX)</th>
+                  <th>DEX Fiyatı (On-Chain)</th>
+                  <th>Fark (%)</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody id="dex-table-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">DEX fiyatları yükleniyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- Kripto Sepet Sektör Dağılım Kartı -->
       <div class="card">
         <div class="card-header">
@@ -1026,6 +1139,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.21.0_price_comparison_clear"></script>
+  <script src="/static/app.js?v=2.22.0_4_apis_intel"></script>
 </body>
 </html>

@@ -2631,6 +2631,293 @@ async function promptEditEntryPrice(sym, isTry) {
   }
 }
 
+// ==========================================================================
+// 🌐 4 Harici Kripto API İstihbarat & Canlı Arbitraj Modülü
+// ==========================================================================
+let lastIntelData = null;
+
+function switchIntelTab(tabName) {
+  const tabs = ['arbitrage', 'trending', 'mempool', 'dex'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('tab-btn-' + t);
+    const content = document.getElementById('intel-content-' + t);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (content) content.style.display = (t === tabName) ? 'block' : 'none';
+  });
+}
+
+async function fetchIntelligenceSummary(forceRefresh = false) {
+  const refreshIcon = document.getElementById('intel-refresh-icon');
+  const liveBadge = document.getElementById('intel-live-badge');
+  if (refreshIcon) refreshIcon.style.animation = 'spin 1s linear infinite';
+  if (liveBadge && forceRefresh) {
+    liveBadge.textContent = '⏳ Taranıyor...';
+    liveBadge.style.color = 'var(--accent-cyan)';
+  }
+
+  try {
+    const url = `/api/intelligence/summary${forceRefresh ? '?force=true' : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const result = await res.json();
+    if (result.status === 'SUCCESS' && result.data) {
+      lastIntelData = result.data;
+      renderArbitrageRadar(result.data.arbitrage || []);
+      renderTrendingCoins(result.data.trending || []);
+      renderMempoolHealth(result.data.mempool || {});
+      renderDexComparison(result.data.dex || []);
+      if (liveBadge) {
+        liveBadge.textContent = '🟢 Canlı Veri Akışı';
+        liveBadge.style.color = 'var(--profit)';
+      }
+    }
+  } catch (err) {
+    console.error('Piyasa istihbaratı çekilemedi:', err);
+    if (liveBadge) {
+      liveBadge.textContent = '⚠️ Çevrimdışı / Hata';
+      liveBadge.style.color = 'var(--warning)';
+    }
+  } finally {
+    if (refreshIcon) {
+      setTimeout(() => { refreshIcon.style.animation = 'none'; }, 600);
+    }
+  }
+}
+
+function renderArbitrageRadar(arbitrageList) {
+  const tbody = document.getElementById('arbitrage-table-body');
+  const pill = document.getElementById('arbitrage-summary-pill');
+  if (!tbody) return;
+
+  if (!arbitrageList || arbitrageList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Arbitraj taranacak canlı TRY çifti bulunamadı.</td></tr>';
+    if (pill) pill.textContent = '0 Çift Aktif';
+    return;
+  }
+
+  let highCount = 0;
+  let html = '';
+
+  arbitrageList.forEach(item => {
+    const spreadPct = Number(item.spread_pct || 0);
+    const rating = item.arbitrage_rating || 'DUSUK';
+    if (rating === 'YUKSEK' || spreadPct >= 0.8) highCount++;
+
+    let ratingBadge = '';
+    if (rating === 'YUKSEK' || spreadPct >= 0.8) {
+      ratingBadge = '<span class="badge" style="background: rgba(16, 185, 129, 0.18); color: var(--profit); border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;">🔥 %' + spreadPct.toFixed(2) + ' FIRSAT</span>';
+    } else if (rating === 'ORTA' || spreadPct >= 0.4) {
+      ratingBadge = '<span class="badge" style="background: rgba(2, 132, 199, 0.15); color: var(--accent-cyan); border: 1px solid rgba(2, 132, 199, 0.3); font-weight: 600;">⚡ ORTA MAKAS</span>';
+    } else {
+      ratingBadge = '<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-subtle);">Dengeli</span>';
+    }
+
+    let cheaperBadge = '';
+    if (item.cheaper === 'Binance TR') {
+      cheaperBadge = '<span style="color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">🟡 Binance TR</span>';
+    } else if (item.cheaper === 'BtcTurk') {
+      cheaperBadge = '<span style="color: #38bdf8; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">🔵 BtcTurk</span>';
+    } else {
+      cheaperBadge = '<span style="color: var(--text-muted);">Eşit</span>';
+    }
+
+    const btrPrice = formatTryPrice(item.binance_price);
+    const btcTurkPrice = formatTryPrice(item.btcturk_price);
+    const spreadTry = formatTryPrice(item.spread_try);
+
+    html += `
+      <tr style="transition: background 0.15s ease;">
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="openAndAnalyzeAsset('${item.asset}USDT', 'BINANCE_TR')" title="Analiz Et & Al-Sat">
+            <strong style="color: var(--text-primary); font-size: 13px;">${item.asset}</strong>
+            <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">/TRY</span>
+            <span style="font-size: 10px; color: var(--accent-cyan);">↗</span>
+          </div>
+        </td>
+        <td style="font-family: var(--font-mono); font-size: 12px;">${btrPrice}</td>
+        <td style="font-family: var(--font-mono); font-size: 12px;">${btcTurkPrice}</td>
+        <td style="font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-secondary);">${spreadTry}</td>
+        <td style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: ${spreadPct >= 0.8 ? 'var(--profit)' : (spreadPct >= 0.4 ? 'var(--accent-cyan)' : 'var(--text-primary)')};">
+          %${spreadPct.toFixed(2)}
+        </td>
+        <td>${cheaperBadge}</td>
+        <td>${ratingBadge}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+
+  if (pill) {
+    if (highCount > 0) {
+      pill.textContent = `🔥 ${highCount} Yüksek Fırsat / ${arbitrageList.length} Çift`;
+      pill.style.color = 'var(--profit)';
+      pill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    } else {
+      pill.textContent = `✅ ${arbitrageList.length} Çift Taranıyor (Dengede)`;
+      pill.style.color = 'var(--accent-cyan)';
+      pill.style.borderColor = 'rgba(2, 132, 199, 0.3)';
+    }
+  }
+}
+
+function renderTrendingCoins(trendingList) {
+  const container = document.getElementById('trending-grid');
+  if (!container) return;
+
+  if (!trendingList || trendingList.length === 0) {
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">CoinGecko trend coin verisi henüz hazır değil.</div>';
+    return;
+  }
+
+  let html = '';
+  trendingList.forEach(c => {
+    const chg = Number(c.change_24h || 0);
+    const chgClass = chg >= 0 ? 'text-profit' : 'text-loss';
+    const chgSign = chg >= 0 ? '+' : '';
+    const pxStr = formatCryptoMoney(c.price_usd);
+    const rank = c.market_cap_rank ? `#${c.market_cap_rank}` : 'Top';
+
+    html += `
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; cursor: pointer;" 
+           onmouseover="this.style.borderColor='var(--border-active)'; this.style.transform='translateY(-2px)';" 
+           onmouseout="this.style.borderColor='var(--border-subtle)'; this.style.transform='translateY(0)';"
+           onclick="openAndAnalyzeAsset('${c.symbol}USDT', 'BINANCE')"
+           title="Coin: ${c.name} - Tıkla ve Grafiğini / Botu Aç">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${c.thumb ? `<img src="${c.thumb}" alt="${c.symbol}" style="width: 24px; height: 24px; border-radius: 50%; background: #000;" onerror="this.style.display='none'">` : ''}
+            <div>
+              <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); line-height: 1.2;">${c.symbol}</div>
+              <div style="font-size: 11px; color: var(--text-muted); max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
+            </div>
+          </div>
+          <span class="indicator-pill" style="font-size: 10px; padding: 1px 6px; font-weight: 700; color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.3);">${rank}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
+          <span style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-primary);">${pxStr}</span>
+          <span class="${chgClass}" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700;">${chgSign}%${chg.toFixed(2)}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function renderMempoolHealth(mp) {
+  const container = document.getElementById('mempool-container');
+  if (!container) return;
+
+  const statusText = mp.status_text || 'Ağ Normal (Düşük/Makul Komisyon)';
+  const statusColor = mp.status_color || 'var(--profit)';
+
+  container.innerHTML = `
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 16px;">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+        <span>⚡ En Hızlı Transfer</span>
+        <span style="color: var(--accent-cyan); font-size: 10px;">(~10 dk / Sonraki Blok)</span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--text-primary);">
+        ${mp.fastestFee || '-'} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">sat/vB</span>
+      </div>
+      <div style="font-size: 11px; color: var(--profit); margin-top: 4px;">Öncelikli madenci bloğu</div>
+    </div>
+
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 16px;">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+        <span>⏱️ Standart Transfer</span>
+        <span style="color: var(--accent-cyan); font-size: 10px;">(~30 dk / 3 Blok)</span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--text-primary);">
+        ${mp.halfHourFee || '-'} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">sat/vB</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Önerilen borsa çekimi</div>
+    </div>
+
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 16px;">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+        <span>🐢 Ekonomik Transfer</span>
+        <span style="color: var(--accent-cyan); font-size: 10px;">(~1 Saat / 6 Blok)</span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--text-primary);">
+        ${mp.hourFee || '-'} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">sat/vB</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Düşük komisyonlu transfer</div>
+    </div>
+
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 16px;">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+        <span>💤 Minimum / Boş Zaman</span>
+        <span style="color: var(--accent-cyan); font-size: 10px;">(Ağ Boşaldığında)</span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800; color: var(--text-primary);">
+        ${mp.minimumFee || mp.economyFee || '-'} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">sat/vB</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Ağ tabanı komisyonu</div>
+    </div>
+
+    <div style="grid-column: 1 / -1; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Bitcoin Ağ Sağlığı Durumu:</span>
+        <span class="indicator-pill" style="color: ${statusColor}; font-weight: 700; border-color: ${statusColor}; padding: 3px 10px;">
+          ${statusText}
+        </span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Veri Kaynağı: Mempool.space Canlı Bitcoin Explorer API
+      </div>
+    </div>
+  `;
+}
+
+function renderDexComparison(dexList) {
+  const tbody = document.getElementById('dex-table-body');
+  if (!tbody) return;
+
+  if (!dexList || dexList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">DEX likidite havuzları taranıyor...</td></tr>';
+    return;
+  }
+
+  let html = '';
+  dexList.forEach(item => {
+    const diffPct = Number(item.diff_pct || 0);
+    const cexPx = formatCryptoMoney(item.cex_price);
+    const dexPx = formatCryptoMoney(item.dex_price);
+
+    let statusBadge = '';
+    if (item.opportunity === 'DEX_UCUZ') {
+      statusBadge = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--profit); border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;">🟢 DEX İndirimli</span>';
+    } else if (item.opportunity === 'CEX_UCUZ') {
+      statusBadge = '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">🟡 Borsa İndirimli</span>';
+    } else {
+      statusBadge = '<span class="badge" style="background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border-subtle);">Dengeli (%0 - %0.5)</span>';
+    }
+
+    html += `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="openAndAnalyzeAsset('${item.asset}USDT', 'BINANCE')" title="Analiz Et">
+            <strong style="color: var(--text-primary); font-size: 13px;">${item.asset}</strong>
+            <span style="font-size: 10px; color: var(--accent-cyan);">↗</span>
+          </div>
+        </td>
+        <td style="color: var(--text-secondary); font-size: 12px;">${item.chain}</td>
+        <td><span class="indicator-pill" style="font-size: 11px; padding: 2px 8px; color: var(--accent-cyan); font-weight: 600;">${item.dex_name}</span></td>
+        <td style="font-family: var(--font-mono); font-size: 12px;">${cexPx}</td>
+        <td style="font-family: var(--font-mono); font-size: 12px; font-weight: 600;">${dexPx}</td>
+        <td style="font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: ${Math.abs(diffPct) >= 0.8 ? 'var(--profit)' : 'var(--text-primary)'};">
+          %${diffPct.toFixed(2)}
+        </td>
+        <td>${statusBadge}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
 // Global Function Bindings
 window.promptEditEntryPrice = promptEditEntryPrice;
 window.openSettingsModal = openSettingsModal;
@@ -2667,6 +2954,12 @@ window.toggleTrackRadarCoin = toggleTrackRadarCoin;
 window.quickTradeRadar = quickTradeRadar;
 window.submitPin = submitPin;
 window.lockDashboard = lockDashboard;
+window.switchIntelTab = switchIntelTab;
+window.fetchIntelligenceSummary = fetchIntelligenceSummary;
+window.renderArbitrageRadar = renderArbitrageRadar;
+window.renderTrendingCoins = renderTrendingCoins;
+window.renderMempoolHealth = renderMempoolHealth;
+window.renderDexComparison = renderDexComparison;
 
 // Başlatıcı
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2687,6 +2980,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isAuth) {
     fetchState();
     loadAllMarketCoins();
+    fetchIntelligenceSummary();
   }
 
   setInterval(() => {
@@ -2700,6 +2994,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       loadAllMarketCoins();
     }
   }, 30000);
+
+  // Canlı Piyasa İstihbaratı ve Arbitraj Radarı (25 sn)
+  setInterval(() => {
+    if (localStorage.getItem('quant_admin_token')) {
+      fetchIntelligenceSummary();
+    }
+  }, 25000);
 
   // Sayfa açıkken her 90 saniyede bir otonom sepet taraması ve dengelemesi yap
   setInterval(async () => {
@@ -2716,3 +3017,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {}
   }, 90000);
 });
+

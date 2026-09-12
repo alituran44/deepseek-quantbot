@@ -22,6 +22,7 @@ from .data.coingecko_feed import CoinGeckoFeed
 from .data.hyperliquid_feed import HyperliquidFeed
 from .data.macro_feed import MacroFeed
 from .trading.daily_breakout_radar import DailyBreakoutRadar
+from .data.market_intelligence import market_intelligence
 
 class BotOrchestrator:
     """
@@ -45,6 +46,7 @@ class BotOrchestrator:
         self.okx_executor = OKXLiveExecutor()
         self.mexc_executor = MEXCLiveExecutor()
         self.radar = DailyBreakoutRadar()
+        self.market_intelligence = market_intelligence
         
         # Canlı USD/TRY döviz kuru önbelleği
         self._usd_try_rate: float = 48.09
@@ -113,6 +115,20 @@ class BotOrchestrator:
             except Exception:
                 continue
         return self._usd_try_rate
+
+    def get_market_intelligence_summary(self) -> Dict[str, Any]:
+        """BtcTurk Arbitraj, CoinGecko Trending, Mempool ve DEX özetini derler."""
+        btr_prices = {}
+        usd_rate = self.get_usd_try_rate() or 48.48
+        for sym, data in self.latest_analyses.items():
+            clean = sym.replace("USDT", "").replace("TRY", "").replace("_", "")
+            px = data.get("current_price", 0.0)
+            if px > 0:
+                btr_prices[f"{clean}_TRY"] = px * usd_rate
+                btr_prices[clean] = px * usd_rate
+
+        cex_prices = {sym: d.get("current_price", 0.0) for sym, d in self.latest_analyses.items()}
+        return self.market_intelligence.get_full_intelligence_summary(btr_prices, cex_prices)
 
     def get_registered_exchanges(self) -> List[Dict[str, Any]]:
         """Kayıtlı ve aktif borsaların (Binance, MEXC, OKX) listesini ve bakiyelerini döner."""
