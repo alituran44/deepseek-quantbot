@@ -728,12 +728,28 @@ function openAssetModal(symbol, exchange = null) {
   chgEl.textContent = `%${chg >= 0 ? '+' : ''}${chg.toFixed(2)}`;
   chgEl.className = chg >= 0 ? 'text-profit' : 'text-loss';
 
+  const liveAssets = (lastDashboardData && lastDashboardData.wallet && Array.isArray(lastDashboardData.wallet.live_assets)) ? lastDashboardData.wallet.live_assets : [];
+  const foundLive = liveAssets.find(a => a.symbol === cleanSym || a.asset === cleanSym || a.symbol === symbol);
   const ownedEl = document.getElementById('modal-asset-owned');
-  if (item.is_owned) {
-    ownedEl.style.display = 'inline-block';
-    ownedEl.textContent = `CÜZDANDA: ${item.owned_units} ${cleanSym}`;
-  } else {
-    ownedEl.style.display = 'none';
+  if (ownedEl) {
+    if (foundLive || item.is_owned) {
+      ownedEl.style.display = 'inline-block';
+      const units = foundLive ? (foundLive.free || foundLive.units || item.owned_units) : item.owned_units;
+      const entryPx = (foundLive && foundLive.entry_price) ? foundLive.entry_price : (item.entry_price || 0);
+      const curPx = (foundLive && foundLive.current_price) ? foundLive.current_price : (item.current_price || 0);
+      
+      let compStr = '';
+      if (entryPx > 0 && curPx > 0) {
+        const diffPct = ((curPx - entryPx) / entryPx) * 100;
+        const sign = diffPct >= 0 ? '+' : '';
+        const entryStr = isTrModal ? formatTryPrice(entryPx * usdRate) : formatCryptoMoney(entryPx);
+        const col = diffPct >= 0 ? 'var(--profit)' : 'var(--loss)';
+        compStr = ` | Alış: <span style="font-family: var(--font-mono);">${entryStr}</span> (<span style="color: ${col}; font-weight: 700;">${sign}%${diffPct.toFixed(2)}</span>)`;
+      }
+      ownedEl.innerHTML = `🪙 CÜZDANDA: <strong>${Number(units).toFixed(4)} ${cleanSym}</strong>${compStr}`;
+    } else {
+      ownedEl.style.display = 'none';
+    }
   }
 
   document.getElementById('modal-ind-rsi').textContent = ind.rsi ? Number(ind.rsi).toFixed(1) : '-';
@@ -1163,8 +1179,8 @@ function setExchangeFilter(ex, btn) {
   const thCurrent = document.getElementById('th-pos-current');
   const thVal = document.getElementById('th-pos-val');
   const thPnl = document.getElementById('th-pos-pnl');
-  if (thEntry) thEntry.textContent = isTr ? 'Giriş Fiyatı (TL)' : 'Giriş Fiyatı';
-  if (thCurrent) thCurrent.textContent = isTr ? 'Anlık Fiyat (TL)' : 'Anlık Fiyat';
+  if (thEntry) thEntry.innerHTML = isTr ? 'Giriş Fiyatı <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Alış)</span>' : 'Giriş Fiyatı <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Alış)</span>';
+  if (thCurrent) thCurrent.innerHTML = isTr ? 'Anlık Fiyat & Değişim <span style="font-size: 10px; font-weight: 600; color: var(--accent-cyan);">(Net Fark)</span>' : 'Anlık Fiyat & Değişim <span style="font-size: 10px; font-weight: 600; color: var(--accent-cyan);">(Net Fark)</span>';
   if (thVal) thVal.textContent = isTr ? 'Toplam Değer (TL)' : 'Toplam Değer';
   if (thPnl) thPnl.textContent = isTr ? 'Açık PnL / Bakiye (TL)' : 'Açık PnL / Bakiye';
 
@@ -1245,19 +1261,76 @@ function renderPositions(positions, isLive = true) {
         valStr = formatCryptoMoney(pos.position_value || 0) + ' USD';
       }
 
-      let entryPxStr;
-      let pxStr;
+      let entryPxStr = '-';
+      let pxStr = '-';
+      let diffBadgeHtml = '';
+      let pxColor = 'var(--text-primary)';
+
       if (isTry) {
         entryPxStr = '₺1,00 TL';
         pxStr = '₺1,00 TL';
-      } else if (showInTry) {
-        const entryUsd = (pos.entry_price || pos.current_price || 0);
-        entryPxStr = entryUsd > 0 ? formatTryPrice(entryUsd * usdRate) : '-';
-        const pxUsd = (pos.current_price || 0);
-        pxStr = pxUsd > 0 ? formatTryPrice(pxUsd * usdRate) : '-';
+        diffBadgeHtml = `<div style="font-size: 10px; color: var(--accent-cyan); font-weight: 600; margin-top: 2px;">Sabit Nakit</div>`;
       } else {
-        entryPxStr = pos.entry_price ? formatCryptoMoney(pos.entry_price) : (pos.current_price ? formatCryptoMoney(pos.current_price) : '-');
-        pxStr = pos.current_price ? formatCryptoMoney(pos.current_price) : '-';
+        let entryPrice = Number(pos.entry_price || pos.current_price || 0);
+        let curPrice = Number(pos.current_price || 0);
+        let pnlPct = (pos.unrealized_pnl_pct !== undefined && !isNaN(pos.unrealized_pnl_pct)) ? Number(pos.unrealized_pnl_pct) : 0;
+
+        // Eğer giriş ve anlık aynı kalmışsa ama PnL yüzdesi varsa, gerçek giriş maliyetini tersine türet
+        if (Math.abs(entryPrice - curPrice) < 0.00001 && Math.abs(pnlPct) > 0.001 && curPrice > 0) {
+          entryPrice = curPrice / (1.0 + (pnlPct / 100.0));
+        }
+
+        let entryDisplayNum = entryPrice;
+        let curDisplayNum = curPrice;
+
+        if (showInTry) {
+          entryDisplayNum = entryPrice * usdRate;
+          curDisplayNum = curPrice * usdRate;
+          entryPxStr = entryDisplayNum > 0 ? formatTryPrice(entryDisplayNum) : '-';
+          pxStr = curDisplayNum > 0 ? formatTryPrice(curDisplayNum) : '-';
+        } else {
+          entryPxStr = entryDisplayNum > 0 ? formatCryptoMoney(entryDisplayNum) : '-';
+          pxStr = curDisplayNum > 0 ? formatCryptoMoney(curDisplayNum) : '-';
+        }
+
+        let diffVal = curDisplayNum - entryDisplayNum;
+        let calcPct = entryDisplayNum > 0 ? ((curDisplayNum - entryDisplayNum) / entryDisplayNum) * 100 : pnlPct;
+        if (Math.abs(calcPct) < 0.001 && Math.abs(pnlPct) > 0.001) {
+          calcPct = pnlPct;
+        }
+
+        if (calcPct > 0.01) {
+          pxColor = 'var(--profit)';
+          const diffStr = showInTry ? formatTryPrice(diffVal) : formatCryptoMoney(diffVal);
+          diffBadgeHtml = `
+            <div style="margin-top: 3px;">
+              <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--profit); background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 4px; padding: 1px 6px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                +${diffStr} (%+${calcPct.toFixed(2)})
+              </span>
+            </div>
+          `;
+        } else if (calcPct < -0.01) {
+          pxColor = 'var(--loss)';
+          const absDiff = Math.abs(diffVal);
+          const diffStr = showInTry ? formatTryPrice(absDiff) : formatCryptoMoney(absDiff);
+          diffBadgeHtml = `
+            <div style="margin-top: 3px;">
+              <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--loss); background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 4px; padding: 1px 6px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                -${diffStr} (%${calcPct.toFixed(2)})
+              </span>
+            </div>
+          `;
+        } else {
+          diffBadgeHtml = `
+            <div style="margin-top: 3px;">
+              <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); background: rgba(255, 255, 255, 0.05); border-radius: 4px; padding: 1px 5px;">
+                ● ₺0,00 (%0.00) Başabaş
+              </span>
+            </div>
+          `;
+        }
       }
 
       const unitsVal = typeof pos.units === 'number' ? pos.units : parseFloat(pos.units || pos.free || 0);
@@ -1330,8 +1403,21 @@ function renderPositions(positions, isLive = true) {
           </td>
           <td><span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">${walletTag}</span></td>
           <td><span class="badge badge-buy">CÜZDANDA</span></td>
-          <td style="font-family: var(--font-mono); font-weight: 600;">${entryPxStr}</td>
-          <td style="font-family: var(--font-mono); font-weight: 600;">${pxStr}</td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">
+              ${entryPxStr}
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+              <span style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); padding: 1px 4px; border-radius: 3px; font-weight: 600;">Alış Maliyeti</span>
+              ${!isTry ? `<button type="button" onclick="event.stopPropagation(); promptEditEntryPrice('${displaySymbol}', ${showInTry ? 'true' : 'false'})" title="Alış maliyetini düzenle" style="background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 11px; opacity: 0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✏️</button>` : ''}
+            </div>
+          </td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 800; font-size: 13px; color: ${pxColor};">
+              ${pxStr}
+            </div>
+            ${diffBadgeHtml}
+          </td>
           <td>
             <span style="color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
               ${unitsStr} ${pos.asset || ''}
@@ -2514,7 +2600,39 @@ function quickTradeRadar(symbol, exchange) {
   if (exSelect && exchange) exSelect.value = exchange.toUpperCase();
 }
 
+async function promptEditEntryPrice(sym, isTry) {
+  const curUnit = isTry ? 'TL' : 'USD';
+  const cleanSym = sym ? sym.replace('USDT', '').replace('TRY', '').replace('_', '') : '';
+  const val = prompt(`[${cleanSym}] Gerçek alış maliyetinizi (${curUnit}) cinsinden girin:\n(Örnek: 103.50)`, '');
+  if (!val) return;
+  const num = parseFloat(val.replace(',', '.'));
+  if (isNaN(num) || num <= 0) {
+    alert('Lütfen geçerli pozitif bir sayı girin.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/portfolio/set-entry-price', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: cleanSym,
+        entry_price: num,
+        currency: isTry ? 'TRY' : 'USD'
+      })
+    });
+    const d = await res.json();
+    if (res.ok && d.status === 'SUCCESS') {
+      await fetchState();
+    } else {
+      alert(d.message || 'Maliyet kaydedilemedi.');
+    }
+  } catch (err) {
+    alert('Bağlantı hatası: ' + err.message);
+  }
+}
+
 // Global Function Bindings
+window.promptEditEntryPrice = promptEditEntryPrice;
 window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
 window.saveSettings = saveSettings;

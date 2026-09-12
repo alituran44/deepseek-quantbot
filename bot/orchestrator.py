@@ -708,22 +708,44 @@ class BotOrchestrator:
             if not cur_px and analysis:
                 cur_px = analysis.get("current_price", 0.0)
 
+            units = float(ac.get("units", 0) or 0)
             if matched_pos and matched_pos.get("entry_price"):
                 entry_px = matched_pos.get("entry_price", cur_px)
                 sl = matched_pos.get("stop_loss", 0.0)
                 tp = matched_pos.get("take_profit", 0.0)
             else:
-                entry_px = cur_px
-                sl = round(cur_px * 0.95, 4) if cur_px > 0 else 0.0
-                tp = round(cur_px * 1.10, 4) if cur_px > 0 else 0.0
+                chg_24 = float(analysis.get("change_24h", 0.0)) if (analysis and analysis.get("change_24h") is not None) else 0.0
+                if cur_px > 0 and abs(chg_24) > 0.001:
+                    entry_px = round(cur_px / (1.0 + (chg_24 / 100.0)), 6)
+                else:
+                    entry_px = cur_px
+                sl = round(entry_px * 0.95, 4) if entry_px > 0 else 0.0
+                tp = round(entry_px * 1.10, 4) if entry_px > 0 else 0.0
+
+                # Canlı cüzdandaki bu varlığı kalıcı takip için open_positions'a kaydet
+                if units > 0.00000001 and ast not in ["TRY", "USDT"]:
+                    try:
+                        self.wallet.open_position(
+                            symbol=f"{ast}USDT",
+                            action="BUY",
+                            entry_price=entry_px,
+                            stop_loss=sl,
+                            take_profit=tp,
+                            units=units,
+                            thesis=f"[CANLI CÜZDAN KAYDI - {ac.get('exchange', 'Binance TR')}]",
+                            exchange=ac.get("exchange", "Binance TR"),
+                            is_live_record=True
+                        )
+                        pos_by_sym[ast] = {"entry_price": entry_px, "stop_loss": sl, "take_profit": tp}
+                    except Exception:
+                        pass
             
             ac["current_price"] = cur_px
             ac["entry_price"] = entry_px
             ac["stop_loss"] = sl
             ac["take_profit"] = tp
             
-            units = float(ac.get("units", 0) or 0)
-            if entry_px > 0 and cur_px > 0 and units > 0 and entry_px != cur_px:
+            if entry_px > 0 and cur_px > 0 and units > 0 and abs(cur_px - entry_px) > 0.000001:
                 pnl_usd = (cur_px - entry_px) * units
                 pnl_pct = ((cur_px - entry_px) / entry_px) * 100
             elif analysis and analysis.get("change_24h") is not None:

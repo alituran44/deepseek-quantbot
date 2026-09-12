@@ -102,6 +102,11 @@ class ManualOrderRequest(BaseModel):
     exchange: Optional[str] = "AUTO"
     mode: Optional[str] = None  # LIVE veya PAPER
 
+class SetEntryPriceRequest(BaseModel):
+    symbol: str
+    entry_price: float
+    currency: Optional[str] = "TRY"
+
 class SingleCoinAnalysisRequest(BaseModel):
     symbol: str
 
@@ -391,6 +396,45 @@ async def execute_manual_order(req: ManualOrderRequest):
                 "status": "ERROR", 
                 "message": f"ℹ️ Sanal kasanızda satılacak açık {sym} pozisyonu bulunmuyor. Satış yapabilmek için önce 'Hızlı Al' yapmalısınız."
             })
+
+@app.post("/api/portfolio/set-entry-price")
+async def set_portfolio_entry_price(req: SetEntryPriceRequest):
+    """Kullanıcının varlığı kaça aldığını (Giriş Maliyetini) manuel belirlemesini ve sabitlemesini sağlar."""
+    sym = req.symbol.strip().upper().replace("USDT", "").replace("TRY", "").replace("_", "")
+    usd_rate = orchestrator.get_usd_try_rate() or 48.48
+    price = float(req.entry_price or 0.0)
+    if price <= 0:
+        return JSONResponse(status_code=400, content={"status": "ERROR", "message": "Lütfen geçerli bir fiyat girin."})
+    
+    price_usd = (price / usd_rate) if req.currency.upper() == "TRY" else price
+
+    found = False
+    for p in orchestrator.wallet.open_positions:
+        p_sym = p.get("symbol", "").replace("USDT", "").replace("TRY", "").replace("_", "").upper()
+        if p_sym == sym:
+            p["entry_price"] = price_usd
+            p["stop_loss"] = round(price_usd * 0.95, 4)
+            p["take_profit"] = round(price_usd * 1.10, 4)
+            found = True
+            break
+            
+    if not found:
+        orchestrator.wallet.open_position(
+            symbol=f"{sym}USDT",
+            action="BUY",
+            entry_price=price_usd,
+            stop_loss=round(price_usd * 0.95, 4),
+            take_profit=round(price_usd * 1.10, 4),
+            units=1.0,
+            thesis="[KULLANICI MANUEL GİRİŞ MALİYETİ]",
+            exchange="Binance TR",
+            is_live_record=True
+        )
+    orchestrator.wallet._save_state()
+    return JSONResponse(content={
+        "status": "SUCCESS", 
+        "message": f"✅ {sym} alış maliyeti {price:.2f} {req.currency} olarak güncellendi ve kilitlendi."
+    })
 
 @app.post("/api/mode/toggle")
 async def toggle_mode(request: Request):
