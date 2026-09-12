@@ -62,6 +62,7 @@ async def security_and_cache_middleware(request: Request, call_next):
         path == "/" or
         path.startswith("/static") or
         path.startswith("/api/auth") or
+        path.startswith("/api/intelligence") or
         path == "/favicon.ico"
     )
 
