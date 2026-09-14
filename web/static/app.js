@@ -2418,6 +2418,57 @@ function renderBreakoutRadar(radarData) {
   renderRadarItems();
 }
 
+let currentRadarMainMode = 'BREAKOUT';
+
+function switchRadarMainMode(mode) {
+  currentRadarMainMode = mode;
+  const btnBreakout = document.getElementById('btn-radar-mode-breakout');
+  const btnPrePump = document.getElementById('btn-radar-mode-prepump');
+  if (btnBreakout) btnBreakout.classList.toggle('active', mode === 'BREAKOUT');
+  if (btnPrePump) btnPrePump.classList.toggle('active', mode === 'PRE_PUMP');
+  renderRadarItems();
+}
+
+async function armRadarTrigger(symbol, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = '⏳ Kuruluyor...';
+  }
+  try {
+    const res = await fetch('/api/radar/trigger-arm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol: symbol, amount_usd: 50.0 })
+    });
+    const d = await res.json();
+    if (res.ok && d.status === 'SUCCESS') {
+      if (btnEl) {
+        btnEl.innerHTML = '✅ Tetikçi Aktif!';
+        btnEl.style.background = 'rgba(16, 185, 129, 0.2)';
+        btnEl.style.borderColor = 'var(--profit)';
+        btnEl.style.color = 'var(--profit)';
+      }
+      if (currentRadarData) {
+        if (!currentRadarData.watchlist) currentRadarData.watchlist = [];
+        if (d.trigger) currentRadarData.watchlist.push(d.trigger);
+        renderRadarItems();
+      }
+    } else {
+      alert(d.message || 'Tetikçi kurulamadı.');
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '🎯 Kırılımda Otomatik Al';
+      }
+    }
+  } catch (e) {
+    alert('Hata: ' + e.message);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = '🎯 Kırılımda Otomatik Al';
+    }
+  }
+}
+
 function filterRadar(filter, btnEl) {
   currentRadarFilter = filter;
   const buttons = document.querySelectorAll('#radar-filter-buttons .btn-filter');
@@ -2430,7 +2481,10 @@ function renderRadarItems() {
   const container = document.getElementById('radar-items-container');
   if (!container || !currentRadarData) return;
 
-  const opportunities = currentRadarData.opportunities || currentRadarData.top_opportunities || [];
+  const isPrePumpMode = currentRadarMainMode === 'PRE_PUMP';
+  const opportunities = isPrePumpMode 
+    ? (currentRadarData.pre_pump_opportunities || currentRadarData.pre_pump_candidates || [])
+    : (currentRadarData.opportunities || currentRadarData.top_opportunities || []);
   const watchlist = currentRadarData.watchlist || [];
 
   let items = [];
@@ -2450,7 +2504,7 @@ function renderRadarItems() {
   if (items.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 12px; background: rgba(255,255,255,0.01); border-radius: 6px;">
-        ${currentRadarFilter === 'TRACKED' ? 'Henüz takibe alınan bir kripto bulunmuyor. Fırsatların yanındaki ⭐ ikonuna tıklayarak takibe alabilirsiniz.' : 'Seçili filtreye uygun yükseliş fırsatı bulunamadı.'}
+        ${currentRadarFilter === 'TRACKED' ? 'Henüz takibe alınan bir kripto bulunmuyor. Fırsatların yanındaki ⭐ ikonuna tıklayarak takibe alabilirsiniz.' : (isPrePumpMode ? 'Seçili filtreye uygun sıkışma/akümülasyon adayı bulunamadı.' : 'Seçili filtreye uygun yükseliş fırsatı bulunamadı.')}
       </div>
     `;
     return;
@@ -2485,66 +2539,143 @@ function renderRadarItems() {
     const chgClass = (item.change_24h || 0) >= 0 ? 'text-profit' : 'text-loss';
     const chgSign = (item.change_24h || 0) >= 0 ? '+' : '';
 
-    html += `
-      <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; transition: border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent-cyan)'" onmouseleave="this.style.borderColor='var(--border-subtle)'">
-        
-        <!-- Üst Satır: Sembol, Fiyat, 24s Değişim ve Takip Butonu -->
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-weight: 700; font-size: 13px; color: var(--text-primary); cursor: pointer;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')" title="Canlı Grafiği Aç">
-              ${item.asset || item.symbol.replace('USDT', '')} <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">/ USDT</span>
+    if (isPrePumpMode) {
+      // ⚡ PRE-PUMP SIKIŞMA VE AKÜMÜLASYON KARTI
+      const rangeSpan = item.range_span_pct !== undefined ? item.range_span_pct : (item.range_pct || 2.5);
+      const volMillions = ((item.volume_usd || 0) / 1000000).toFixed(1);
+      const triggerPx = formatCryptoMoney(item.trigger_price || (item.price * 1.015));
+      const targetGain = item.target_gain_pct || 20.0;
+      const targetPx = formatCryptoMoney(item.target_price || (item.price * 1.2));
+      const stopPx = formatCryptoMoney(item.stop_price || (item.price * 0.975));
+      const isTriggered = item.is_triggered;
+
+      html += `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; transition: border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56, 189, 248, 0.6)'" onmouseleave="this.style.borderColor='var(--border-subtle)'">
+          
+          <!-- Üst Satır: Sembol, Fiyat, 24s Değişim ve Takip Butonu -->
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 700; font-size: 13px; color: var(--text-primary); cursor: pointer;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')" title="Canlı Grafiği Aç">
+                ${item.asset || item.symbol.replace('USDT', '')} <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">/ USDT</span>
+              </span>
+              <button onclick="toggleTrackRadarCoin('${item.symbol}')" style="background: transparent; border: none; cursor: pointer; font-size: 14px; padding: 0 2px; color: ${isTracked ? '#f59e0b' : 'var(--text-muted)'};" title="${isTracked ? 'Takibi Bırak' : 'Takibe Al'}">
+                ${isTracked ? '★' : '☆'}
+              </button>
+              <span class="indicator-pill" style="font-size: 9px; padding: 1px 5px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-weight: 700;">
+                ⚡ Sıkışma: %${rangeSpan}
+              </span>
+            </div>
+
+            <div style="text-align: right;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>
+              <span class="${chgClass}" style="font-size: 11px; font-weight: 600; margin-left: 4px;">${chgSign}%${(item.change_24h || 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <!-- İkinci Satır: Borsa Rozetleri & Balina Hacmi & Tetik Fiyatı -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              ${exBadges}
+              <span class="indicator-pill" style="color: var(--profit); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(16, 185, 129, 0.3);">
+                🟢 Balina Hacmi: $${volMillions}M
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="indicator-pill" style="color: #38bdf8; font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(56, 189, 248, 0.4);">
+                🎯 Tetik: ${triggerPx}
+              </span>
+              <span class="indicator-pill" style="color: var(--profit); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(16, 185, 129, 0.4);">
+                Skor: %${item.squeeze_score || item.breakout_score || 90}
+              </span>
+            </div>
+          </div>
+
+          <!-- Üçüncü Satır: Hedef, Stop ve AI Gerekçesi -->
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.35; background: rgba(255,255,255,0.015); padding: 5px 8px; border-radius: 4px; border-left: 2px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+            <span>${item.thesis || 'Dar bantta sessiz balina akümülasyonu ve volatilite sıkışması tespit edildi.'}</span>
+            <span style="font-family: var(--font-mono); font-size: 10px; white-space: nowrap;">
+              <strong style="color: var(--profit);">Hedef: +%${targetGain} (${targetPx})</strong> • <span style="color: var(--loss);">Stop: ${stopPx}</span>
             </span>
-            <button onclick="toggleTrackRadarCoin('${item.symbol}')" style="background: transparent; border: none; cursor: pointer; font-size: 14px; padding: 0 2px; color: ${isTracked ? '#f59e0b' : 'var(--text-muted)'};" title="${isTracked ? 'Takibi Bırak' : 'Takibe Al'}">
-              ${isTracked ? '★' : '☆'}
+          </div>
+
+          <!-- Dördüncü Satır: Aksiyon Butonları (Kırılımda Al & Hemen Al) -->
+          <div style="display: flex; gap: 6px; margin-top: 2px;">
+            <button class="btn btn-secondary" style="flex: 1; font-size: 11px; height: 26px; padding: 0 6px;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')">
+              📊 İncele
+            </button>
+            <button class="btn btn-secondary" style="flex: 1.4; font-size: 11px; height: 26px; padding: 0 6px; border-color: rgba(56, 189, 248, 0.5); color: #38bdf8;" onclick="armRadarTrigger('${item.symbol}', this)" title="Fiyat ${triggerPx} eşiğini hacimle aştığı milisaniyede otomatik alır">
+              ${isTriggered ? '🔥 Kırılım Tetiklendi!' : '🎯 Kırılımda Otomatik Al'}
+            </button>
+            <button class="btn btn-primary" style="flex: 1.1; font-size: 11px; height: 26px; padding: 0 6px; background: var(--profit); border-color: var(--profit);" onclick="quickTradeRadar('${item.symbol}', '${primaryExchange}')" title="Beklemeden piyasa fiyatından hemen al">
+              ⚡ Anında Al
             </button>
           </div>
 
-          <div style="text-align: right;">
-            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>
-            <span class="${chgClass}" style="font-size: 11px; font-weight: 600; margin-left: 4px;">${chgSign}%${(item.change_24h || 0).toFixed(2)}</span>
-          </div>
         </div>
+      `;
+    } else {
+      // 🔥 AKTİF KIRILIM KARTI
+      html += `
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; transition: border-color 0.2s;" onmouseenter="this.style.borderColor='var(--accent-cyan)'" onmouseleave="this.style.borderColor='var(--border-subtle)'">
+          
+          <!-- Üst Satır: Sembol, Fiyat, 24s Değişim ve Takip Butonu -->
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-weight: 700; font-size: 13px; color: var(--text-primary); cursor: pointer;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')" title="Canlı Grafiği Aç">
+                ${item.asset || item.symbol.replace('USDT', '')} <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">/ USDT</span>
+              </span>
+              <button onclick="toggleTrackRadarCoin('${item.symbol}')" style="background: transparent; border: none; cursor: pointer; font-size: 14px; padding: 0 2px; color: ${isTracked ? '#f59e0b' : 'var(--text-muted)'};" title="${isTracked ? 'Takibi Bırak' : 'Takibe Al'}">
+                ${isTracked ? '★' : '☆'}
+              </button>
+            </div>
 
-        <!-- İkinci Satır: Borsa Rozetleri & AI Skoru -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
-          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-            ${exBadges}
+            <div style="text-align: right;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>
+              <span class="${chgClass}" style="font-size: 11px; font-weight: 600; margin-left: 4px;">${chgSign}%${(item.change_24h || 0).toFixed(2)}</span>
+            </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="indicator-pill" style="color: var(--profit); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(16, 185, 129, 0.3);">
-              🎯 Hedef: +%${item.target_gain_pct || 12}
-            </span>
-            <span class="indicator-pill" style="color: var(--accent-cyan); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(2, 132, 199, 0.3);">
-              Skor: %${item.breakout_score || 85}
-            </span>
+
+          <!-- İkinci Satır: Borsa Rozetleri & AI Skoru -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              ${exBadges}
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="indicator-pill" style="color: var(--profit); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(16, 185, 129, 0.3);">
+                🎯 Hedef: +%${item.target_gain_pct || 12}
+              </span>
+              <span class="indicator-pill" style="color: var(--accent-cyan); font-size: 10px; font-weight: 700; padding: 1px 6px; border-color: rgba(2, 132, 199, 0.3);">
+                Skor: %${item.breakout_score || 85}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- Üçüncü Satır: AI Gerekçesi / Rapor -->
-        <div style="font-size: 11px; color: var(--text-muted); line-height: 1.35; background: rgba(255,255,255,0.015); padding: 4px 8px; border-radius: 4px; border-left: 2px solid var(--accent-cyan);">
-          ${item.thesis || 'Günlük kırılım ve hacim akışı tespit edildi.'}
-        </div>
-
-        <!-- Takip Durumu & PnL (Eğer takipteyse) -->
-        ${hasPnl ? `
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 3px 6px; background: rgba(16, 185, 129, 0.08); border-radius: 4px;">
-            <span style="color: var(--text-muted);">Sinyalden Beri Getiri:</span>
-            <span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono);">${pnlSign}%${pnl.toFixed(2)} (${trackedItem ? (trackedItem.status || 'TAKİPTE') : 'TAKİPTE'})</span>
+          <!-- Üçüncü Satır: AI Gerekçesi / Rapor -->
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.35; background: rgba(255,255,255,0.015); padding: 4px 8px; border-radius: 4px; border-left: 2px solid var(--accent-cyan);">
+            ${item.thesis || 'Günlük kırılım ve hacim akışı tespit edildi.'}
           </div>
-        ` : ''}
 
-        <!-- Alt Butonlar: Hızlı Pozisyon Al & İncele -->
-        <div style="display: flex; gap: 6px; margin-top: 2px;">
-          <button class="btn btn-secondary" style="flex: 1; font-size: 11px; height: 26px; padding: 0 6px;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')">
-            📊 İncele & Grafik
-          </button>
-          <button class="btn btn-primary" style="flex: 1; font-size: 11px; height: 26px; padding: 0 6px; background: var(--profit); border-color: var(--profit);" onclick="quickTradeRadar('${item.symbol}', '${primaryExchange}')">
-            ⚡ Hızlı Pozisyon Al
-          </button>
+          <!-- Takip Durumu & PnL (Eğer takipteyse) -->
+          ${hasPnl ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 3px 6px; background: rgba(16, 185, 129, 0.08); border-radius: 4px;">
+              <span style="color: var(--text-muted);">Sinyalden Beri Getiri:</span>
+              <span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono);">${pnlSign}%${pnl.toFixed(2)} (${trackedItem ? (trackedItem.status || 'TAKİPTE') : 'TAKİPTE'})</span>
+            </div>
+          ` : ''}
+
+          <!-- Alt Butonlar: Hızlı Pozisyon Al & İncele -->
+          <div style="display: flex; gap: 6px; margin-top: 2px;">
+            <button class="btn btn-secondary" style="flex: 1; font-size: 11px; height: 26px; padding: 0 6px;" onclick="openAndAnalyzeAsset('${item.symbol}', '${primaryExchange}')">
+              📊 İncele & Grafik
+            </button>
+            <button class="btn btn-primary" style="flex: 1; font-size: 11px; height: 26px; padding: 0 6px; background: var(--profit); border-color: var(--profit);" onclick="quickTradeRadar('${item.symbol}', '${primaryExchange}')">
+              ⚡ Hızlı Pozisyon Al
+            </button>
+          </div>
+
         </div>
-
-      </div>
-    `;
+      `;
+    }
   });
 
   container.innerHTML = html;
@@ -2960,6 +3091,8 @@ window.renderArbitrageRadar = renderArbitrageRadar;
 window.renderTrendingCoins = renderTrendingCoins;
 window.renderMempoolHealth = renderMempoolHealth;
 window.renderDexComparison = renderDexComparison;
+window.switchRadarMainMode = switchRadarMainMode;
+window.armRadarTrigger = armRadarTrigger;
 
 // Başlatıcı
 document.addEventListener('DOMContentLoaded', async () => {

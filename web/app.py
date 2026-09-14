@@ -567,6 +567,14 @@ async def toggle_radar_track(req: Dict[str, Any]):
         "watchlist": list(orchestrator.radar.watchlist.values())
     })
 
+@app.post("/api/radar/trigger-arm")
+async def arm_radar_trigger(req: Dict[str, Any]):
+    """Bir coin için otomatik kırılım alım tetikleyicisi kurar."""
+    symbol = req.get("symbol", "")
+    amount = float(req.get("amount_usd", 50.0))
+    res = orchestrator.radar.arm_pre_pump_trigger(symbol, amount)
+    return JSONResponse(content=res)
+
 @app.get("/api/exchanges/status")
 async def get_exchanges_status():
     """Çoklu borsa (Binance, Bybit, OKX, Gate.io) durumunu döner."""

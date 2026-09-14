@@ -17,6 +17,8 @@ class DailyBreakoutRadar:
     def __init__(self):
         self.crypto_feed = CryptoFeed()
         self.opportunities: List[Dict[str, Any]] = []
+        self.pre_pump_opportunities: List[Dict[str, Any]] = []
+        self.triggered_breakouts: Dict[str, Dict[str, Any]] = {}
         self.watchlist: Dict[str, Dict[str, Any]] = {}
         self.last_scan_time: float = 0.0
         self.market_report: Dict[str, Any] = {
@@ -158,6 +160,8 @@ class DailyBreakoutRadar:
             process_ticker(t, "OKX")
 
         candidates = []
+        pre_pump_candidates = []
+
         for sym, c in coins_map.items():
             vol = c["volume_usd"]
             chg = c["change_24h"]
@@ -165,14 +169,75 @@ class DailyBreakoutRadar:
             h24 = c["high_24h"]
             l24 = c["low_24h"]
 
-            # Likidite filtresi: En az 750,000 USD 24s işlem hacmi
-            if vol < 750000.0:
+            # Likidite filtresi: En az $750,000 işlem hacmi (Pump-Dump Tuzağı Filtresi)
+            if vol < 750000.0 or px <= 0:
                 continue
 
-            # Günlük yükselme ivmesi kriterleri:
-            # 1. 24 saatlik değişim pozitif (+%2.0 ile +%25.0 arası) -> Ralli aşırı şişmemiş, taze
-            # 2. Günün zirvesine yakınlık (Range Position): Alıcıların günlük mumu yukarıda tuttuğunu gösterir
-            # 3. Birden fazla borsada listelenme avantajı
+            range_span = (h24 - l24) / (px + 1e-9)
+
+            # -------------------------------------------------------------
+            # KATEGORİ 1: Patlama Öncesi Sıkışma & Balina Akümülasyonu (Pre-Pump Squeeze)
+            # Fiyat henüz %0-%3.5 aralığında, dalgalanma dar (%5.5 altı), yüksek hacim emiliyor
+            # -------------------------------------------------------------
+            if -2.0 <= chg <= 3.5 and range_span <= 0.055 and h24 > l24 and vol >= 1000000.0:
+                range_pct = (px - l24) / (h24 - l24 + 1e-9)
+                absorption_ratio = (vol / 1000000.0) / max(range_span * 100.0, 0.5)
+
+                squeeze_score = 65.0
+                if range_span <= 0.025:
+                    squeeze_score += 15.0  # Aşırı dar sıkışma (yay sonuna kadar gerildi)
+                elif range_span <= 0.040:
+                    squeeze_score += 10.0
+
+                if vol >= 10000000.0:
+                    squeeze_score += 12.0  # $10M+ dev balina emişi
+                elif vol >= 3000000.0:
+                    squeeze_score += 7.0
+
+                if len(c["exchanges"]) >= 2:
+                    squeeze_score += 6.0
+
+                if range_pct >= 0.50:
+                    squeeze_score += 4.0  # Sıkışmanın üst yarısında alıcılar baskın
+
+                squeeze_score = min(round(squeeze_score, 1), 98.0)
+
+                trigger_px = round(h24 * 1.003, 6 if px < 1 else 4)
+                target_pct = round(max(15.0, min(35.0, (100 - squeeze_score) * 0.5 + 16.0)), 1)
+                target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                stop_px = round(min(l24 * 0.99, px * 0.975), 6 if px < 1 else 4)
+
+                is_triggered = px >= trigger_px
+                trigger_status = "🔥 KIRILIM BAŞLADI - TETİKLENDİ" if is_triggered else "🎯 KIRILIMDA OTOMATİK AL (TETİKTE)"
+
+                thesis = f"Sessiz Akümülasyon: ${round(vol/1e6, 1)}M hacim dar %{round(range_span*100, 1)} bandında sıkıştı. ${trigger_px} kırılımında patlama bekleniyor."
+
+                pre_pump_candidates.append({
+                    "symbol": sym,
+                    "asset": c["asset"],
+                    "price": px,
+                    "change_24h": chg,
+                    "volume_usd": vol,
+                    "range_span_pct": round(range_span * 100, 2),
+                    "range_pct": round(range_pct * 100, 1),
+                    "absorption_ratio": round(absorption_ratio, 2),
+                    "exchanges": c["exchanges"],
+                    "breakout_score": squeeze_score,
+                    "squeeze_score": squeeze_score,
+                    "trigger_price": trigger_px,
+                    "is_triggered": is_triggered,
+                    "target_gain_pct": target_pct,
+                    "target_price": target_px,
+                    "stop_price": stop_px,
+                    "thesis": thesis,
+                    "trigger_status": trigger_status,
+                    "mode_type": "PRE_PUMP",
+                    "is_tracked": sym in self.watchlist
+                })
+
+            # -------------------------------------------------------------
+            # KATEGORİ 2: Aktif Yükselen Kırılımlar (Active Breakouts)
+            # -------------------------------------------------------------
             if 2.0 <= chg <= 25.0 and h24 > l24:
                 range_pct = (px - l24) / (h24 - l24 + 1e-9)
                 if range_pct >= 0.60:  # Mumun üst %40'lık diliminde seyrediyor
@@ -238,35 +303,43 @@ class DailyBreakoutRadar:
                         "target_price": target_px,
                         "stop_price": stop_px,
                         "thesis": thesis,
+                        "mode_type": "BREAKOUT",
                         "is_tracked": sym in self.watchlist
                     })
 
         # Skoruna göre sırala
         candidates.sort(key=lambda x: x["breakout_score"], reverse=True)
         self.opportunities = candidates[:25]  # En iyi 25 yükseliş adayı
+
+        pre_pump_candidates.sort(key=lambda x: x["squeeze_score"], reverse=True)
+        self.pre_pump_opportunities = pre_pump_candidates[:25]  # En iyi 25 sıkışma adayı
+
         self.last_scan_time = now
 
         # Takip listesindeki coinlerin anlık fiyat ve PnL'lerini güncelle
         self._sync_watchlist_prices(coins_map)
 
         # Günlük Pazar Raporu Özeti Derle
-        top_pick = self.opportunities[0] if self.opportunities else None
+        top_pick = self.opportunities[0] if self.opportunities else (self.pre_pump_opportunities[0] if self.pre_pump_opportunities else None)
         avg_target = round(sum(o["target_gain_pct"] for o in self.opportunities[:8]) / max(1, len(self.opportunities[:8])), 1) if self.opportunities else 12.5
 
         self.market_report = {
-            "summary": f"Binance, MEXC ve OKX'te toplam {len(coins_map)} parite tarandı. {len(self.opportunities)} yüksek potansiyelli yükseliş fırsatı radara alındı.",
+            "summary": f"Binance, MEXC ve OKX'te {len(coins_map)} parite tarandı: {len(self.opportunities)} canlı kırılım ve {len(self.pre_pump_opportunities)} patlama öncesi sıkışma adayı tespit edildi.",
             "dominant_exchange": "Binance + MEXC + OKX Konsolide",
             "avg_potential": f"+%{avg_target}",
             "top_pick": top_pick["symbol"] if top_pick else "BTCUSDT",
             "top_pick_score": top_pick["breakout_score"] if top_pick else 90.0,
             "top_pick_thesis": top_pick["thesis"] if top_pick else "Piyasa lideri akümülasyon bölgesinde.",
             "total_scanned_pairs": len(coins_map),
-            "opportunity_count": len(self.opportunities)
+            "opportunity_count": len(self.opportunities),
+            "pre_pump_count": len(self.pre_pump_opportunities)
         }
 
         return {
             "status": "SUCCESS",
             "opportunities": self.opportunities,
+            "pre_pump_opportunities": self.pre_pump_opportunities,
+            "pre_pump_candidates": self.pre_pump_opportunities,
             "watchlist": list(self.watchlist.values()),
             "market_report": self.market_report,
             "last_scan_time": time.strftime("%H:%M:%S", time.localtime(now))
@@ -298,16 +371,46 @@ class DailyBreakoutRadar:
         if has_changes:
             self.save_watchlist()
 
+    def arm_pre_pump_trigger(self, symbol: str, custom_amount_usd: Optional[float] = None) -> Dict[str, Any]:
+        """Bir coin için kırılım tetikleyicisi (Breakout Trigger) kurar veya durumunu döner."""
+        sym = symbol.upper().strip()
+        match = next((p for p in self.pre_pump_opportunities if p["symbol"] == sym), None)
+        if not match:
+            # Normal fırsatlarda ara
+            match = next((o for o in self.opportunities if o["symbol"] == sym), None)
+
+        if match:
+            self.triggered_breakouts[sym] = {
+                "symbol": sym,
+                "asset": match["asset"],
+                "trigger_price": match.get("trigger_price", match.get("target_price")),
+                "target_price": match.get("target_price"),
+                "stop_price": match.get("stop_price"),
+                "amount_usd": custom_amount_usd or 50.0,
+                "armed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": "TETİKTE BEKLİYOR",
+                "is_fired": False
+            }
+            # Takibe de ekle
+            self.toggle_track(sym, match)
+            return {"status": "SUCCESS", "message": f"{sym} için ${match.get('trigger_price')} seviyesinde otomatik kırılım tetikçisi kuruldu!", "trigger": self.triggered_breakouts[sym]}
+        return {"status": "ERROR", "message": f"{sym} radarda bulunamadı."}
+
     def get_summary(self) -> Dict[str, Any]:
         """Web paneli ve periyodik state için hafif özet döner."""
-        if not self.opportunities:
+        if not self.opportunities and not self.pre_pump_opportunities:
             self.scan_all_exchanges()
 
         return {
             "opportunity_count": len(self.opportunities),
+            "pre_pump_count": len(self.pre_pump_opportunities),
             "tracked_count": len(self.watchlist),
-            "top_opportunities": self.opportunities[:10],
+            "top_opportunities": self.opportunities[:15],
+            "pre_pump_opportunities": self.pre_pump_opportunities[:15],
+            "pre_pump_candidates": self.pre_pump_opportunities[:15],
+            "triggered_breakouts": list(self.triggered_breakouts.values()),
             "watchlist": list(self.watchlist.values()),
             "market_report": self.market_report,
             "last_scan_time": time.strftime("%H:%M:%S", time.localtime(self.last_scan_time)) if self.last_scan_time else "Bekleniyor"
         }
+
