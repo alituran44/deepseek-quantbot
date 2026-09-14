@@ -2491,6 +2491,8 @@ function renderRadarItems() {
 
   if (currentRadarFilter === 'TRACKED') {
     items = watchlist;
+  } else if (currentRadarFilter === 'BINANCE_TR') {
+    items = opportunities.filter(op => (op.exchanges || []).some(ex => ex === 'Binance TR' || ex === 'BINANCE_TR'));
   } else if (currentRadarFilter === 'BINANCE') {
     items = opportunities.filter(op => (op.exchanges || []).includes('Binance'));
   } else if (currentRadarFilter === 'MEXC') {
@@ -2525,6 +2527,9 @@ function renderRadarItems() {
     // Borsa rozetleri
     const exchanges = item.exchanges || ['Binance'];
     let exBadges = '';
+    if (exchanges.some(ex => ex === 'Binance TR' || ex === 'BINANCE_TR')) {
+      exBadges += `<span class="indicator-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); font-size: 10px; padding: 1px 5px; font-weight: 700;">🇹🇷 Binance TR</span> `;
+    }
     if (exchanges.includes('Binance')) {
       exBadges += `<span class="indicator-pill" style="color: #f3ba2f; border-color: rgba(243, 186, 47, 0.4); font-size: 10px; padding: 1px 5px; font-weight: 700;">🟡 Binance</span> `;
     }
@@ -2535,7 +2540,16 @@ function renderRadarItems() {
       exBadges += `<span class="indicator-pill" style="color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.4); font-size: 10px; padding: 1px 5px; font-weight: 700;">⚫ OKX</span> `;
     }
 
-    const primaryExchange = exchanges[0] || 'BINANCE';
+    let primaryExchange = exchanges[0] || 'BINANCE';
+    if (currentRadarFilter === 'BINANCE_TR' && exchanges.some(ex => ex === 'Binance TR' || ex === 'BINANCE_TR')) {
+      primaryExchange = 'BINANCE_TR';
+    }
+
+    const trDetail = (item.exchange_details && (item.exchange_details['Binance TR'] || item.exchange_details['BINANCE_TR'])) || null;
+    const trPriceText = (trDetail && trDetail.price_try) 
+      ? ` <span style="font-size: 11px; color: #ef4444; font-weight: 600; margin-left: 3px;" title="Binance TR TL Fiyatı">(₺${formatTryPrice(trDetail.price_try)})</span>` 
+      : '';
+
     const chgClass = (item.change_24h || 0) >= 0 ? 'text-profit' : 'text-loss';
     const chgSign = (item.change_24h || 0) >= 0 ? '+' : '';
 
@@ -2567,7 +2581,7 @@ function renderRadarItems() {
             </div>
 
             <div style="text-align: right;">
-              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>${trPriceText}
               <span class="${chgClass}" style="font-size: 11px; font-weight: 600; margin-left: 4px;">${chgSign}%${(item.change_24h || 0).toFixed(2)}</span>
             </div>
           </div>
@@ -2630,7 +2644,7 @@ function renderRadarItems() {
             </div>
 
             <div style="text-align: right;">
-              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">${formatCryptoMoney(item.price || item.current_price || 0)}</span>${trPriceText}
               <span class="${chgClass}" style="font-size: 11px; font-weight: 600; margin-left: 4px;">${chgSign}%${(item.change_24h || 0).toFixed(2)}</span>
             </div>
           </div>

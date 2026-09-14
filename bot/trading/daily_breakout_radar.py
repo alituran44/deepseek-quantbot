@@ -23,7 +23,7 @@ class DailyBreakoutRadar:
         self.last_scan_time: float = 0.0
         self.market_report: Dict[str, Any] = {
             "summary": "Piyasa taranıyor...",
-            "dominant_exchange": "Binance / MEXC / OKX",
+            "dominant_exchange": "Binance / Binance TR / MEXC / OKX",
             "avg_potential": "+14.5%",
             "top_pick": None
         }
@@ -104,6 +104,7 @@ class DailyBreakoutRadar:
         binance_tickers = self.crypto_feed.get_all_binance_market_tickers() or []
         mexc_tickers = self.crypto_feed.get_all_mexc_market_tickers() or []
         okx_tickers = self.crypto_feed.get_all_okx_market_tickers() or []
+        binance_tr_tickers = self.crypto_feed.get_all_binance_tr_market_tickers() or []
 
         # 2. Sembol bazında borsaları ve en yüksek hacimli veriyi eşleştir
         coins_map: Dict[str, Dict[str, Any]] = {}
@@ -158,6 +159,52 @@ class DailyBreakoutRadar:
             process_ticker(t, "MEXC")
         for t in okx_tickers:
             process_ticker(t, "OKX")
+
+        # Binance TR (trbinance.com) TRY çiftlerini konsolide et ve eşleştir
+        for t in binance_tr_tickers:
+            asset = t.get("asset", "").upper().strip()
+            if not asset or any(sc in asset for sc in ["USDC", "FDUSD", "TUSD", "EUR", "USD1", "DAI", "BUSD", "USDT"]):
+                continue
+            sym = f"{asset}USDT"
+            vol = float(t.get("volume_usd", 0.0))
+            px_try = float(t.get("price", 0.0))
+            chg = float(t.get("change_24h", 0.0))
+            h24 = float(t.get("high_24h", 0.0))
+            l24 = float(t.get("low_24h", 0.0))
+            tr_sym = t.get("symbol", f"{asset}_TRY")
+
+            if sym in coins_map:
+                entry = coins_map[sym]
+                if "Binance TR" not in entry["exchanges"]:
+                    entry["exchanges"].append("Binance TR")
+                entry["volume_usd"] += vol
+                entry["exchange_details"]["Binance TR"] = {
+                    "price_try": px_try,
+                    "volume_usd": vol,
+                    "symbol_try": tr_sym,
+                    "change_24h": chg
+                }
+            elif vol >= 5000 and px_try > 0:
+                usd_rate = 48.48
+                px_usd = round(px_try / usd_rate, 6 if px_try < 50 else 4)
+                coins_map[sym] = {
+                    "symbol": sym,
+                    "asset": asset,
+                    "price": px_usd,
+                    "change_24h": chg,
+                    "volume_usd": vol,
+                    "high_24h": round(h24 / usd_rate, 6 if h24 < 50 else 4),
+                    "low_24h": round(l24 / usd_rate, 6 if l24 < 50 else 4),
+                    "exchanges": ["Binance TR"],
+                    "exchange_details": {
+                        "Binance TR": {
+                            "price_try": px_try,
+                            "volume_usd": vol,
+                            "symbol_try": tr_sym,
+                            "change_24h": chg
+                        }
+                    }
+                }
 
         candidates = []
         pre_pump_candidates = []
@@ -222,6 +269,7 @@ class DailyBreakoutRadar:
                     "range_pct": round(range_pct * 100, 1),
                     "absorption_ratio": round(absorption_ratio, 2),
                     "exchanges": c["exchanges"],
+                    "exchange_details": c.get("exchange_details", {}),
                     "breakout_score": squeeze_score,
                     "squeeze_score": squeeze_score,
                     "trigger_price": trigger_px,
@@ -298,6 +346,7 @@ class DailyBreakoutRadar:
                         "volume_usd": vol,
                         "range_pct": round(range_pct * 100, 1),
                         "exchanges": c["exchanges"],
+                        "exchange_details": c.get("exchange_details", {}),
                         "breakout_score": score,
                         "target_gain_pct": target_pct,
                         "target_price": target_px,
