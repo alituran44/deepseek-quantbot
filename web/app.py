@@ -64,6 +64,7 @@ async def security_and_cache_middleware(request: Request, call_next):
         path.startswith("/api/auth") or
         path.startswith("/api/intelligence") or
         path.startswith("/api/radar/breakouts") or
+        path.startswith("/api/macro") or
         path == "/favicon.ico"
     )
 
@@ -575,6 +576,11 @@ async def arm_radar_trigger(req: Dict[str, Any]):
     amount = float(req.get("amount_usd", 50.0))
     res = orchestrator.radar.arm_pre_pump_trigger(symbol, amount)
     return JSONResponse(content=res)
+
+@app.get("/api/macro/climate")
+async def get_macro_climate():
+    """Yahoo Finance ve Frankfurter ECB üzerinden küresel makro piyasa iklimini döndürür."""
+    return JSONResponse(content=orchestrator.get_macro_climate())
 
 @app.get("/api/exchanges/status")
 async def get_exchanges_status():

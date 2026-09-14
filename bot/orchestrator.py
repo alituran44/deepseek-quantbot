@@ -21,6 +21,7 @@ from .trading.exchanges.mexc_live import MEXCLiveExecutor
 from .data.coingecko_feed import CoinGeckoFeed
 from .data.hyperliquid_feed import HyperliquidFeed
 from .data.macro_feed import MacroFeed
+from .data.macro_market_feed import MacroMarketFeed
 from .trading.daily_breakout_radar import DailyBreakoutRadar
 from .data.market_intelligence import market_intelligence
 
@@ -565,6 +566,21 @@ class BotOrchestrator:
         if len(open_syms) >= 6:
             return executed
 
+        # 🌐 Küresel Makro İklim Kontrolü (DXY, Nasdaq, ECB Döviz Kurları)
+        macro_climate = MacroMarketFeed.get_macro_climate()
+        regime = macro_climate.get("regime", "BALANCED")
+        allow_buying = macro_climate.get("allow_buying", True)
+        macro_tp_pct = macro_climate.get("target_tp_pct", 18.0)
+        budget_mult = macro_climate.get("budget_multiplier", 1.0)
+        regime_title = macro_climate.get("regime_title", "DENGELİ")
+
+        # 🛑 TUZAK KALKANI (DEFENSIVE REJİM):
+        # DXY fırlıyorken veya Wall Street çöküyorken açılan kırılımlar %90 sahte olur.
+        # Sermayeyi korumak için yeni alımları askıya al:
+        if not allow_buying or regime == "DEFENSIVE":
+            print(f"[AutoTradeBreakout] 🛑 Makro Tuzak Kalkanı Devrede ({regime_title}): DXY/Nasdaq risk baskısı nedeniyle yeni kırılım alımları askıya alındı.")
+            return executed
+
         candidates_to_check = pre_pumps[:10] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
         
         for cand in candidates_to_check:
@@ -582,16 +598,19 @@ class BotOrchestrator:
 
             if is_breakout_triggered:
                 entry_px = px
-                target_px = cand.get("target_price", round(entry_px * 1.18, 4))
+                # Dinamik Kâr Hedefi: Turbo Boğada %35, Normalde %18
+                gain_mult = 1.0 + (macro_tp_pct / 100.0)
+                target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
                 stop_px = cand.get("stop_price", round(entry_px * 0.975, 4))
                 
-                # İşlem boyutu: Kasanın risk profiline göre (Varsayılan $40 USD)
-                trade_budget_usd = 40.0
+                # İşlem boyutu: Kasanın risk profiline göre (Varsayılan $40, Turbo Boğada $60 USD)
+                trade_budget_usd = round(40.0 * budget_mult, 2)
                 units = round(trade_budget_usd / entry_px, 4 if entry_px > 1 else 1)
                 if units <= 0:
                     continue
                 
                 # CANLI veya SANAL emir ilet
+                thesis_text = f"Otonom Makro Kırılım ({regime_title}): ${trigger_px} aşıldı. Hedef: +%{macro_tp_pct} (${target_px}), Stop: -%2.5"
                 if config.TRADING_MODE == "LIVE":
                     ok, order_res, ex_name = self.execute_live_order(
                         symbol=sym,
@@ -600,7 +619,7 @@ class BotOrchestrator:
                         entry_price=entry_px,
                         stop_loss=stop_px,
                         take_profit=target_px,
-                        thesis=f"Otonom Kırılım Alımı: ${trigger_px} direnci hacimle aşıldı."
+                        thesis=thesis_text
                     )
                     if ok:
                         open_syms.add(sym)
@@ -625,7 +644,7 @@ class BotOrchestrator:
                             stop_loss=stop_px,
                             take_profit=target_px,
                             units=units,
-                            thesis=f"Otonom Kırılım Alımı: ${trigger_px} direnci aşıldı. Hedef: +%18, Stop: -%2.5",
+                            thesis=thesis_text,
                             exchange="Paper"
                         )
                         open_syms.add(sym)
@@ -1086,6 +1105,7 @@ class BotOrchestrator:
             "is_scanning": self.is_scanning,
             "sentiment": sentiment,
             "macro_state": self.macro_feed.get_macro_regime(),
+            "macro_climate": MacroMarketFeed.get_macro_climate(),
             "sector_momentum": self.coingecko_feed.get_sector_momentum_summary(),
             "groq_status": {
                 "configured": bool(getattr(config, "GROQ_API_KEY", "")),
@@ -1106,6 +1126,10 @@ class BotOrchestrator:
             "crypto_symbols": config.CRYPTO_SYMBOLS,
             "basket_sectors": config.BASKET_SECTORS
         }
+
+    def get_macro_climate(self) -> Dict[str, Any]:
+        """Yahoo Finance ve Frankfurter üzerinden küresel makro iklimi döner."""
+        return MacroMarketFeed.get_macro_climate()
 
 # Global singleton orkestratör örneği
 orchestrator = BotOrchestrator()

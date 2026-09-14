@@ -199,6 +199,9 @@ async function fetchState() {
 }
 
 function renderDashboard(data) {
+  if (data.macro_climate) {
+    renderMacroClimate(data.macro_climate);
+  }
   // Mod Bilgisi ve Anahtar Gösterimi: Canlı Spot Kripto Modu Kalıcı Olarak Aktif
   currentTradingMode = 'LIVE';
   localStorage.setItem('deepseek_trading_mode', 'LIVE');
@@ -3105,13 +3108,114 @@ window.renderArbitrageRadar = renderArbitrageRadar;
 window.renderTrendingCoins = renderTrendingCoins;
 window.renderMempoolHealth = renderMempoolHealth;
 window.renderDexComparison = renderDexComparison;
+function renderMacroClimate(macroData) {
+  if (!macroData) return;
+  const banner = document.getElementById('macro-climate-banner');
+  const titleEl = document.getElementById('macro-climate-title');
+  const badgeEl = document.getElementById('macro-regime-badge');
+  const thesisEl = document.getElementById('macro-climate-thesis');
+  const iconEl = document.getElementById('macro-climate-icon');
+  
+  const dxyPill = document.getElementById('pill-dxy');
+  const nasdaqPill = document.getElementById('pill-nasdaq');
+  const ecbPill = document.getElementById('pill-ecb-usdtry');
+  const tpPill = document.getElementById('pill-macro-tp');
+
+  const regime = macroData.regime || 'BALANCED';
+  const score = macroData.score || 60;
+  const color = macroData.color || '#0284c7';
+
+  if (banner) {
+    banner.style.borderLeftColor = color;
+  }
+  if (iconEl) {
+    iconEl.textContent = regime === 'TURBO_BULL' ? '🔥' : (regime === 'DEFENSIVE' ? '🛑' : '⚖️');
+    iconEl.style.background = `${color}22`;
+    iconEl.style.borderColor = `${color}66`;
+  }
+  if (titleEl) {
+    titleEl.textContent = macroData.regime_title || 'Makro İklim';
+    titleEl.style.color = color;
+  }
+  if (badgeEl) {
+    badgeEl.textContent = `Skor: %${score}`;
+    badgeEl.style.color = color;
+    badgeEl.style.borderColor = `${color}66`;
+  }
+  if (thesisEl) {
+    thesisEl.textContent = macroData.thesis || 'Makro göstergeler izleniyor.';
+  }
+
+  // DXY Pill
+  if (dxyPill && macroData.dxy) {
+    const chg = Number(macroData.dxy.change_24h || 0);
+    const chgSign = chg >= 0 ? '+' : '';
+    const chgColor = chg <= 0 ? 'var(--profit)' : 'var(--loss)'; // DXY düşmesi kripto için kârlıdır!
+    dxyPill.innerHTML = `💵 DXY: <strong>${macroData.dxy.price || 0}</strong> <span style="color:${chgColor}; margin-left:2px; font-weight:700;">(${chgSign}%${chg})</span>`;
+  }
+
+  // Nasdaq Pill
+  if (nasdaqPill && macroData.nasdaq) {
+    const chg = Number(macroData.nasdaq.change_24h || 0);
+    const chgSign = chg >= 0 ? '+' : '';
+    const chgColor = chg >= 0 ? 'var(--profit)' : 'var(--loss)';
+    nasdaqPill.innerHTML = `📈 Nasdaq: <strong>${Math.round(macroData.nasdaq.price || 0).toLocaleString('en-US')}</strong> <span style="color:${chgColor}; margin-left:2px; font-weight:700;">(${chgSign}%${chg})</span>`;
+  }
+
+  // ECB USD/TRY Pill
+  if (ecbPill && macroData.usd_try_ecb) {
+    ecbPill.innerHTML = `🇹🇷 ECB: <strong>₺${macroData.usd_try_ecb}</strong>`;
+  }
+
+  // Dinamik Kâr Hedefi Pill
+  if (tpPill) {
+    const tpPct = macroData.target_tp_pct || 18;
+    const isTurbo = regime === 'TURBO_BULL';
+    const isDef = regime === 'DEFENSIVE';
+    if (isTurbo) {
+      tpPill.innerHTML = `🎯 Kâr Hedefi: <strong>+${tpPct}% (2x Turbo)</strong>`;
+      tpPill.style.color = 'var(--profit)';
+      tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      tpPill.style.background = 'rgba(16, 185, 129, 0.12)';
+    } else if (isDef) {
+      tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
+      tpPill.style.color = '#ef4444';
+      tpPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+      tpPill.style.background = 'rgba(239, 68, 68, 0.12)';
+    } else {
+      tpPill.innerHTML = `🎯 Kâr Hedefi: <strong>+${tpPct}%</strong>`;
+      tpPill.style.color = 'var(--accent-cyan)';
+      tpPill.style.borderColor = 'rgba(2, 132, 199, 0.4)';
+      tpPill.style.background = 'rgba(2, 132, 199, 0.08)';
+    }
+  }
+}
+
+async function fetchMacroClimate() {
+  try {
+    const res = await fetch('/api/macro/climate');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.status === 'SUCCESS') {
+      renderMacroClimate(data);
+    }
+  } catch (e) {
+    console.error('Makro iklim alınamadı:', e);
+  }
+}
+
 window.switchRadarMainMode = switchRadarMainMode;
 window.armRadarTrigger = armRadarTrigger;
+window.renderMacroClimate = renderMacroClimate;
+window.fetchMacroClimate = fetchMacroClimate;
 
 // Başlatıcı
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   initSettingsAutoListeners();
+
+  // Makro İklimi hemen yükle (kamuya açık)
+  fetchMacroClimate();
 
   // Güvenlik Kalkanı & Oturum Kontrolü
   const isAuth = await checkInitialAuth();
@@ -3135,6 +3239,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       fetchState();
     }
   }, 8000);
+
+  // Makro İklim her 45 saniyede bir güncellensin
+  setInterval(() => {
+    fetchMacroClimate();
+  }, 45000);
 
   setInterval(() => {
     if (localStorage.getItem('quant_admin_token')) {

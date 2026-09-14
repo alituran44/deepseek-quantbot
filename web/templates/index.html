@@ -95,6 +95,49 @@
     <!-- Sol Sütun: Kasa, Sepet Dağılımı, AI Sinyalleri, Pozisyonlar -->
     <div class="left-column">
 
+      <!-- 🌐 Küresel Makro & Bitcoin İklimi HUD (Yahoo Finance & Frankfurter) -->
+      <div id="macro-climate-banner" class="card" style="padding: 12px 16px; margin-bottom: 14px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.8)); border: 1px solid var(--border-subtle); border-left: 4px solid #0284c7; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          
+          <!-- Sol Kısım: İklim Başlığı & Tezi -->
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="macro-climate-icon" style="font-size: 20px; width: 36px; height: 36px; border-radius: 8px; background: rgba(2, 132, 199, 0.15); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(2, 132, 199, 0.3);">
+              🌐
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="macro-climate-title" style="font-weight: 700; font-size: 13px; color: var(--text-primary);">
+                  🌐 Makro Piyasa İklimi Yükleniyor...
+                </span>
+                <span id="macro-regime-badge" class="indicator-pill" style="font-size: 10px; font-weight: 700; padding: 1px 7px; color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.4);">
+                  Skor: %--
+                </span>
+              </div>
+              <div id="macro-climate-thesis" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                Yahoo Finance (DXY, Nasdaq) ve Frankfurter ECB verileri analiz ediliyor...
+              </div>
+            </div>
+          </div>
+
+          <!-- Sağ Kısım: DXY, Nasdaq, ECB USD/TRY Metrikleri & Dinamik Kâr Hedefi -->
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="macro-metrics-pills">
+            <span class="indicator-pill" id="pill-dxy" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; background: rgba(255,255,255,0.03);" title="Dolar Endeksi (Ters Korelasyon)">
+              💵 DXY: <strong>--</strong>
+            </span>
+            <span class="indicator-pill" id="pill-nasdaq" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; background: rgba(255,255,255,0.03);" title="Nasdaq Borsa İştahı">
+              📈 Nasdaq: <strong>--</strong>
+            </span>
+            <span class="indicator-pill" id="pill-ecb-usdtry" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(255,255,255,0.03);" title="Avrupa Merkez Bankası Resmi Dolar Kuru">
+              🇹🇷 ECB: <strong>₺--</strong>
+            </span>
+            <span class="indicator-pill" id="pill-macro-tp" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; color: var(--profit); border-color: rgba(16,185,129,0.4); font-weight: 700; background: rgba(16,185,129,0.08);" title="Makro iklime göre dinamik kâr alma hedefi">
+              🎯 Kâr Hedefi: +%18
+            </span>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Canlı Borsa İcra Bilgi Şeridi -->
       <div id="mode-banner" class="card" style="padding: 14px 20px; border-left: 4px solid var(--profit); display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 14px;">
@@ -1150,6 +1193,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.24.0_binance_tr_radar"></script>
+  <script src="/static/app.js?v=2.25.0_macro_profit_engine"></script>
 </body>
 </html>
