@@ -192,24 +192,28 @@ class PaperWallet:
                 unrealized = (current_price - entry) * units
                 unrealized_pct = ((current_price - entry) / entry) * 100
                 pos["unrealized_pnl"] = round(unrealized, 2)
-                pos["unrealized_pnl_pct"] = round(unrealized_pct, 2)
+                # Stratejiye göre dinamik eşikler: Hızlı Scalp (+%2 BE, +%3 Trailing) vs Trend
+                is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper() == "FAST_SCALP"
+                be_threshold = getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0) if is_fast_scalp else 4.0
+                trailing_threshold = 3.0 if is_fast_scalp else 8.0
+                trailing_ratio = 0.985 if is_fast_scalp else 0.96  # Scalp'ta zirvenin %1.5 altı
 
-                # 1. AKILLI BAŞABAŞ KİLİDİ: +%4 veya daha fazla kârda stop-loss'u başabaş (+%0.5 komisyon kârı) seviyesine taşı
-                if unrealized_pct >= 4.0:
+                # 1. AKILLI BAŞABAŞ KİLİDİ: Kâr eşiğe ulaştığında stop-loss'u başabaş (+%0.5 komisyon kârı) seviyesine taşı
+                if unrealized_pct >= be_threshold:
                     breakeven_sl = round(entry * 1.005, 4 if entry < 1 else 2)
                     if pos["stop_loss"] < breakeven_sl:
                         pos["stop_loss"] = breakeven_sl
                         pos["is_risk_free"] = True
-                        pos["sl_note"] = "Başabaş Kilitlendi (Breakeven +0.5%)"
+                        pos["sl_note"] = f"Başabaş Kilitlendi (Breakeven +0.5% - {be_threshold}% kârda)"
 
-                # 2. AKILLI İZ SÜREN STOP (TRAILING STOP): Zirve kazancı +%8 veya üzerine çıktığında stop-loss'u zirvenin %4 altına kilitle
+                # 2. AKILLI İZ SÜREN STOP (TRAILING STOP): Zirve kazancı eşiğe ulaştığında stop-loss'u zirvenin yakınına kilitle
                 peak_gain_pct = ((highest - entry) / entry) * 100
-                if peak_gain_pct >= 8.0:
-                    trailing_sl = round(highest * 0.96, 4 if entry < 1 else 2)
+                if peak_gain_pct >= trailing_threshold:
+                    trailing_sl = round(highest * trailing_ratio, 4 if entry < 1 else 2)
                     if trailing_sl > pos["stop_loss"]:
                         pos["stop_loss"] = trailing_sl
                         pos["is_trailing_active"] = True
-                        pos["sl_note"] = f"İz Süren Stop Devrede (Zirve: {highest:.2f} - %4 Trailing: {trailing_sl})"
+                        pos["sl_note"] = f"İz Süren Stop Devrede (Zirve: {highest:.2f} - Trailing: {trailing_sl})"
 
                 # Stop-Loss / Trailing kontrolü
                 if current_price <= pos["stop_loss"]:

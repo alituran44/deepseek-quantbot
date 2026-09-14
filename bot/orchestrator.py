@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import threading
@@ -533,14 +534,36 @@ class BotOrchestrator:
             "timestamp": self.last_scan_time
         }
 
+    def set_profit_strategy(self, strategy: str) -> str:
+        """Kâr stratejisini ayarlar: 'FAST_SCALP' (Hızlı Para / Çevik) veya 'TREND' (Trend / Ralli)."""
+        valid = strategy.upper().strip()
+        if valid not in ["FAST_SCALP", "TREND"]:
+            valid = "FAST_SCALP"
+        config.PROFIT_STRATEGY = valid
+        os.environ["PROFIT_STRATEGY"] = valid
+        try:
+            from .config import update_env_file
+            update_env_file("PROFIT_STRATEGY", valid)
+        except Exception:
+            pass
+        print(f"[Orchestrator] Kâr Stratejisi Değiştirildi: {valid}")
+        return valid
+
     def auto_trade_breakout_triggers(self) -> List[Dict[str, Any]]:
         """
         Radardaki patlama öncesi sıkışma (Pre-Pump Squeeze) ve kırılım adaylarını kontrol eder.
         Eğer fiyat kırılım tetikleyici direncini hacimle aştıysa otomatik ALIM yapar.
-        Pozisyona girildiği an:
-        - +%18 Take-Profit kilitler
-        - -%2.5 Stop-Loss kilitler
-        - +%4 kârda başabaşa taşır, +%8'de iz süren stop devreye alır.
+        
+        FAST_SCALP (Hızlı Para):
+        - +%4.5 Hızlı Take-Profit nakit kilidi
+        - -%1.8 Sıkı Stop-Loss ile sermaye koruma
+        - +%2.0 kârda başabaşa (giriş +%0.5) çekilerek risksiz işlem
+        - +%3.0'da iz süren stop (zirvenin %1.5 altı)
+        
+        TREND (Trend / Ralli):
+        - +%18 - +%35 Kâr hedefi
+        - -%2.5 Stop-Loss
+        - +%4.0 kârda başabaş, +%8.0'de iz süren stop
         """
         executed = []
         radar_summary = self.radar.get_summary()
@@ -574,12 +597,18 @@ class BotOrchestrator:
         budget_mult = macro_climate.get("budget_multiplier", 1.0)
         regime_title = macro_climate.get("regime_title", "DENGELİ")
 
+        is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP") == "FAST_SCALP"
+
         # 🛑 TUZAK KALKANI (DEFENSIVE REJİM):
         # DXY fırlıyorken veya Wall Street çöküyorken açılan kırılımlar %90 sahte olur.
         # Sermayeyi korumak için yeni alımları askıya al:
+        # ANCAK Fast Scalp modunda sadece en dar sıkışma (<=2.8%) ve $3M+ hacimli süper fırsatlara küçük bütçeyle izin ver:
         if not allow_buying or regime == "DEFENSIVE":
-            print(f"[AutoTradeBreakout] 🛑 Makro Tuzak Kalkanı Devrede ({regime_title}): DXY/Nasdaq risk baskısı nedeniyle yeni kırılım alımları askıya alındı.")
-            return executed
+            if not is_fast_scalp:
+                print(f"[AutoTradeBreakout] 🛑 Makro Tuzak Kalkanı Devrede ({regime_title}): DXY/Nasdaq risk baskısı nedeniyle yeni kırılım alımları askıya alındı.")
+                return executed
+            else:
+                print(f"[AutoTradeBreakout] ⚡ Fast Scalp Korumalı Geçiş: Makro DEFENSIVE modda sadece aşırı dar sıkışmalı ($3M+ hacim) hızlı scalplar filtrelenerek değerlendirilecek.")
 
         candidates_to_check = pre_pumps[:10] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
         
@@ -593,24 +622,42 @@ class BotOrchestrator:
             if px <= 0 or trigger_px <= 0:
                 continue
 
+            vol = float(cand.get("volume_usd", 0.0))
+            range_span = float(cand.get("range_span_pct", 5.0))
+
+            # DEFENSIVE rejimdeysek ve fast scalp açıksa ekstra sıkı filtre
+            if regime == "DEFENSIVE" and is_fast_scalp:
+                if range_span > 2.8 or vol < 3000000.0:
+                    continue
+
             # Kırılım Şartı: Anlık fiyat tetik direncini aştı mı? (px >= trigger_px)
             is_breakout_triggered = px >= trigger_px
 
             if is_breakout_triggered:
                 entry_px = px
-                # Dinamik Kâr Hedefi: Turbo Boğada %35, Normalde %18
-                gain_mult = 1.0 + (macro_tp_pct / 100.0)
-                target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
-                stop_px = cand.get("stop_price", round(entry_px * 0.975, 4))
                 
-                # İşlem boyutu: Kasanın risk profiline göre (Varsayılan $40, Turbo Boğada $60 USD)
-                trade_budget_usd = round(40.0 * budget_mult, 2)
+                if is_fast_scalp:
+                    # ⚡ Hızlı Scalp: +%4.5 Hızlı Nakit Kilidi (Turbo Boğada +%6.0)
+                    tp_pct = 6.0 if regime == "TURBO_BULL" else getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
+                    sl_pct = getattr(config, "FAST_SCALP_SL_PERCENT", 1.8)
+                    gain_mult = 1.0 + (tp_pct / 100.0)
+                    target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
+                    stop_px = round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
+                    trade_budget_usd = round(30.0 * (0.8 if regime == "DEFENSIVE" else budget_mult), 2)
+                    thesis_text = f"⚡ Otonom Hızlı Scalp: ${trigger_px} aşıldı. Hedef: +%{tp_pct} (${target_px}), Sıkı Stop: -%{sl_pct}, Başabaş: +%2.0"
+                else:
+                    # 🚀 Trend / Ralli: +%18 - +%35
+                    gain_mult = 1.0 + (macro_tp_pct / 100.0)
+                    target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
+                    stop_px = cand.get("stop_price", round(entry_px * 0.975, 4))
+                    trade_budget_usd = round(40.0 * budget_mult, 2)
+                    thesis_text = f"🚀 Otonom Makro Kırılım ({regime_title}): ${trigger_px} aşıldı. Hedef: +%{macro_tp_pct} (${target_px}), Stop: -%2.5"
+
                 units = round(trade_budget_usd / entry_px, 4 if entry_px > 1 else 1)
                 if units <= 0:
                     continue
                 
                 # CANLI veya SANAL emir ilet
-                thesis_text = f"Otonom Makro Kırılım ({regime_title}): ${trigger_px} aşıldı. Hedef: +%{macro_tp_pct} (${target_px}), Stop: -%2.5"
                 if config.TRADING_MODE == "LIVE":
                     ok, order_res, ex_name = self.execute_live_order(
                         symbol=sym,
@@ -1012,6 +1059,10 @@ class BotOrchestrator:
 
         return {
             "trading_mode": active_mode,
+            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"),
+            "fast_scalp_tp_percent": getattr(config, "FAST_SCALP_TP_PERCENT", 4.5),
+            "fast_scalp_sl_percent": getattr(config, "FAST_SCALP_SL_PERCENT", 1.8),
+            "fast_scalp_breakeven_percent": getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0),
             "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
             "available_trading_exchanges": [ex["id"] for ex in self.get_registered_exchanges()],
             "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE"),

@@ -35,6 +35,12 @@ class Config:
     AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper() # SMART_AGGRESSIVE, ULTRA_DEGEN, AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
 
+    # Hızlı Para / Kâr Stratejisi: FAST_SCALP (+%4.5 Hızlı Kâr Cebe) veya TREND (+%18 - +%35 Ralli)
+    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "FAST_SCALP").upper()
+    FAST_SCALP_TP_PERCENT = float(os.getenv("FAST_SCALP_TP_PERCENT", "4.5"))
+    FAST_SCALP_SL_PERCENT = float(os.getenv("FAST_SCALP_SL_PERCENT", "1.8"))
+    FAST_SCALP_BREAKEVEN_PERCENT = float(os.getenv("FAST_SCALP_BREAKEVEN_PERCENT", "2.0"))
+
     # Binance Live Exchange Configuration
     BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "").strip()
     BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "").strip()

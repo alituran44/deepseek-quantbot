@@ -554,6 +554,11 @@ function renderDashboard(data) {
       console.error('renderBreakoutRadar error:', e);
     }
   }
+
+  // 9. Kâr Alma Stratejisi UI Senkronizasyonu
+  if (data.profit_strategy && typeof updateProfitStrategyUI === 'function') {
+    updateProfitStrategyUI(data.profit_strategy);
+  }
 }
 
 function renderBasket(basket) {
@@ -3167,27 +3172,95 @@ function renderMacroClimate(macroData) {
     ecbPill.innerHTML = `🇹🇷 ECB: <strong>₺${macroData.usd_try_ecb}</strong>`;
   }
 
-  // Dinamik Kâr Hedefi Pill
+  // Kâr Stratejisi ve Dinamik Kâr Hedefi Pill
+  const strat = window.currentProfitStrategy || macroData.profit_strategy || 'FAST_SCALP';
+  updateProfitStrategyUI(strat);
+
   if (tpPill) {
-    const tpPct = macroData.target_tp_pct || 18;
     const isTurbo = regime === 'TURBO_BULL';
     const isDef = regime === 'DEFENSIVE';
-    if (isTurbo) {
-      tpPill.innerHTML = `🎯 Kâr Hedefi: <strong>+${tpPct}% (2x Turbo)</strong>`;
-      tpPill.style.color = 'var(--profit)';
-      tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-      tpPill.style.background = 'rgba(16, 185, 129, 0.12)';
-    } else if (isDef) {
-      tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
-      tpPill.style.color = '#ef4444';
-      tpPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-      tpPill.style.background = 'rgba(239, 68, 68, 0.12)';
+    if (strat === 'FAST_SCALP') {
+      const scalpTp = isTurbo ? 6.0 : 4.5;
+      if (isDef) {
+        tpPill.innerHTML = `⚡ <strong>Hızlı Scalp: +%${scalpTp}</strong> <span style="font-size:10px; color:#f59e0b;">(Korumalı Sıkışma)</span>`;
+        tpPill.style.color = '#38bdf8';
+        tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
+      } else {
+        tpPill.innerHTML = `⚡ Kâr Hedefi: <strong>+${scalpTp}% (Hızlı Nakit)</strong>`;
+        tpPill.style.color = '#38bdf8';
+        tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+        tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
+      }
     } else {
-      tpPill.innerHTML = `🎯 Kâr Hedefi: <strong>+${tpPct}%</strong>`;
-      tpPill.style.color = 'var(--accent-cyan)';
-      tpPill.style.borderColor = 'rgba(2, 132, 199, 0.4)';
-      tpPill.style.background = 'rgba(2, 132, 199, 0.08)';
+      const tpPct = macroData.target_tp_pct || 18;
+      if (isTurbo) {
+        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}% (2x Turbo)</strong>`;
+        tpPill.style.color = 'var(--profit)';
+        tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        tpPill.style.background = 'rgba(16, 185, 129, 0.12)';
+      } else if (isDef) {
+        tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
+        tpPill.style.color = '#ef4444';
+        tpPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        tpPill.style.background = 'rgba(239, 68, 68, 0.12)';
+      } else {
+        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}%</strong>`;
+        tpPill.style.color = 'var(--accent-cyan)';
+        tpPill.style.borderColor = 'rgba(2, 132, 199, 0.4)';
+        tpPill.style.background = 'rgba(2, 132, 199, 0.08)';
+      }
     }
+  }
+}
+
+function updateProfitStrategyUI(strat) {
+  const valid = (strat || 'FAST_SCALP').toUpperCase();
+  window.currentProfitStrategy = valid;
+  const btnFast = document.getElementById('btn-strat-fast-scalp');
+  const btnTrend = document.getElementById('btn-strat-trend');
+  if (btnFast && btnTrend) {
+    if (valid === 'FAST_SCALP') {
+      btnFast.classList.add('active');
+      btnFast.style.color = '#38bdf8';
+      btnFast.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+      btnTrend.classList.remove('active');
+      btnTrend.style.color = 'var(--text-muted)';
+      btnTrend.style.borderColor = '';
+    } else {
+      btnTrend.classList.add('active');
+      btnTrend.style.color = '#10b981';
+      btnTrend.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      btnFast.classList.remove('active');
+      btnFast.style.color = 'var(--text-muted)';
+      btnFast.style.borderColor = '';
+    }
+  }
+}
+
+async function switchProfitStrategy(strategy) {
+  const valid = (strategy || 'FAST_SCALP').toUpperCase();
+  updateProfitStrategyUI(valid);
+
+  const token = localStorage.getItem('quant_admin_token') || '';
+  try {
+    const res = await fetch('/api/settings/profit-strategy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-Admin-Token': token
+      },
+      body: JSON.stringify({ strategy: valid })
+    });
+    const d = await res.json();
+    if (d.status === 'SUCCESS') {
+      if (typeof fetchMacroClimate === 'function') fetchMacroClimate();
+      if (typeof fetchState === 'function') fetchState();
+      if (typeof scanBreakoutRadar === 'function') scanBreakoutRadar();
+    }
+  } catch (e) {
+    console.error('Kâr stratejisi değiştirilemedi:', e);
   }
 }
 
@@ -3208,6 +3281,8 @@ window.switchRadarMainMode = switchRadarMainMode;
 window.armRadarTrigger = armRadarTrigger;
 window.renderMacroClimate = renderMacroClimate;
 window.fetchMacroClimate = fetchMacroClimate;
+window.switchProfitStrategy = switchProfitStrategy;
+window.updateProfitStrategyUI = updateProfitStrategyUI;
 
 // Başlatıcı
 document.addEventListener('DOMContentLoaded', async () => {

@@ -63,8 +63,9 @@ async def security_and_cache_middleware(request: Request, call_next):
         path.startswith("/static") or
         path.startswith("/api/auth") or
         path.startswith("/api/intelligence") or
-        path.startswith("/api/radar/breakouts") or
+        path.startswith("/api/radar") or
         path.startswith("/api/macro") or
+        path.startswith("/api/settings/profit-strategy") or
         path == "/favicon.ico"
     )
 
@@ -113,10 +114,14 @@ class SetEntryPriceRequest(BaseModel):
 class SingleCoinAnalysisRequest(BaseModel):
     symbol: str
 
+class ProfitStrategyRequest(BaseModel):
+    strategy: str
+
 class ConfigUpdateRequest(BaseModel):
     deepseek_api_key: Optional[str] = None
     deepseek_model: Optional[str] = None
     trading_mode: Optional[str] = None
+    profit_strategy: Optional[str] = None
     trading_exchange: Optional[str] = None
     ai_risk_profile: Optional[str] = None
     admin_pin: Optional[str] = None
@@ -577,6 +582,23 @@ async def arm_radar_trigger(req: Dict[str, Any]):
     res = orchestrator.radar.arm_pre_pump_trigger(symbol, amount)
     return JSONResponse(content=res)
 
+@app.post("/api/settings/profit-strategy")
+async def set_profit_strategy_endpoint(req: ProfitStrategyRequest):
+    """Kâr stratejisini ayarlar: FAST_SCALP (Hızlı Para) veya TREND (Trend / Ralli)."""
+    strat = orchestrator.set_profit_strategy(req.strategy)
+    # Radarı da hemen yeni stratejiyle güncelle
+    try:
+        orchestrator.radar.scan_all_exchanges()
+    except Exception:
+        pass
+    return JSONResponse(content={
+        "status": "SUCCESS",
+        "strategy": strat,
+        "message": "⚡ Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede" if strat == "FAST_SCALP" else "🚀 Trend / Ralli (+%18) Modu Devrede",
+        "target_tp_pct": getattr(config, "FAST_SCALP_TP_PERCENT", 4.5) if strat == "FAST_SCALP" else 18.0,
+        "stop_loss_pct": getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) if strat == "FAST_SCALP" else 2.5
+    })
+
 @app.get("/api/macro/climate")
 async def get_macro_climate():
     """Yahoo Finance ve Frankfurter ECB üzerinden küresel makro piyasa iklimini döndürür."""
@@ -607,6 +629,7 @@ def get_config():
         "deepseek_masked_key": masked_deepseek,
         "deepseek_model": config.DEEPSEEK_MODEL,
         "trading_mode": config.TRADING_MODE,
+        "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"),
         "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
         "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE"),
         "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 20.0),
@@ -644,6 +667,10 @@ async def update_settings(req: ConfigUpdateRequest):
     if req.admin_pin is not None and req.admin_pin.strip():
         config.ADMIN_PIN = req.admin_pin.strip()
         env_updates["ADMIN_PIN"] = config.ADMIN_PIN
+
+    if req.profit_strategy is not None and req.profit_strategy.strip():
+        strat = orchestrator.set_profit_strategy(req.profit_strategy)
+        env_updates["PROFIT_STRATEGY"] = strat
 
     if req.deepseek_api_key is not None and req.deepseek_api_key.strip():
         config.DEEPSEEK_API_KEY = req.deepseek_api_key.strip()

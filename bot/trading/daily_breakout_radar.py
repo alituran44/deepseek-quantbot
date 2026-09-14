@@ -3,6 +3,7 @@ import time
 import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from bot.config import config
 from bot.data.crypto_feed import CryptoFeed
 
 DATA_DIR = Path("/tmp/data_storage") if os.getenv("VERCEL") else (Path(__file__).resolve().parent.parent.parent / "data_storage")
@@ -208,6 +209,7 @@ class DailyBreakoutRadar:
 
         candidates = []
         pre_pump_candidates = []
+        is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP") == "FAST_SCALP"
 
         for sym, c in coins_map.items():
             vol = c["volume_usd"]
@@ -250,9 +252,14 @@ class DailyBreakoutRadar:
                 squeeze_score = min(round(squeeze_score, 1), 98.0)
 
                 trigger_px = round(h24 * 1.003, 6 if px < 1 else 4)
-                target_pct = round(max(15.0, min(35.0, (100 - squeeze_score) * 0.5 + 16.0)), 1)
-                target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
-                stop_px = round(min(l24 * 0.99, px * 0.975), 6 if px < 1 else 4)
+                if is_fast_scalp:
+                    target_pct = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
+                    target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                    stop_px = round(px * (1 - getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) / 100.0), 6 if px < 1 else 4)
+                else:
+                    target_pct = round(max(15.0, min(35.0, (100 - squeeze_score) * 0.5 + 16.0)), 1)
+                    target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                    stop_px = round(min(l24 * 0.99, px * 0.975), 6 if px < 1 else 4)
 
                 is_triggered = px >= trigger_px
                 trigger_status = "🔥 KIRILIM BAŞLADI - TETİKLENDİ" if is_triggered else "🎯 KIRILIMDA OTOMATİK AL (TETİKTE)"
@@ -317,9 +324,14 @@ class DailyBreakoutRadar:
                     score = min(round(score, 1), 97.0)
 
                     # Hedef ve stop seviyeleri
-                    target_pct = round(max(8.0, min(24.0, (100 - score) * 0.4 + chg * 0.5)), 1)
-                    target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
-                    stop_px = round(max(l24, px * 0.94), 6 if px < 1 else 4)
+                    if is_fast_scalp:
+                        target_pct = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
+                        target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                        stop_px = round(px * (1 - getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) / 100.0), 6 if px < 1 else 4)
+                    else:
+                        target_pct = round(max(8.0, min(24.0, (100 - score) * 0.4 + chg * 0.5)), 1)
+                        target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                        stop_px = round(max(l24, px * 0.94), 6 if px < 1 else 4)
 
                     # Türkçe Gerekçe ve Yapay Zeka Tezi
                     reasons = []
@@ -370,11 +382,13 @@ class DailyBreakoutRadar:
 
         # Günlük Pazar Raporu Özeti Derle
         top_pick = self.opportunities[0] if self.opportunities else (self.pre_pump_opportunities[0] if self.pre_pump_opportunities else None)
-        avg_target = round(sum(o["target_gain_pct"] for o in self.opportunities[:8]) / max(1, len(self.opportunities[:8])), 1) if self.opportunities else 12.5
+        avg_target = round(sum(o["target_gain_pct"] for o in self.opportunities[:8]) / max(1, len(self.opportunities[:8])), 1) if self.opportunities else (4.5 if is_fast_scalp else 12.5)
 
         self.market_report = {
             "summary": f"Binance, MEXC ve OKX'te {len(coins_map)} parite tarandı: {len(self.opportunities)} canlı kırılım ve {len(self.pre_pump_opportunities)} patlama öncesi sıkışma adayı tespit edildi.",
             "dominant_exchange": "Binance + MEXC + OKX Konsolide",
+            "profit_strategy": "FAST_SCALP" if is_fast_scalp else "TREND",
+            "strategy_label": "⚡ Hızlı Scalp (+%4.5 Hızlı Para)" if is_fast_scalp else "🚀 Trend / Ralli (+%18)",
             "avg_potential": f"+%{avg_target}",
             "top_pick": top_pick["symbol"] if top_pick else "BTCUSDT",
             "top_pick_score": top_pick["breakout_score"] if top_pick else 90.0,
