@@ -499,6 +499,28 @@ class BotOrchestrator:
             closed_trades = self.wallet.check_and_update_prices(current_prices)
             for ct in closed_trades:
                 self.notifier.notify_trade_closed(ct)
+                # Eğer canlı moddaysa borsada da satış emrini ilet
+                if config.TRADING_MODE == "LIVE":
+                    c_sym = ct.get("symbol")
+                    c_units = float(ct.get("units", 0.0))
+                    c_px = float(ct.get("exit_price", 0.0))
+                    c_reason = ct.get("exit_reason", "STOP_OR_TP")
+                    if c_sym and c_units > 0:
+                        try:
+                            self.execute_live_order(
+                                symbol=c_sym,
+                                action="SELL",
+                                units=c_units,
+                                entry_price=c_px,
+                                thesis=f"Otonom Kural Satışı ({c_reason})"
+                            )
+                        except Exception as e:
+                            print(f"[Orchestrator] Canlı satış hatası: {e}")
+
+        # Otonom Kırılım & Sıkışma Tetikleyicisi (Auto-Buy on Breakout)
+        auto_trades = []
+        if getattr(config, "AUTO_TRADE_BREAKOUTS", True):
+            auto_trades = self.auto_trade_breakout_triggers()
 
         self.last_scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._save_latest_analyses()
@@ -506,8 +528,122 @@ class BotOrchestrator:
             "status": "SUCCESS",
             "scanned_count": len(results),
             "closed_trades_count": len(closed_trades),
+            "auto_trades_executed": len(auto_trades),
             "timestamp": self.last_scan_time
         }
+
+    def auto_trade_breakout_triggers(self) -> List[Dict[str, Any]]:
+        """
+        Radardaki patlama öncesi sıkışma (Pre-Pump Squeeze) ve kırılım adaylarını kontrol eder.
+        Eğer fiyat kırılım tetikleyici direncini hacimle aştıysa otomatik ALIM yapar.
+        Pozisyona girildiği an:
+        - +%18 Take-Profit kilitler
+        - -%2.5 Stop-Loss kilitler
+        - +%4 kârda başabaşa taşır, +%8'de iz süren stop devreye alır.
+        """
+        executed = []
+        radar_summary = self.radar.get_summary()
+        pre_pumps = radar_summary.get("pre_pump_opportunities", [])
+        watchlist = radar_summary.get("watchlist", [])
+        
+        # 1. Açık pozisyondaki coinleri tespit et (aynı coin tekrar alınmasın)
+        open_syms = set()
+        for p in self.wallet.open_positions:
+            s = p.get("symbol")
+            if s:
+                open_syms.add(s)
+                
+        # 2. Canlı borsa açık pozisyonlarını da ekle
+        if config.TRADING_MODE == "LIVE" and self.binance_executor.enabled:
+            real_sum = self.binance_executor.get_real_portfolio_summary()
+            for p in real_sum.get("open_positions", []):
+                s = p.get("symbol")
+                if s:
+                    open_syms.add(s)
+
+        # En fazla 6 eşzamanlı aktif pozisyon tut (Risk yönetimi)
+        if len(open_syms) >= 6:
+            return executed
+
+        candidates_to_check = pre_pumps[:10] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
+        
+        for cand in candidates_to_check:
+            sym = cand.get("symbol")
+            if not sym or sym in open_syms:
+                continue
+
+            px = float(cand.get("price", 0.0))
+            trigger_px = float(cand.get("trigger_price", 0.0))
+            if px <= 0 or trigger_px <= 0:
+                continue
+
+            # Kırılım Şartı: Anlık fiyat tetik direncini aştı mı? (px >= trigger_px)
+            is_breakout_triggered = px >= trigger_px
+
+            if is_breakout_triggered:
+                entry_px = px
+                target_px = cand.get("target_price", round(entry_px * 1.18, 4))
+                stop_px = cand.get("stop_price", round(entry_px * 0.975, 4))
+                
+                # İşlem boyutu: Kasanın risk profiline göre (Varsayılan $40 USD)
+                trade_budget_usd = 40.0
+                units = round(trade_budget_usd / entry_px, 4 if entry_px > 1 else 1)
+                if units <= 0:
+                    continue
+                
+                # CANLI veya SANAL emir ilet
+                if config.TRADING_MODE == "LIVE":
+                    ok, order_res, ex_name = self.execute_live_order(
+                        symbol=sym,
+                        action="BUY",
+                        units=units,
+                        entry_price=entry_px,
+                        stop_loss=stop_px,
+                        take_profit=target_px,
+                        thesis=f"Otonom Kırılım Alımı: ${trigger_px} direnci hacimle aşıldı."
+                    )
+                    if ok:
+                        open_syms.add(sym)
+                        cand["trigger_status"] = "🔥 KIRILIM TETİKLENDİ - ALINDI"
+                        executed.append({
+                            "symbol": sym,
+                            "action": "BUY",
+                            "mode": "LIVE",
+                            "exchange": ex_name,
+                            "entry_price": entry_px,
+                            "target_price": target_px,
+                            "stop_price": stop_px,
+                            "units": units
+                        })
+                else:
+                    # Sanal Kasa (Paper)
+                    try:
+                        self.wallet.open_position(
+                            symbol=sym,
+                            action="BUY",
+                            entry_price=entry_px,
+                            stop_loss=stop_px,
+                            take_profit=target_px,
+                            units=units,
+                            thesis=f"Otonom Kırılım Alımı: ${trigger_px} direnci aşıldı. Hedef: +%18, Stop: -%2.5",
+                            exchange="Paper"
+                        )
+                        open_syms.add(sym)
+                        cand["trigger_status"] = "🔥 KIRILIM TETİKLENDİ - ALINDI"
+                        executed.append({
+                            "symbol": sym,
+                            "action": "BUY",
+                            "mode": "PAPER",
+                            "exchange": "Paper",
+                            "entry_price": entry_px,
+                            "target_price": target_px,
+                            "stop_price": stop_px,
+                            "units": units
+                        })
+                    except Exception as e:
+                        print(f"[AutoTradeBreakout] Sanal emir açılamadı: {e}")
+
+        return executed
 
     def run_full_scan(self) -> Dict[str, Any]:
         """Kullanıcının sahip olduğu varlıklar + Kripto sepetini tarar."""
@@ -547,12 +683,35 @@ class BotOrchestrator:
             closed_trades = self.wallet.check_and_update_prices(current_prices)
             for ct in closed_trades:
                 self.notifier.notify_trade_closed(ct)
+                # Eğer canlı moddaysa borsada da satış emrini ilet
+                if config.TRADING_MODE == "LIVE":
+                    c_sym = ct.get("symbol")
+                    c_units = float(ct.get("units", 0.0))
+                    c_px = float(ct.get("exit_price", 0.0))
+                    c_reason = ct.get("exit_reason", "STOP_OR_TP")
+                    if c_sym and c_units > 0:
+                        try:
+                            self.execute_live_order(
+                                symbol=c_sym,
+                                action="SELL",
+                                units=c_units,
+                                entry_price=c_px,
+                                thesis=f"Otonom Kural Satışı ({c_reason})"
+                            )
+                        except Exception as e:
+                            print(f"[Orchestrator] Canlı satış hatası: {e}")
+
+            # Otonom Kırılım & Sıkışma Tetikleyicisi
+            auto_trades = []
+            if getattr(config, "AUTO_TRADE_BREAKOUTS", True):
+                auto_trades = self.auto_trade_breakout_triggers()
 
             self.last_scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             return {
                 "status": "SUCCESS",
                 "scanned_count": len(results),
                 "closed_trades_count": len(closed_trades),
+                "auto_trades_executed": len(auto_trades),
                 "timestamp": self.last_scan_time
             }
         finally:

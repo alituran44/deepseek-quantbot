@@ -33,6 +33,7 @@ class Config:
     INITIAL_BALANCE = float(os.getenv("INITIAL_BALANCE", "10000.0"))
     MAX_RISK_PER_TRADE_PERCENT = float(os.getenv("MAX_RISK_PER_TRADE_PERCENT", "20.0"))
     AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper() # SMART_AGGRESSIVE, ULTRA_DEGEN, AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
+    AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
 
     # Binance Live Exchange Configuration
     BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "").strip()
