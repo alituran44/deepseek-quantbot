@@ -35,11 +35,18 @@ class Config:
     AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper() # SMART_AGGRESSIVE, ULTRA_DEGEN, AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
 
-    # Hızlı Para / Kâr Stratejisi: FAST_SCALP (+%4.5 Hızlı Kâr Cebe) veya TREND (+%18 - +%35 Ralli)
-    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "FAST_SCALP").upper()
+    # Hızlı Para / Kâr Stratejisi: FAST_SCALP (+%4.5 Hızlı Para), TREND (+%18 - +%35 Ralli), MEGA_RUNNER (+%40 - +%150+ Moonshot)
+    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "MEGA_RUNNER").upper()
     FAST_SCALP_TP_PERCENT = float(os.getenv("FAST_SCALP_TP_PERCENT", "4.5"))
     FAST_SCALP_SL_PERCENT = float(os.getenv("FAST_SCALP_SL_PERCENT", "1.8"))
     FAST_SCALP_BREAKEVEN_PERCENT = float(os.getenv("FAST_SCALP_BREAKEVEN_PERCENT", "2.0"))
+
+    # Mega Kâr / Moonshot Runner Konfigürasyonu (Asimetrik Yüksek Kâr Marjı)
+    MEGA_RUNNER_TP1_PERCENT = float(os.getenv("MEGA_RUNNER_TP1_PERCENT", "12.0"))   # 1. Kademede %40 nakde geç, başabaşa taşı (Sıfır Risk)
+    MEGA_RUNNER_TP2_PERCENT = float(os.getenv("MEGA_RUNNER_TP2_PERCENT", "35.0"))   # 2. Kademede %35 nakde geç (Büyük Kâr Kilidi)
+    MEGA_RUNNER_TRAILING_START = float(os.getenv("MEGA_RUNNER_TRAILING_START", "40.0")) # Kalan %25 için +%40'tan itibaren geniş trailing stop
+    MEGA_RUNNER_TRAILING_RATIO = float(os.getenv("MEGA_RUNNER_TRAILING_RATIO", "0.92")) # Zirvenin %8.0 altından takip
+    MEGA_RUNNER_SL_PERCENT = float(os.getenv("MEGA_RUNNER_SL_PERCENT", "3.5"))      # Ralliye nefes aldırmak için -%3.5 geniş stop
 
     # Binance Live Exchange Configuration
     BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "").strip()

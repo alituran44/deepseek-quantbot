@@ -7,6 +7,7 @@ from bot.indicators.technical import TechnicalAnalyzer
 from bot.trading.risk_guard import RiskGuard
 from bot.trading.paper_wallet import PaperWallet
 from bot.agent.harness_agent import DeepSeekQuantAgent
+from bot.config import config
 from pathlib import Path
 import tempfile
 import os
@@ -58,42 +59,47 @@ class TestQuantBotComponents(unittest.TestCase):
 
     def test_04_risk_guard(self):
         """Risk koruma ve sermaye boyutlandırma testi."""
-        guard = RiskGuard(max_risk_pct=2.0)
-        
-        # Geçerli BUY sinyali
-        valid_buy = {
-            "action": "BUY",
-            "entry_price": 100.0,
-            "stop_loss": 95.0, # $5 risk
-            "take_profit": 115.0, # $15 ödül (1:3 RR)
-        }
-        passed, reason, params = guard.validate_and_size_position(valid_buy, current_balance=10000.0, current_open_positions_count=0)
-        self.assertTrue(passed)
-        self.assertEqual(params["risk_reward_ratio"], 3.0)
-        # 10.000$'ın %25 tavanı = 2.500$ pozisyon büyüklüğü -> 25 adet -> 25 * $5 risk = $125 risk
-        self.assertAlmostEqual(params["position_value_usd"], 2500.0, delta=1.0)
-        self.assertAlmostEqual(params["risk_amount_usd"], 125.0, delta=1.0)
-        
-        # Geçersiz Stop-Loss (Entry'den yüksek)
-        invalid_sl = {
-            "action": "BUY",
-            "entry_price": 100.0,
-            "stop_loss": 105.0,
-            "take_profit": 120.0
-        }
-        passed, reason, _ = guard.validate_and_size_position(invalid_sl, current_balance=10000.0, current_open_positions_count=0)
-        self.assertFalse(passed)
-        
-        # Düşük Risk/Ödül oranı (1:1.0)
-        bad_rr = {
-            "action": "BUY",
-            "entry_price": 100.0,
-            "stop_loss": 90.0,
-            "take_profit": 105.0
-        }
-        passed, reason, _ = guard.validate_and_size_position(bad_rr, current_balance=10000.0, current_open_positions_count=0)
-        self.assertFalse(passed)
-        print("[TEST 4 OK] RiskGuard kuralları başarıyla doğrulandı")
+        orig_profile = getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE")
+        try:
+            config.AI_RISK_PROFILE = "BALANCED"
+            guard = RiskGuard(max_risk_pct=2.0)
+            
+            # Geçerli BUY sinyali
+            valid_buy = {
+                "action": "BUY",
+                "entry_price": 100.0,
+                "stop_loss": 95.0, # $5 risk
+                "take_profit": 115.0, # $15 ödül (1:3 RR)
+            }
+            passed, reason, params = guard.validate_and_size_position(valid_buy, current_balance=10000.0, current_open_positions_count=0)
+            self.assertTrue(passed)
+            self.assertEqual(params["risk_reward_ratio"], 3.0)
+            # 10.000$'ın %25 tavanı = 2.500$ pozisyon büyüklüğü -> 25 adet -> 25 * $5 risk = $125 risk
+            self.assertAlmostEqual(params["position_value_usd"], 2500.0, delta=1.0)
+            self.assertAlmostEqual(params["risk_amount_usd"], 125.0, delta=1.0)
+            
+            # Geçersiz Stop-Loss (Entry'den yüksek)
+            invalid_sl = {
+                "action": "BUY",
+                "entry_price": 100.0,
+                "stop_loss": 105.0,
+                "take_profit": 120.0
+            }
+            passed, reason, _ = guard.validate_and_size_position(invalid_sl, current_balance=10000.0, current_open_positions_count=0)
+            self.assertFalse(passed)
+            
+            # Düşük Risk/Ödül oranı (1:1.0)
+            bad_rr = {
+                "action": "BUY",
+                "entry_price": 100.0,
+                "stop_loss": 90.0,
+                "take_profit": 105.0
+            }
+            passed, reason, _ = guard.validate_and_size_position(bad_rr, current_balance=10000.0, current_open_positions_count=0)
+            self.assertFalse(passed)
+            print("[TEST 4 OK] RiskGuard kuralları başarıyla doğrulandı")
+        finally:
+            config.AI_RISK_PROFILE = orig_profile
 
     def test_05_paper_wallet(self):
         """Sanal kasa ve işlem defteri testi."""

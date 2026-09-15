@@ -3192,6 +3192,11 @@ function renderMacroClimate(macroData) {
         tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
         tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
       }
+    } else if (strat === 'MEGA_RUNNER') {
+      tpPill.innerHTML = `💎 Kâr Hedefi: <strong>+%40 - +%150+ (Kademeli Runner)</strong>`;
+      tpPill.style.color = '#c084fc';
+      tpPill.style.borderColor = 'rgba(192, 132, 252, 0.5)';
+      tpPill.style.background = 'rgba(192, 132, 252, 0.12)';
     } else {
       const tpPct = macroData.target_tp_pct || 18;
       if (isTurbo) {
@@ -3215,26 +3220,29 @@ function renderMacroClimate(macroData) {
 }
 
 function updateProfitStrategyUI(strat) {
-  const valid = (strat || 'FAST_SCALP').toUpperCase();
+  const valid = (strat || 'MEGA_RUNNER').toUpperCase();
   window.currentProfitStrategy = valid;
   const btnFast = document.getElementById('btn-strat-fast-scalp');
   const btnTrend = document.getElementById('btn-strat-trend');
-  if (btnFast && btnTrend) {
-    if (valid === 'FAST_SCALP') {
-      btnFast.classList.add('active');
-      btnFast.style.color = '#38bdf8';
-      btnFast.style.borderColor = 'rgba(56, 189, 248, 0.4)';
-      btnTrend.classList.remove('active');
-      btnTrend.style.color = 'var(--text-muted)';
-      btnTrend.style.borderColor = '';
-    } else {
-      btnTrend.classList.add('active');
-      btnTrend.style.color = '#10b981';
-      btnTrend.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-      btnFast.classList.remove('active');
-      btnFast.style.color = 'var(--text-muted)';
-      btnFast.style.borderColor = '';
-    }
+  const btnMega = document.getElementById('btn-strat-mega-runner');
+
+  if (btnFast) {
+    const isAct = valid === 'FAST_SCALP';
+    btnFast.classList.toggle('active', isAct);
+    btnFast.style.color = isAct ? '#38bdf8' : 'var(--text-muted)';
+    btnFast.style.borderColor = isAct ? 'rgba(56, 189, 248, 0.4)' : '';
+  }
+  if (btnTrend) {
+    const isAct = valid === 'TREND';
+    btnTrend.classList.toggle('active', isAct);
+    btnTrend.style.color = isAct ? '#10b981' : 'var(--text-muted)';
+    btnTrend.style.borderColor = isAct ? 'rgba(16, 185, 129, 0.4)' : '';
+  }
+  if (btnMega) {
+    const isAct = valid === 'MEGA_RUNNER';
+    btnMega.classList.toggle('active', isAct);
+    btnMega.style.color = isAct ? '#c084fc' : 'var(--text-muted)';
+    btnMega.style.borderColor = isAct ? 'rgba(192, 132, 252, 0.4)' : '';
   }
 }
 

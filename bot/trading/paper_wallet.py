@@ -98,6 +98,9 @@ class PaperWallet:
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "units": units,
+            "initial_units": units,
+            "tp1_hit": False,
+            "tp2_hit": False,
             "position_value": round(position_value, 2),
             "unrealized_pnl": 0.0,
             "unrealized_pnl_pct": 0.0,
@@ -190,38 +193,135 @@ class PaperWallet:
                 pos["highest_price"] = highest
 
                 unrealized = (current_price - entry) * units
-                unrealized_pct = ((current_price - entry) / entry) * 100
+                unrealized_pct = round(((current_price - entry) / entry) * 100, 4)
                 pos["unrealized_pnl"] = round(unrealized, 2)
-                # Stratejiye göre dinamik eşikler: Hızlı Scalp (+%2 BE, +%3 Trailing) vs Trend
-                is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper() == "FAST_SCALP"
-                be_threshold = getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0) if is_fast_scalp else 4.0
-                trailing_threshold = 3.0 if is_fast_scalp else 8.0
-                trailing_ratio = 0.985 if is_fast_scalp else 0.96  # Scalp'ta zirvenin %1.5 altı
+                pos["unrealized_pnl_pct"] = round(unrealized_pct, 2)
+                # Stratejiye göre dinamik eşikler: Hızlı Scalp, Trend veya Mega Runner (+%40-%150+)
+                current_strat = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper()
 
-                # 1. AKILLI BAŞABAŞ KİLİDİ: Kâr eşiğe ulaştığında stop-loss'u başabaş (+%0.5 komisyon kârı) seviyesine taşı
-                if unrealized_pct >= be_threshold:
-                    breakeven_sl = round(entry * 1.005, 4 if entry < 1 else 2)
-                    if pos["stop_loss"] < breakeven_sl:
-                        pos["stop_loss"] = breakeven_sl
-                        pos["is_risk_free"] = True
-                        pos["sl_note"] = f"Başabaş Kilitlendi (Breakeven +0.5% - {be_threshold}% kârda)"
+                if current_strat == "MEGA_RUNNER":
+                    # -------------------------------------------------------------
+                    # 💎 MEGA KÂR / MOONSHOT RUNNER (Asimetrik Yüksek Kâr Marjı)
+                    # 1. Kademe: +%12 kârda %40'ını sat ve başabaş kilitle (Sıfır Risk)
+                    # 2. Kademe: +%35 kârda bir %35 daha sat (Büyük Kâr Kilidi)
+                    # 3. Kademe: Kalan %25 için +%40'tan itibaren Geniş Runner Trailing Stop
+                    # -------------------------------------------------------------
+                    tp1_thresh = getattr(config, "MEGA_RUNNER_TP1_PERCENT", 12.0)
+                    tp2_thresh = getattr(config, "MEGA_RUNNER_TP2_PERCENT", 35.0)
+                    trailing_start = getattr(config, "MEGA_RUNNER_TRAILING_START", 40.0)
+                    trailing_ratio = getattr(config, "MEGA_RUNNER_TRAILING_RATIO", 0.92)
+                    initial_units = pos.get("initial_units", units)
 
-                # 2. AKILLI İZ SÜREN STOP (TRAILING STOP): Zirve kazancı eşiğe ulaştığında stop-loss'u zirvenin yakınına kilitle
-                peak_gain_pct = ((highest - entry) / entry) * 100
-                if peak_gain_pct >= trailing_threshold:
-                    trailing_sl = round(highest * trailing_ratio, 4 if entry < 1 else 2)
-                    if trailing_sl > pos["stop_loss"]:
-                        pos["stop_loss"] = trailing_sl
-                        pos["is_trailing_active"] = True
-                        pos["sl_note"] = f"İz Süren Stop Devrede (Zirve: {highest:.2f} - Trailing: {trailing_sl})"
+                    # 1. Kademe Kâr Alma (+%12)
+                    if unrealized_pct >= tp1_thresh and not pos.get("tp1_hit"):
+                        units_tp1 = round(initial_units * 0.40, 6)
+                        if pos["units"] > units_tp1:
+                            pos["units"] = round(pos["units"] - units_tp1, 6)
+                            pnl_tp1 = round((current_price - entry) * units_tp1, 2)
+                            returned_cash = (units_tp1 * entry) + pnl_tp1
+                            self.state["cash_balance"] += returned_cash
+                            pos["position_value"] = round(pos["units"] * entry, 2)
+                            pos["stop_loss"] = max(pos["stop_loss"], round(entry * 1.005, 4 if entry < 1 else 2))
+                            pos["is_risk_free"] = True
+                            pos["tp1_hit"] = True
+                            pos["sl_note"] = f"💎 TP1 Alındı (+%{tp1_thresh} ile %40 satıldı, stop başabaşta)"
+                            partial_event = {
+                                "id": f"{pos['id']}-TP1",
+                                "symbol": pos["symbol"],
+                                "action": pos["action"],
+                                "entry_price": entry,
+                                "exit_price": current_price,
+                                "stop_loss": pos["stop_loss"],
+                                "take_profit": pos["take_profit"],
+                                "units": units_tp1,
+                                "pnl_usd": pnl_tp1,
+                                "pnl_pct": round(unrealized_pct, 2),
+                                "open_time": pos["open_time"],
+                                "close_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "exit_reason": "PARTIAL_TP1_HIT",
+                                "thesis": f"💎 Mega Runner TP1: %40 kâr alındı (+%{unrealized_pct:.1f}). Kalan %60 risksiz koşuyor."
+                            }
+                            self.state["closed_trades"].insert(0, partial_event)
+                            closed_events.append(partial_event)
 
-                # Stop-Loss / Trailing kontrolü
-                if current_price <= pos["stop_loss"]:
-                    reason = "TRAILING_STOP_HIT" if pos.get("is_trailing_active") else ("BREAKEVEN_STOP_HIT" if pos.get("is_risk_free") else "STOP_LOSS_HIT")
-                    positions_to_close.append((pos["id"], current_price, reason))
-                # Take-Profit kontrolü
-                elif current_price >= pos["take_profit"]:
-                    positions_to_close.append((pos["id"], current_price, "TAKE_PROFIT_HIT"))
+                    # 2. Kademe Kâr Alma (+%35)
+                    if unrealized_pct >= tp2_thresh and not pos.get("tp2_hit"):
+                        units_tp2 = round(initial_units * 0.35, 6)
+                        if pos["units"] > units_tp2:
+                            pos["units"] = round(pos["units"] - units_tp2, 6)
+                            pnl_tp2 = round((current_price - entry) * units_tp2, 2)
+                            returned_cash = (units_tp2 * entry) + pnl_tp2
+                            self.state["cash_balance"] += returned_cash
+                            pos["position_value"] = round(pos["units"] * entry, 2)
+                            pos["stop_loss"] = max(pos["stop_loss"], round(entry * 1.20, 4 if entry < 1 else 2))
+                            pos["tp2_hit"] = True
+                            pos["sl_note"] = f"💎 TP2 Alındı (+%{tp2_thresh} ile %35 satıldı, stop +%20 kârda)"
+                            partial_event = {
+                                "id": f"{pos['id']}-TP2",
+                                "symbol": pos["symbol"],
+                                "action": pos["action"],
+                                "entry_price": entry,
+                                "exit_price": current_price,
+                                "stop_loss": pos["stop_loss"],
+                                "take_profit": pos["take_profit"],
+                                "units": units_tp2,
+                                "pnl_usd": pnl_tp2,
+                                "pnl_pct": round(unrealized_pct, 2),
+                                "open_time": pos["open_time"],
+                                "close_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "exit_reason": "PARTIAL_TP2_HIT",
+                                "thesis": f"💎 Mega Runner TP2: %35 büyük kâr alındı (+%{unrealized_pct:.1f}). Kalan %25 Moonshot Runner!"
+                            }
+                            self.state["closed_trades"].insert(0, partial_event)
+                            closed_events.append(partial_event)
+
+                    # 3. Kademe: Geniş Runner Trailing Stop (+%40 ve üzeri)
+                    peak_gain_pct = ((highest - entry) / entry) * 100
+                    if peak_gain_pct >= trailing_start:
+                        trailing_sl = round(highest * trailing_ratio, 4 if entry < 1 else 2)
+                        if trailing_sl > pos["stop_loss"]:
+                            pos["stop_loss"] = trailing_sl
+                            pos["is_trailing_active"] = True
+                            pos["sl_note"] = f"💎 Runner Trailing Devrede (Zirve: {highest:.2f} - %8 Trailing: {trailing_sl})"
+
+                    # Mega Runner Çıkış Kontrolleri
+                    if current_price <= pos["stop_loss"]:
+                        reason = "RUNNER_TRAILING_STOP_HIT" if pos.get("is_trailing_active") else ("BREAKEVEN_STOP_HIT" if pos.get("is_risk_free") else "STOP_LOSS_HIT")
+                        positions_to_close.append((pos["id"], current_price, reason))
+                    elif current_price >= pos["take_profit"]:
+                        positions_to_close.append((pos["id"], current_price, "TAKE_PROFIT_HIT"))
+
+                else:
+                    # FAST_SCALP veya TREND modu
+                    is_fast_scalp = current_strat == "FAST_SCALP"
+                    be_threshold = getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0) if is_fast_scalp else 4.0
+                    trailing_threshold = 3.0 if is_fast_scalp else 8.0
+                    trailing_ratio = 0.985 if is_fast_scalp else 0.96  # Scalp'ta zirvenin %1.5 altı
+
+                    # 1. AKILLI BAŞABAŞ KİLİDİ
+                    if unrealized_pct >= be_threshold:
+                        breakeven_sl = round(entry * 1.005, 4 if entry < 1 else 2)
+                        if pos["stop_loss"] < breakeven_sl:
+                            pos["stop_loss"] = breakeven_sl
+                            pos["is_risk_free"] = True
+                            pos["sl_note"] = f"Başabaş Kilitlendi (Breakeven +0.5% - {be_threshold}% kârda)"
+
+                    # 2. AKILLI İZ SÜREN STOP (TRAILING STOP)
+                    peak_gain_pct = ((highest - entry) / entry) * 100
+                    if peak_gain_pct >= trailing_threshold:
+                        trailing_sl = round(highest * trailing_ratio, 4 if entry < 1 else 2)
+                        if trailing_sl > pos["stop_loss"]:
+                            pos["stop_loss"] = trailing_sl
+                            pos["is_trailing_active"] = True
+                            pos["sl_note"] = f"İz Süren Stop Devrede (Zirve: {highest:.2f} - Trailing: {trailing_sl})"
+
+                    # Stop-Loss / Trailing kontrolü
+                    if current_price <= pos["stop_loss"]:
+                        reason = "TRAILING_STOP_HIT" if pos.get("is_trailing_active") else ("BREAKEVEN_STOP_HIT" if pos.get("is_risk_free") else "STOP_LOSS_HIT")
+                        positions_to_close.append((pos["id"], current_price, reason))
+                    # Take-Profit kontrolü
+                    elif current_price >= pos["take_profit"]:
+                        positions_to_close.append((pos["id"], current_price, "TAKE_PROFIT_HIT"))
 
             elif action == "SELL":
                 # Dip fiyat takibi

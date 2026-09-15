@@ -584,19 +584,33 @@ async def arm_radar_trigger(req: Dict[str, Any]):
 
 @app.post("/api/settings/profit-strategy")
 async def set_profit_strategy_endpoint(req: ProfitStrategyRequest):
-    """Kâr stratejisini ayarlar: FAST_SCALP (Hızlı Para) veya TREND (Trend / Ralli)."""
+    """Kâr stratejisini ayarlar: FAST_SCALP, TREND veya MEGA_RUNNER."""
     strat = orchestrator.set_profit_strategy(req.strategy)
     # Radarı da hemen yeni stratejiyle güncelle
     try:
         orchestrator.radar.scan_all_exchanges()
     except Exception:
         pass
+
+    if strat == "FAST_SCALP":
+        msg = "⚡ Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede"
+        target_tp = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
+        sl_pct = getattr(config, "FAST_SCALP_SL_PERCENT", 1.8)
+    elif strat == "MEGA_RUNNER":
+        msg = "💎 Mega Kâr / Moonshot (+%40 - +%150+ Kademeli Kâr) Modu Devrede"
+        target_tp = 60.0
+        sl_pct = getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5)
+    else:
+        msg = "🚀 Trend / Ralli (+%18 - +%35) Modu Devrede"
+        target_tp = 18.0
+        sl_pct = 2.5
+
     return JSONResponse(content={
         "status": "SUCCESS",
         "strategy": strat,
-        "message": "⚡ Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede" if strat == "FAST_SCALP" else "🚀 Trend / Ralli (+%18) Modu Devrede",
-        "target_tp_pct": getattr(config, "FAST_SCALP_TP_PERCENT", 4.5) if strat == "FAST_SCALP" else 18.0,
-        "stop_loss_pct": getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) if strat == "FAST_SCALP" else 2.5
+        "message": msg,
+        "target_tp_pct": target_tp,
+        "stop_loss_pct": sl_pct
     })
 
 @app.get("/api/macro/climate")

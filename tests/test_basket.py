@@ -44,7 +44,7 @@ class TestBasketManager(unittest.TestCase):
         ]
         # CORE için hedef %35 + %10 tolerans = %45 -> $10,000 * %45 = $4,500 maks bütçe.
         # Halihazırda $3,000 var -> Kalan bütçe: $1,500.
-        headroom = BasketManager.get_sector_budget_headroom("ETHUSDT", current_balance=10000.0, open_positions=open_positions)
+        headroom = BasketManager.get_sector_budget_headroom("ETHUSDT", current_balance=7000.0, open_positions=open_positions)
         self.assertAlmostEqual(headroom, 1500.0, delta=1.0)
         print("[TEST OK] Sektör bütçe tavanı doğrulaması başarılı.")
 

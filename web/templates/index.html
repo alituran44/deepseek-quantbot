@@ -119,13 +119,16 @@
             </div>
           </div>
 
-          <!-- Orta Kısım: Strateji Modu Seçici (⚡ Hızlı Scalp vs 🚀 Trend) -->
-          <div style="display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.4); padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-subtle);" id="profit-strategy-switcher">
-            <button class="btn-filter active" id="btn-strat-fast-scalp" onclick="switchProfitStrategy('FAST_SCALP')" style="font-size: 11px; padding: 4px 10px; font-weight: 700; border-radius: 6px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="⚡ Hızlı Scalp Modu: %4.5 hızlı kâr alma, %1.8 sıkı stop, %2.0 başabaş (Sermayeyi dakikalar içinde nakde çevirir)">
-              ⚡ Hızlı Scalp (+%4.5 Hızlı Para)
+          <!-- Orta Kısım: Strateji Modu Seçici (⚡ Hızlı Scalp vs 🚀 Trend vs 💎 Mega Kâr) -->
+          <div style="display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.4); padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-subtle); flex-wrap: wrap;" id="profit-strategy-switcher">
+            <button class="btn-filter" id="btn-strat-fast-scalp" onclick="switchProfitStrategy('FAST_SCALP')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: #38bdf8;" title="⚡ Hızlı Scalp Modu: %4.5 hızlı kâr alma, %1.8 sıkı stop, %2.0 başabaş (Sermayeyi dakikalar içinde nakde çevirir)">
+              ⚡ Hızlı Scalp (+%4.5)
             </button>
-            <button class="btn-filter" id="btn-strat-trend" onclick="switchProfitStrategy('TREND')" style="font-size: 11px; padding: 4px 10px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="🚀 Trend / Ralli Modu: %18-%35 büyük hedefli koşu, %2.5 stop (Günlük büyük kırılımları bekler)">
-              🚀 Trend / Ralli (+%18)
+            <button class="btn-filter" id="btn-strat-trend" onclick="switchProfitStrategy('TREND')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="🚀 Trend / Ralli Modu: %18-%35 büyük hedefli koşu, %2.5 stop">
+              🚀 Trend (+%18)
+            </button>
+            <button class="btn-filter active" id="btn-strat-mega-runner" onclick="switchProfitStrategy('MEGA_RUNNER')" style="font-size: 11px; padding: 4px 8px; font-weight: 700; border-radius: 6px; color: #c084fc; border-color: rgba(192, 132, 252, 0.4);" title="💎 Mega Kâr / Moonshot: Kademeli kâr alma (+%12 TP1 %40 satış, +%35 TP2 %35 satış, +%40-%150+ Sonsuz Runner)">
+              💎 Mega Kâr (+%40 - +%150+)
             </button>
           </div>
 
@@ -1203,6 +1206,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=2.26.0_fast_scalp_engine"></script>
+  <script src="/static/app.js?v=2.27.0_mega_runner_engine"></script>
 </body>
 </html>

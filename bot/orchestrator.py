@@ -535,10 +535,12 @@ class BotOrchestrator:
         }
 
     def set_profit_strategy(self, strategy: str) -> str:
-        """Kâr stratejisini ayarlar: 'FAST_SCALP' (Hızlı Para / Çevik) veya 'TREND' (Trend / Ralli)."""
+        """Kâr stratejisini ayarlar: 'FAST_SCALP' (Hızlı Para), 'TREND' (Trend / Ralli) veya 'MEGA_RUNNER' (Mega Kâr / Moonshot)."""
         valid = strategy.upper().strip()
-        if valid not in ["FAST_SCALP", "TREND"]:
-            valid = "FAST_SCALP"
+        if valid in ["MOONSHOT", "RUNNER"]:
+            valid = "MEGA_RUNNER"
+        if valid not in ["FAST_SCALP", "TREND", "MEGA_RUNNER"]:
+            valid = "MEGA_RUNNER"
         config.PROFIT_STRATEGY = valid
         os.environ["PROFIT_STRATEGY"] = valid
         try:
@@ -564,6 +566,11 @@ class BotOrchestrator:
         - +%18 - +%35 Kâr hedefi
         - -%2.5 Stop-Loss
         - +%4.0 kârda başabaş, +%8.0'de iz süren stop
+
+        MEGA_RUNNER (💎 Mega Kâr / Moonshot +%40 - +%150+):
+        - +%12'de TP1: %40 Kâr Al ve Stop'u Başabaşa Kilitle (Sıfır Risk)
+        - +%35'te TP2: %35 Büyük Kâr Al ve Stop'u +%20 Kâra Kilitle
+        - +%40+'ta TP3: Kalan %25 için Geniş İz Süren Stop (Zirvenin %8 altı) ile Sonsuz Ralli Takibi
         """
         executed = []
         radar_summary = self.radar.get_summary()
@@ -597,18 +604,19 @@ class BotOrchestrator:
         budget_mult = macro_climate.get("budget_multiplier", 1.0)
         regime_title = macro_climate.get("regime_title", "DENGELİ")
 
-        is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP") == "FAST_SCALP"
+        current_strat = getattr(config, "PROFIT_STRATEGY", "MEGA_RUNNER").upper()
+        is_fast_scalp = current_strat == "FAST_SCALP"
+        is_mega_runner = current_strat == "MEGA_RUNNER"
 
         # 🛑 TUZAK KALKANI (DEFENSIVE REJİM):
-        # DXY fırlıyorken veya Wall Street çöküyorken açılan kırılımlar %90 sahte olur.
-        # Sermayeyi korumak için yeni alımları askıya al:
-        # ANCAK Fast Scalp modunda sadece en dar sıkışma (<=2.8%) ve $3M+ hacimli süper fırsatlara küçük bütçeyle izin ver:
         if not allow_buying or regime == "DEFENSIVE":
-            if not is_fast_scalp:
+            if not is_fast_scalp and not is_mega_runner:
                 print(f"[AutoTradeBreakout] 🛑 Makro Tuzak Kalkanı Devrede ({regime_title}): DXY/Nasdaq risk baskısı nedeniyle yeni kırılım alımları askıya alındı.")
                 return executed
-            else:
+            elif is_fast_scalp:
                 print(f"[AutoTradeBreakout] ⚡ Fast Scalp Korumalı Geçiş: Makro DEFENSIVE modda sadece aşırı dar sıkışmalı ($3M+ hacim) hızlı scalplar filtrelenerek değerlendirilecek.")
+            else:
+                print(f"[AutoTradeBreakout] 💎 Mega Runner Korumalı Geçiş: Makro DEFENSIVE modda sadece en yüksek akümülasyonlu ($3M+ hacim) potansiyelli coinler değerlendirilecek.")
 
         candidates_to_check = pre_pumps[:10] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
         
@@ -625,8 +633,8 @@ class BotOrchestrator:
             vol = float(cand.get("volume_usd", 0.0))
             range_span = float(cand.get("range_span_pct", 5.0))
 
-            # DEFENSIVE rejimdeysek ve fast scalp açıksa ekstra sıkı filtre
-            if regime == "DEFENSIVE" and is_fast_scalp:
+            # DEFENSIVE rejimdeysek ekstra sıkı kalite filtresi
+            if regime == "DEFENSIVE":
                 if range_span > 2.8 or vol < 3000000.0:
                     continue
 
@@ -645,6 +653,15 @@ class BotOrchestrator:
                     stop_px = round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
                     trade_budget_usd = round(30.0 * (0.8 if regime == "DEFENSIVE" else budget_mult), 2)
                     thesis_text = f"⚡ Otonom Hızlı Scalp: ${trigger_px} aşıldı. Hedef: +%{tp_pct} (${target_px}), Sıkı Stop: -%{sl_pct}, Başabaş: +%2.0"
+                elif is_mega_runner:
+                    # 💎 Mega Kâr / Moonshot: +%40 - +%150+ Kademeli Çıkış
+                    tp1_pct = getattr(config, "MEGA_RUNNER_TP1_PERCENT", 12.0)
+                    tp2_pct = getattr(config, "MEGA_RUNNER_TP2_PERCENT", 35.0)
+                    sl_pct = getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5)
+                    target_px = round(entry_px * 1.60, 6 if entry_px < 1 else 4) # Görsel büyük hedef: +%60
+                    stop_px = round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
+                    trade_budget_usd = round(40.0 * budget_mult, 2)
+                    thesis_text = f"💎 Otonom Mega Runner: ${trigger_px} aşıldı. TP1: +%{tp1_pct} (%40 Satış), TP2: +%{tp2_pct} (%35 Satış), Kalan %25 Moonshot Runner!"
                 else:
                     # 🚀 Trend / Ralli: +%18 - +%35
                     gain_mult = 1.0 + (macro_tp_pct / 100.0)
@@ -1059,10 +1076,14 @@ class BotOrchestrator:
 
         return {
             "trading_mode": active_mode,
-            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"),
+            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "MEGA_RUNNER"),
             "fast_scalp_tp_percent": getattr(config, "FAST_SCALP_TP_PERCENT", 4.5),
             "fast_scalp_sl_percent": getattr(config, "FAST_SCALP_SL_PERCENT", 1.8),
             "fast_scalp_breakeven_percent": getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0),
+            "mega_runner_tp1_percent": getattr(config, "MEGA_RUNNER_TP1_PERCENT", 12.0),
+            "mega_runner_tp2_percent": getattr(config, "MEGA_RUNNER_TP2_PERCENT", 35.0),
+            "mega_runner_trailing_start": getattr(config, "MEGA_RUNNER_TRAILING_START", 40.0),
+            "mega_runner_sl_percent": getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5),
             "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
             "available_trading_exchanges": [ex["id"] for ex in self.get_registered_exchanges()],
             "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE"),

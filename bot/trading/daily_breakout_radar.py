@@ -209,7 +209,9 @@ class DailyBreakoutRadar:
 
         candidates = []
         pre_pump_candidates = []
-        is_fast_scalp = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP") == "FAST_SCALP"
+        current_strat = getattr(config, "PROFIT_STRATEGY", "MEGA_RUNNER").upper()
+        is_fast_scalp = current_strat == "FAST_SCALP"
+        is_mega_runner = current_strat == "MEGA_RUNNER"
 
         for sym, c in coins_map.items():
             vol = c["volume_usd"]
@@ -256,6 +258,11 @@ class DailyBreakoutRadar:
                     target_pct = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
                     target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
                     stop_px = round(px * (1 - getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) / 100.0), 6 if px < 1 else 4)
+                elif is_mega_runner:
+                    # 💎 Mega Kâr Hedefi: +%45 - +%120
+                    target_pct = round(max(45.0, min(120.0, (squeeze_score - 65.0) * 2.0 + 45.0)), 1)
+                    target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                    stop_px = round(px * (1 - getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5) / 100.0), 6 if px < 1 else 4)
                 else:
                     target_pct = round(max(15.0, min(35.0, (100 - squeeze_score) * 0.5 + 16.0)), 1)
                     target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
@@ -328,6 +335,11 @@ class DailyBreakoutRadar:
                         target_pct = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
                         target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
                         stop_px = round(px * (1 - getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) / 100.0), 6 if px < 1 else 4)
+                    elif is_mega_runner:
+                        # 💎 Mega Kâr / Moonshot Hedefi: +%40 - +%95
+                        target_pct = round(max(40.0, min(95.0, (score - 65.0) * 1.5 + 38.0 + chg * 0.4)), 1)
+                        target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
+                        stop_px = round(px * (1 - getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5) / 100.0), 6 if px < 1 else 4)
                     else:
                         target_pct = round(max(8.0, min(24.0, (100 - score) * 0.4 + chg * 0.5)), 1)
                         target_px = round(px * (1 + target_pct / 100.0), 6 if px < 1 else 4)
@@ -382,13 +394,24 @@ class DailyBreakoutRadar:
 
         # Günlük Pazar Raporu Özeti Derle
         top_pick = self.opportunities[0] if self.opportunities else (self.pre_pump_opportunities[0] if self.pre_pump_opportunities else None)
-        avg_target = round(sum(o["target_gain_pct"] for o in self.opportunities[:8]) / max(1, len(self.opportunities[:8])), 1) if self.opportunities else (4.5 if is_fast_scalp else 12.5)
+        
+        if is_mega_runner:
+            strat_label = "💎 Mega Kâr / Moonshot (+%40 - +%150+)"
+            default_avg = 55.0
+        elif is_fast_scalp:
+            strat_label = "⚡ Hızlı Scalp (+%4.5 Hızlı Para)"
+            default_avg = 4.5
+        else:
+            strat_label = "🚀 Trend / Ralli (+%18)"
+            default_avg = 18.0
+
+        avg_target = round(sum(o["target_gain_pct"] for o in self.opportunities[:8]) / max(1, len(self.opportunities[:8])), 1) if self.opportunities else default_avg
 
         self.market_report = {
             "summary": f"Binance, MEXC ve OKX'te {len(coins_map)} parite tarandı: {len(self.opportunities)} canlı kırılım ve {len(self.pre_pump_opportunities)} patlama öncesi sıkışma adayı tespit edildi.",
             "dominant_exchange": "Binance + MEXC + OKX Konsolide",
-            "profit_strategy": "FAST_SCALP" if is_fast_scalp else "TREND",
-            "strategy_label": "⚡ Hızlı Scalp (+%4.5 Hızlı Para)" if is_fast_scalp else "🚀 Trend / Ralli (+%18)",
+            "profit_strategy": current_strat,
+            "strategy_label": strat_label,
             "avg_potential": f"+%{avg_target}",
             "top_pick": top_pick["symbol"] if top_pick else "BTCUSDT",
             "top_pick_score": top_pick["breakout_score"] if top_pick else 90.0,
