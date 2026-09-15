@@ -166,23 +166,27 @@ class BinanceLiveExecutor:
                 pass
             return 0.0
 
-        # 1. Spot Cüzdanındaki Varlıkları Tara
+        # 1. Spot ve Simple Earn (Kazan) Cüzdanındaki Varlıkları Tara
         for item in spot_res.get("balances", []):
             free = float(item.get("free", 0.0))
             locked = float(item.get("locked", 0.0))
             tot = free + locked
             if tot > 0.00000001:
-                asset = item.get("asset", "").upper()
+                raw_asset = item.get("asset", "").upper()
+                is_earn = raw_asset.startswith("LD") and len(raw_asset) > 3
+                asset = raw_asset[2:] if is_earn else raw_asset
+                wallet_name = "Kazan (Earn) Cüzdanı" if is_earn else "Spot Cüzdanı"
+
                 px = _get_asset_price(asset)
                 if asset == "USDT":
                     total_usdt += tot
                 val = tot * px
                 total_equity += val
                 holdings.append({
-                    "id": f"spot_{asset.lower()}",
+                    "id": f"{'earn' if is_earn else 'spot'}_{asset.lower()}",
                     "symbol": asset if asset == "USDT" else f"{asset}USDT",
                     "asset": asset,
-                    "action": "VARLIK (SPOT)",
+                    "action": f"VARLIK ({'EARN' if is_earn else 'SPOT'})",
                     "units": tot,
                     "free": free,
                     "locked": locked,
@@ -194,8 +198,8 @@ class BinanceLiveExecutor:
                     "value_usd": val,
                     "unrealized_pnl": 0.0,
                     "unrealized_pnl_pct": 0.0,
-                    "wallet_type": "Spot Cüzdanı",
-                    "thesis": f"Binance Spot Cüzdanında {tot} {asset} mevcut."
+                    "wallet_type": wallet_name,
+                    "thesis": f"Binance {wallet_name}'nda {tot} {asset} mevcut."
                 })
 
         # 2. Fonlama (Funding) Cüzdanındaki Varlıkları Tara
@@ -205,7 +209,11 @@ class BinanceLiveExecutor:
                 locked = float(item.get("locked", 0.0))
                 tot = free + locked
                 if tot > 0.00000001:
-                    asset = item.get("asset", "").upper()
+                    raw_asset = item.get("asset", "").upper()
+                    is_earn = raw_asset.startswith("LD") and len(raw_asset) > 3
+                    asset = raw_asset[2:] if is_earn else raw_asset
+                    wallet_name = "Kazan (Earn) Cüzdanı" if is_earn else "Fonlama Cüzdanı"
+
                     px = _get_asset_price(asset)
                     if asset == "USDT":
                         total_usdt += tot
@@ -227,8 +235,8 @@ class BinanceLiveExecutor:
                         "value_usd": val,
                         "unrealized_pnl": 0.0,
                         "unrealized_pnl_pct": 0.0,
-                        "wallet_type": "Fonlama Cüzdanı",
-                        "thesis": f"Binance Fonlama Cüzdanında {tot} {asset} mevcut."
+                        "wallet_type": wallet_name,
+                        "thesis": f"Binance {wallet_name}'nda {tot} {asset} mevcut."
                     })
 
         return {

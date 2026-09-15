@@ -963,6 +963,9 @@ class BotOrchestrator:
         # Her canlı varlık için Giriş Fiyatı, Anlık Fiyat ve Kâr/Zarar (PnL) zenginleştirmesi
         for ac in combined_assets:
             ast = ac.get("asset", "").upper()
+            if ast.startswith("LD") and len(ast) > 3:
+                ast = ast[2:]
+                ac["asset"] = ast
             units = float(ac.get("units", ac.get("free", 0)) or 0)
             ac["units"] = units
 
