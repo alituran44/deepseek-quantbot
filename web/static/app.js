@@ -1256,17 +1256,20 @@ function renderPositions(positions, isLive = true) {
 
     if (isLive) {
       // CANLI ÇOKLU BORSA CÜZDAN VARLIKLARI (Eksiksiz ve tam tamına)
+      const rawUnits = typeof pos.units === 'number' ? pos.units : parseFloat(pos.units || pos.free || 0);
+      const curPriceFallback = Number(pos.current_price || 0);
+      let calculatedValUsd = (pos.value_usd !== undefined && pos.value_usd !== null && !isNaN(pos.value_usd) && Number(pos.value_usd) > 0)
+        ? Number(pos.value_usd)
+        : ((pos.position_value !== undefined && Number(pos.position_value) > 0) ? Number(pos.position_value) : (rawUnits * curPriceFallback));
+
       let valStr;
       if (showInTry) {
-        let valTry = pos.value_try;
-        if (valTry === undefined || valTry === null || isNaN(valTry)) {
-          valTry = (pos.value_usd !== undefined ? pos.value_usd : (pos.position_value || 0)) * usdRate;
-        }
+        let valTry = (pos.value_try !== undefined && pos.value_try !== null && !isNaN(pos.value_try) && Number(pos.value_try) > 0)
+          ? Number(pos.value_try)
+          : (calculatedValUsd * usdRate);
         valStr = formatTryPrice(valTry);
-      } else if (pos.value_usd !== undefined) {
-        valStr = `$${pos.value_usd.toFixed(2)} USD`;
       } else {
-        valStr = formatCryptoMoney(pos.position_value || 0) + ' USD';
+        valStr = `$${calculatedValUsd.toFixed(2)} USD`;
       }
 
       let entryPxStr = '-';

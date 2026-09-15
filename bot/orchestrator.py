@@ -890,7 +890,7 @@ class BotOrchestrator:
         okx_summary = self._cached_okx_summary
         mexc_summary = self._cached_mexc_summary
 
-        binance_usd = binance_summary.get("total_value_usd", 0.0)
+        binance_usd = binance_summary.get("total_value_usd", binance_summary.get("total_equity", 0.0))
         binance_try = round(binance_usd * usd_try, 2)
         binance_tr_usd = binance_tr_summary.get("total_value_usd", 0.0)
         binance_tr_try = binance_tr_summary.get("total_value_try", round(binance_tr_usd * usd_try, 2))
@@ -902,7 +902,7 @@ class BotOrchestrator:
         # Canlı borsa toplamları her zaman hesaplanır
         live_total_usd = binance_usd + binance_tr_usd + okx_usd + mexc_usd
         live_total_try = round(live_total_usd * usd_try, 2)
-        live_cash_usd = binance_summary.get("free_usdt", 0.0) + binance_tr_summary.get("cash_balance", 0.0) + okx_summary.get("free_usdt", 0.0) + mexc_summary.get("free_usdt", 0.0)
+        live_cash_usd = binance_summary.get("free_usdt", binance_summary.get("cash_balance", 0.0)) + binance_tr_summary.get("cash_balance", 0.0) + okx_summary.get("free_usdt", 0.0) + mexc_summary.get("free_usdt", 0.0)
         live_cash_try = round(live_cash_usd * usd_try, 2)
 
         # Çalışma Moduna Göre Portföy Verisi - 100% Canlı Spot Kripto Portföyü
@@ -918,24 +918,28 @@ class BotOrchestrator:
             if units > 0.00000001:
                 ac = dict(a)
                 ac["exchange"] = "Binance"
+                ac["units"] = units
                 combined_assets.append(ac)
         for a in binance_tr_summary.get("live_assets", []):
             units = float(a.get("units", a.get("free", 0)) or 0)
             if units > 0.00000001:
                 ac = dict(a)
                 ac["exchange"] = "Binance TR"
+                ac["units"] = units
                 combined_assets.append(ac)
         for a in okx_summary.get("live_assets", []):
             units = float(a.get("units", a.get("free", 0)) or 0)
             if units > 0.00000001:
                 ac = dict(a)
                 ac["exchange"] = "OKX"
+                ac["units"] = units
                 combined_assets.append(ac)
         for a in mexc_summary.get("live_assets", []):
             units = float(a.get("units", a.get("free", 0)) or 0)
             if units > 0.00000001:
                 ac = dict(a)
                 ac["exchange"] = "MEXC"
+                ac["units"] = units
                 combined_assets.append(ac)
 
         # Open positions lookup map
@@ -950,35 +954,52 @@ class BotOrchestrator:
         # Her canlı varlık için Giriş Fiyatı, Anlık Fiyat ve Kâr/Zarar (PnL) zenginleştirmesi
         for ac in combined_assets:
             ast = ac.get("asset", "").upper()
+            units = float(ac.get("units", ac.get("free", 0)) or 0)
+            ac["units"] = units
+
             if ast in ["USDT", "TRY"]:
-                ac["entry_price"] = 1.0 if ast == "USDT" else round(1.0 / usd_try, 4)
-                ac["current_price"] = 1.0 if ast == "USDT" else round(1.0 / usd_try, 4)
+                cur_px = 1.0 if ast == "USDT" else round(1.0 / usd_try, 4)
+                ac["entry_price"] = cur_px
+                ac["current_price"] = cur_px
                 ac["unrealized_pnl"] = 0.0
                 ac["unrealized_pnl_pct"] = 0.0
                 ac["stop_loss"] = 0.0
                 ac["take_profit"] = 0.0
+                val_usd = round(units * cur_px, 2)
+                ac["value_usd"] = val_usd
+                ac["position_value"] = val_usd
+                ac["value_try"] = round(val_usd * usd_try, 2)
                 continue
             
             matched_pos = pos_by_sym.get(ast) or pos_by_sym.get(f"{ast}USDT")
             analysis = self.latest_analyses.get(f"{ast}USDT") or self.latest_analyses.get(ast)
             
-            cur_px = ac.get("current_price") or (matched_pos.get("current_price", 0.0) if matched_pos else 0.0)
+            cur_px = float(ac.get("current_price") or 0.0)
+            if not cur_px and matched_pos:
+                cur_px = float(matched_pos.get("current_price", 0.0))
             if not cur_px and analysis:
-                cur_px = analysis.get("current_price", 0.0)
+                cur_px = float(analysis.get("current_price", 0.0))
+            if not cur_px and ast not in ["USDT", "TRY"]:
+                try:
+                    from .data.crypto_feed import CryptoFeed
+                    t = CryptoFeed.get_ticker_24h(f"{ast}USDT")
+                    if t and t.get("price"):
+                        cur_px = float(t["price"])
+                except Exception:
+                    pass
 
-            units = float(ac.get("units", 0) or 0)
             if matched_pos and matched_pos.get("entry_price"):
-                entry_px = matched_pos.get("entry_price", cur_px)
-                sl = matched_pos.get("stop_loss", 0.0)
-                tp = matched_pos.get("take_profit", 0.0)
+                entry_px = float(matched_pos.get("entry_price", cur_px))
+                sl = float(matched_pos.get("stop_loss", 0.0))
+                tp = float(matched_pos.get("take_profit", 0.0))
             else:
                 chg_24 = float(analysis.get("change_24h", 0.0)) if (analysis and analysis.get("change_24h") is not None) else 0.0
                 if cur_px > 0 and abs(chg_24) > 0.001:
                     entry_px = round(cur_px / (1.0 + (chg_24 / 100.0)), 6)
                 else:
                     entry_px = cur_px
-                sl = round(entry_px * 0.95, 4) if entry_px > 0 else 0.0
-                tp = round(entry_px * 1.10, 4) if entry_px > 0 else 0.0
+                sl = round(entry_px * 0.965, 4) if entry_px > 0 else 0.0
+                tp = round(entry_px * 1.60, 4) if entry_px > 0 else 0.0
 
                 # Canlı cüzdandaki bu varlığı kalıcı takip için open_positions'a kaydet
                 if units > 0.00000001 and ast not in ["TRY", "USDT"]:
@@ -990,8 +1011,8 @@ class BotOrchestrator:
                             stop_loss=sl,
                             take_profit=tp,
                             units=units,
-                            thesis=f"[CANLI CÜZDAN KAYDI - {ac.get('exchange', 'Binance TR')}]",
-                            exchange=ac.get("exchange", "Binance TR"),
+                            thesis=f"[CANLI CÜZDAN KAYDI - {ac.get('exchange', 'Binance')}]",
+                            exchange=ac.get("exchange", "Binance"),
                             is_live_record=True
                         )
                         pos_by_sym[ast] = {"entry_price": entry_px, "stop_loss": sl, "take_profit": tp}
@@ -1002,13 +1023,18 @@ class BotOrchestrator:
             ac["entry_price"] = entry_px
             ac["stop_loss"] = sl
             ac["take_profit"] = tp
+
+            val_usd = round(units * cur_px, 2)
+            ac["value_usd"] = val_usd
+            ac["position_value"] = val_usd
+            ac["value_try"] = round(val_usd * usd_try, 2)
             
             if entry_px > 0 and cur_px > 0 and units > 0 and abs(cur_px - entry_px) > 0.000001:
                 pnl_usd = (cur_px - entry_px) * units
                 pnl_pct = ((cur_px - entry_px) / entry_px) * 100
             elif analysis and analysis.get("change_24h") is not None:
                 pnl_pct = float(analysis.get("change_24h", 0.0))
-                pnl_usd = (ac.get("value_usd", 0.0) * pnl_pct) / 100.0
+                pnl_usd = (val_usd * pnl_pct) / 100.0
             else:
                 pnl_usd = 0.0
                 pnl_pct = 0.0
@@ -1016,6 +1042,12 @@ class BotOrchestrator:
             ac["unrealized_pnl"] = round(pnl_usd, 2)
             ac["unrealized_pnl_pct"] = round(pnl_pct, 2)
             total_unrealized_pnl += ac["unrealized_pnl"]
+
+        # Portföy toplam değerini doğrula
+        calc_total_usd = sum(ac.get("value_usd", 0.0) for ac in combined_assets)
+        if calc_total_usd > master_total_usd:
+            master_total_usd = calc_total_usd
+            master_total_try = round(master_total_usd * usd_try, 2)
 
         closed_trades = self.wallet.closed_trades
         total_trades = len(closed_trades)

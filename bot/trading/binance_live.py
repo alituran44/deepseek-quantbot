@@ -171,6 +171,7 @@ class BinanceLiveExecutor:
                     "stop_loss": px * 0.95 if px > 0 else 0.0,
                     "take_profit": px * 1.10 if px > 0 else 0.0,
                     "position_value": val,
+                    "value_usd": val,
                     "unrealized_pnl": 0.0,
                     "unrealized_pnl_pct": 0.0,
                     "wallet_type": "Spot Cüzdanı",
@@ -208,6 +209,7 @@ class BinanceLiveExecutor:
                         "stop_loss": px * 0.95 if px > 0 else 0.0,
                         "take_profit": px * 1.10 if px > 0 else 0.0,
                         "position_value": val,
+                        "value_usd": val,
                         "unrealized_pnl": 0.0,
                         "unrealized_pnl_pct": 0.0,
                         "wallet_type": "Fonlama Cüzdanı",
@@ -216,7 +218,9 @@ class BinanceLiveExecutor:
 
         return {
             "total_equity": round(total_equity, 6),
+            "total_value_usd": round(total_equity, 6),
             "cash_balance": round(total_usdt, 6),
+            "free_usdt": round(total_usdt, 6),
             "open_positions": holdings,
             "recent_closed_trades": [],
             "total_pnl": 0.0,
@@ -224,7 +228,8 @@ class BinanceLiveExecutor:
             "win_rate": 0.0,
             "total_trades": 0,
             "is_live": True,
-            "live_assets": spot_res.get("balances", [])
+            "live_assets": holdings,
+            "raw_balances": spot_res.get("balances", [])
         }
 
     def get_deposit_addresses(self) -> List[Dict[str, Any]]:
