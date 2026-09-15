@@ -141,21 +141,41 @@ class BinanceLiveExecutor:
         total_equity = 0.0
         total_usdt = 0.0
 
+        # Tüm Binance fiyatlarını tek seferde al (Hızlı ve rate-limit korumalı)
+        price_map = {}
+        try:
+            tickers = CryptoFeed.get_all_binance_market_tickers()
+            for t in tickers:
+                price_map[t["symbol"]] = float(t.get("price", 0.0))
+        except Exception:
+            pass
+
+        def _get_asset_price(asset_name: str) -> float:
+            if asset_name == "USDT":
+                return 1.0
+            pair = f"{asset_name}USDT"
+            if pair in price_map and price_map[pair] > 0:
+                return price_map[pair]
+            try:
+                resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={pair}", timeout=1.5)
+                if resp.status_code == 200:
+                    p = float(resp.json().get("price", 0.0))
+                    price_map[pair] = p
+                    return p
+            except Exception:
+                pass
+            return 0.0
+
         # 1. Spot Cüzdanındaki Varlıkları Tara
         for item in spot_res.get("balances", []):
             free = float(item.get("free", 0.0))
             locked = float(item.get("locked", 0.0))
             tot = free + locked
-            if tot > 0:
+            if tot > 0.00000001:
                 asset = item.get("asset", "").upper()
+                px = _get_asset_price(asset)
                 if asset == "USDT":
-                    px = 1.0
                     total_usdt += tot
-                else:
-                    try:
-                        px = float(CryptoFeed.get_ticker_24h(f"{asset}USDT").get("price", 0.0))
-                    except Exception:
-                        px = 0.0
                 val = tot * px
                 total_equity += val
                 holdings.append({
@@ -184,16 +204,11 @@ class BinanceLiveExecutor:
                 free = float(item.get("free", 0.0))
                 locked = float(item.get("locked", 0.0))
                 tot = free + locked
-                if tot > 0:
+                if tot > 0.00000001:
                     asset = item.get("asset", "").upper()
+                    px = _get_asset_price(asset)
                     if asset == "USDT":
-                        px = 1.0
                         total_usdt += tot
-                    else:
-                        try:
-                            px = float(CryptoFeed.get_ticker_24h(f"{asset}USDT").get("price", 0.0))
-                        except Exception:
-                            px = 0.0
                     val = tot * px
                     total_equity += val
                     holdings.append({
