@@ -243,13 +243,21 @@ class BotOrchestrator:
 
         try:
             if ex_id == "BINANCE":
-                ok, order_res = executor.place_market_order(symbol=symbol, side=action, quantity=units)
+                if action == "BUY" and quote_order_qty and quote_order_qty > 0:
+                    ok, order_res = executor.place_market_order(symbol=symbol, side=action, quote_order_qty=quote_order_qty)
+                else:
+                    ok, order_res = executor.place_market_order(symbol=symbol, side=action, quantity=units)
                 if ok and action == "BUY" and stop_loss > 0 and take_profit > 0:
                     try:
+                        oco_qty = units
+                        if order_res and isinstance(order_res, dict):
+                            exec_qty = float(order_res.get("executedQty", 0.0) or order_res.get("origQty", 0.0) or 0.0)
+                            if exec_qty > 0:
+                                oco_qty = exec_qty
                         executor.place_oco_order(
                             symbol=symbol,
                             side="SELL",
-                            quantity=units,
+                            quantity=oco_qty,
                             take_profit_price=take_profit,
                             stop_loss_price=stop_loss
                         )
@@ -574,26 +582,36 @@ class BotOrchestrator:
         """
         executed = []
         radar_summary = self.radar.get_summary()
+        opportunities = radar_summary.get("opportunities", [])
         pre_pumps = radar_summary.get("pre_pump_opportunities", [])
         watchlist = radar_summary.get("watchlist", [])
         
         # 1. Açık pozisyondaki coinleri tespit et (aynı coin tekrar alınmasın)
         open_syms = set()
+        active_positions_count = 0
         for p in self.wallet.open_positions:
             s = p.get("symbol")
+            val = float(p.get("value_usd", p.get("position_value", 0.0)))
             if s:
                 open_syms.add(s)
+                if val >= 2.0:
+                    active_positions_count += 1
                 
         # 2. Canlı borsa açık pozisyonlarını da ekle
         if config.TRADING_MODE == "LIVE" and self.binance_executor.enabled:
             real_sum = self.binance_executor.get_real_portfolio_summary()
             for p in real_sum.get("open_positions", []):
                 s = p.get("symbol")
-                if s:
+                val = float(p.get("value_usd", p.get("position_value", 0.0)))
+                if s and s != "USDT":
                     open_syms.add(s)
+                    # Sadece $2.00 ve üzeri varlıkları "aktif trade pozisyonu" kotası olarak say! (Dust / küsurat kotayı tıkamasın)
+                    if val >= 2.0:
+                        active_positions_count += 1
 
-        # En fazla 6 eşzamanlı aktif pozisyon tut (Risk yönetimi)
-        if len(open_syms) >= 6:
+        # RiskGuard'dan dinamik maksimum açık pozisyon sınırını al (Smart Aggressive: 12, Ultra Degen: 15)
+        max_positions = getattr(self.risk_guard, "max_open_positions", 12)
+        if active_positions_count >= max_positions:
             return executed
 
         # 🌐 Küresel Makro İklim Kontrolü (DXY, Nasdaq, ECB Döviz Kurları)
@@ -618,7 +636,9 @@ class BotOrchestrator:
             else:
                 print(f"[AutoTradeBreakout] 💎 Mega Runner Korumalı Geçiş: Makro DEFENSIVE modda sadece en yüksek akümülasyonlu ($3M+ hacim) potansiyelli coinler değerlendirilecek.")
 
-        candidates_to_check = pre_pumps[:10] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
+        # Agresif Fırsat Avcısı: En yüksek skorlu aktif kırılımları (opportunities) en başa al
+        high_conviction_opps = [o for o in opportunities if float(o.get("breakout_score", 0.0)) >= 70.0]
+        candidates_to_check = high_conviction_opps[:8] + pre_pumps[:8] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
         
         for cand in candidates_to_check:
             sym = cand.get("symbol")
@@ -626,23 +646,34 @@ class BotOrchestrator:
                 continue
 
             px = float(cand.get("price", 0.0))
-            trigger_px = float(cand.get("trigger_price", 0.0))
-            if px <= 0 or trigger_px <= 0:
+            if px <= 0:
                 continue
+
+            trigger_px = float(cand.get("trigger_price", 0.0))
+            is_active_opp = cand.get("mode_type") == "BREAKOUT" or float(cand.get("breakout_score", 0.0)) >= 80.0
+            
+            if trigger_px <= 0:
+                if is_active_opp:
+                    trigger_px = px  # Zaten kırılım bölgesinde aktif koşan lider coin
+                else:
+                    continue
 
             vol = float(cand.get("volume_usd", 0.0))
             range_span = float(cand.get("range_span_pct", 5.0))
 
             # DEFENSIVE rejimdeysek ekstra sıkı kalite filtresi
             if regime == "DEFENSIVE":
-                if range_span > 2.8 or vol < 3000000.0:
+                if range_span > 3.5 or (vol < 2000000.0 and not is_active_opp):
                     continue
 
-            # Kırılım Şartı: Anlık fiyat tetik direncini aştı mı? (px >= trigger_px)
-            is_breakout_triggered = px >= trigger_px
+            # Kırılım Şartı: Aktif breakout lideriyse veya anlık fiyat tetik direncini aştı mı?
+            is_breakout_triggered = is_active_opp or (px >= trigger_px * 0.998)
 
             if is_breakout_triggered:
                 entry_px = px
+                cand_target_px = float(cand.get("target_price", 0.0))
+                cand_stop_px = float(cand.get("stop_price", 0.0))
+                score = float(cand.get("breakout_score", cand.get("squeeze_score", 85.0)))
                 
                 if is_fast_scalp:
                     # ⚡ Hızlı Scalp: +%4.5 Hızlı Nakit Kilidi (Turbo Boğada +%6.0)
@@ -651,26 +682,54 @@ class BotOrchestrator:
                     gain_mult = 1.0 + (tp_pct / 100.0)
                     target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
                     stop_px = round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
-                    trade_budget_usd = round(30.0 * (0.8 if regime == "DEFENSIVE" else budget_mult), 2)
-                    thesis_text = f"⚡ Otonom Hızlı Scalp: ${trigger_px} aşıldı. Hedef: +%{tp_pct} (${target_px}), Sıkı Stop: -%{sl_pct}, Başabaş: +%2.0"
+                    thesis_text = f"⚡ Otonom Hızlı Scalp ({score:.0f}% Skor): ${trigger_px} aşıldı. Hedef: +%{tp_pct} (${target_px}), Sıkı Stop: -%{sl_pct}, Başabaş: +%2.0"
                 elif is_mega_runner:
                     # 💎 Mega Kâr / Moonshot: +%40 - +%150+ Kademeli Çıkış
                     tp1_pct = getattr(config, "MEGA_RUNNER_TP1_PERCENT", 12.0)
                     tp2_pct = getattr(config, "MEGA_RUNNER_TP2_PERCENT", 35.0)
                     sl_pct = getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5)
-                    target_px = round(entry_px * 1.60, 6 if entry_px < 1 else 4) # Görsel büyük hedef: +%60
-                    stop_px = round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
-                    trade_budget_usd = round(40.0 * budget_mult, 2)
-                    thesis_text = f"💎 Otonom Mega Runner: ${trigger_px} aşıldı. TP1: +%{tp1_pct} (%40 Satış), TP2: +%{tp2_pct} (%35 Satış), Kalan %25 Moonshot Runner!"
+                    target_px = cand_target_px if cand_target_px > entry_px else round(entry_px * 1.60, 6 if entry_px < 1 else 4)
+                    stop_px = cand_stop_px if (cand_stop_px > 0 and cand_stop_px < entry_px) else round(entry_px * (1.0 - (sl_pct / 100.0)), 6 if entry_px < 1 else 4)
+                    target_gain_pct = round(((target_px - entry_px) / entry_px) * 100, 1)
+                    thesis_text = f"💎 Otonom Mega Runner ({score:.0f}% Skor): Hedef: +%{target_gain_pct} (${target_px}), TP1: +%{tp1_pct}, TP2: +%{tp2_pct}, Moonshot Takibi"
                 else:
                     # 🚀 Trend / Ralli: +%18 - +%35
                     gain_mult = 1.0 + (macro_tp_pct / 100.0)
-                    target_px = round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
-                    stop_px = cand.get("stop_price", round(entry_px * 0.975, 4))
-                    trade_budget_usd = round(40.0 * budget_mult, 2)
-                    thesis_text = f"🚀 Otonom Makro Kırılım ({regime_title}): ${trigger_px} aşıldı. Hedef: +%{macro_tp_pct} (${target_px}), Stop: -%2.5"
+                    target_px = cand_target_px if cand_target_px > entry_px else round(entry_px * gain_mult, 6 if entry_px < 1 else 4)
+                    stop_px = cand_stop_px if (cand_stop_px > 0 and cand_stop_px < entry_px) else cand.get("stop_price", round(entry_px * 0.975, 4))
+                    thesis_text = f"🚀 Otonom Makro Kırılım ({regime_title} - {score:.0f}% Skor): Hedef: +%{macro_tp_pct} (${target_px}), Stop: -%2.5"
 
-                units = round(trade_budget_usd / entry_px, 4 if entry_px > 1 else 1)
+                # Dinamik serbest nakit tespiti ve agresif sermaye dağılımı
+                if config.TRADING_MODE == "LIVE":
+                    cand_executor, cand_ex_id, free_usdt, sel_msg = self.select_execution_exchange(symbol=sym, required_amount_usd=0.0)
+                    if free_usdt < 10.0:
+                        # Binance/Borsalarda min emir genellikle 5-10 USDT'dir.
+                        continue
+                    
+                    # Agresif sermaye tahsisi: Serbest nakdi ($49.71 gibi) aktif kırılımlara dağıtır
+                    if free_usdt <= 65.0:
+                        trade_budget_usd = round(min(free_usdt * 0.60, 32.0), 2)
+                        # Kalan miktar min emir sınırı (10$) altına düşecekse tek seferde tüm uygun nakdi kullan
+                        if (free_usdt - trade_budget_usd) < 10.0:
+                            trade_budget_usd = round(free_usdt * 0.94, 2)
+                    else:
+                        trade_budget_usd = round(min(free_usdt * 0.40, 50.0) * budget_mult, 2)
+                    
+                    trade_budget_usd = max(11.0, trade_budget_usd)
+                    if trade_budget_usd > free_usdt:
+                        trade_budget_usd = round(free_usdt * 0.95, 2)
+                else:
+                    trade_budget_usd = round(40.0 * budget_mult, 2)
+
+                if entry_px >= 1000:
+                    units = round(trade_budget_usd / entry_px, 5)
+                elif entry_px >= 10:
+                    units = round(trade_budget_usd / entry_px, 2)
+                elif entry_px >= 0.1:
+                    units = round(trade_budget_usd / entry_px, 4)
+                else:
+                    units = round(trade_budget_usd / entry_px, 6)
+
                 if units <= 0:
                     continue
                 
@@ -683,7 +742,8 @@ class BotOrchestrator:
                         entry_price=entry_px,
                         stop_loss=stop_px,
                         take_profit=target_px,
-                        thesis=thesis_text
+                        thesis=thesis_text,
+                        quote_order_qty=trade_budget_usd
                     )
                     if ok:
                         open_syms.add(sym)

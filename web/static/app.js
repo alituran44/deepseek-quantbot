@@ -371,8 +371,28 @@ function renderDashboard(data) {
       bannerIcon.style.color = 'var(--profit)';
       bannerIcon.textContent = '⚡';
     }
-    bannerTitle.textContent = `Canlı Spot Alım-Satım Aktif (Binance TR: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
-    bannerDesc.textContent = `Bot doğrudan resmi Binance TR (trbinance.com) ve kayıtlı borsa API'leriniz üzerinden serbest bakiye ile canlı pozisyon almaktadır.`;
+    let activeExchangeName = 'Çoklu Borsa';
+    if (exChoice === 'BINANCE_TR' || exChoice === 'BINANCETR') {
+      activeExchangeName = 'Binance TR';
+    } else if (exChoice === 'BINANCE') {
+      activeExchangeName = 'Binance Spot';
+    } else if (exChoice === 'MEXC') {
+      activeExchangeName = 'MEXC Spot';
+    } else if (exChoice === 'OKX') {
+      activeExchangeName = 'OKX Spot';
+    } else {
+      const bFree = (mt.binance && mt.binance.free_usdt) || 0;
+      const btrFree = (mt.binance_tr && (mt.binance_tr.free_usdt || (mt.binance_tr.free_try ? mt.binance_tr.free_try / (data.usd_try_rate || 48.4) : 0))) || 0;
+      if (bFree >= 5.0 && bFree >= btrFree) {
+        activeExchangeName = 'Binance Spot';
+      } else if (btrFree >= 5.0) {
+        activeExchangeName = 'Binance TR';
+      } else {
+        activeExchangeName = 'Canlı Kripto';
+      }
+    }
+    bannerTitle.textContent = `Canlı Spot Alım-Satım Aktif (${activeExchangeName}: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
+    bannerDesc.textContent = `Bot doğrudan ${activeExchangeName} ve bağlı borsa API'leriniz üzerinden serbest $${cashUsd.toFixed(2)} nakit ile yüksek potansiyelli kırılımlara pozisyon almaktadır.`;
     if (bannerActionBtn) {
       bannerActionBtn.style.display = 'none';
     }

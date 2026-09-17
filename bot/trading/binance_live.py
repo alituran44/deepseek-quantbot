@@ -326,18 +326,23 @@ class BinanceLiveExecutor:
         factor = 10 ** decimals
         return int(quantity * factor) / factor
 
-    def place_market_order(self, symbol: str, side: str, quantity: float) -> Tuple[bool, Dict[str, Any]]:
+    def place_market_order(self, symbol: str, side: str, quantity: float = 0.0, quote_order_qty: Optional[float] = None) -> Tuple[bool, Dict[str, Any]]:
         """
         Gerçek Borsa Piyasa (MARKET) Alım veya Satım Emri.
         side: BUY veya SELL
+        quote_order_qty: BUY işlemlerinde doğrudan USDT tutarı ile alım yapılmasını sağlar (lot/step rounding hatasını sıfırlar).
         """
-        qty_formatted = self.format_quantity(symbol, quantity)
         params = {
             "symbol": symbol.upper(),
             "side": side.upper(),
-            "type": "MARKET",
-            "quantity": qty_formatted
+            "type": "MARKET"
         }
+        if quote_order_qty and quote_order_qty > 0 and side.upper() == "BUY":
+            params["quoteOrderQty"] = round(quote_order_qty, 2)
+        else:
+            qty_formatted = self.format_quantity(symbol, quantity)
+            params["quantity"] = qty_formatted
+
         ok, res = self._request("POST", "/api/v3/order", params=params, signed=True)
         return ok, res
 
