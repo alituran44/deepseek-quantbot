@@ -391,10 +391,26 @@ function renderDashboard(data) {
         activeExchangeName = 'Canlı Kripto';
       }
     }
-    bannerTitle.textContent = `Canlı Spot Alım-Satım Aktif (${activeExchangeName}: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
-    bannerDesc.textContent = `Bot doğrudan ${activeExchangeName} ve bağlı borsa API'leriniz üzerinden serbest $${cashUsd.toFixed(2)} nakit ile yüksek potansiyelli kırılımlara pozisyon almaktadır.`;
-    if (bannerActionBtn) {
-      bannerActionBtn.style.display = 'none';
+    if (binance.configured && binance.can_trade === false) {
+      banner.style.borderLeftColor = 'var(--warning)';
+      if (bannerIcon) {
+        bannerIcon.style.background = 'rgba(245, 158, 11, 0.15)';
+        bannerIcon.style.color = 'var(--warning)';
+        bannerIcon.textContent = '⚠️';
+      }
+      bannerTitle.textContent = `Spot Alım-Satım İzni Gerekli (Binance: $${cashUsd.toFixed(2)} Nakit Boşta)`;
+      bannerDesc.textContent = `Binance API anahtarınızda 'Spot ve Marjin Alım Satım' izni kapalı olduğu için bot canlı emir gönderemiyor. Lütfen Binance > API Yönetimi ekranından 'Spot ve Marjin Alım Satımını Etkinleştir' kutucuğunu işaretleyin.`;
+      if (bannerActionBtn) {
+        bannerActionBtn.style.display = 'inline-flex';
+        bannerActionBtn.textContent = 'API Yetkisini Aç ↗';
+        bannerActionBtn.onclick = () => window.open('https://www.binance.com/tr/my/settings/api-management', '_blank');
+      }
+    } else {
+      bannerTitle.textContent = `Canlı Spot Alım-Satım Aktif (${activeExchangeName}: $${cashUsd.toFixed(2)} / ₺${cashTry.toFixed(2)})`;
+      bannerDesc.textContent = `Bot doğrudan ${activeExchangeName} ve bağlı borsa API'leriniz üzerinden serbest $${cashUsd.toFixed(2)} nakit ile yüksek potansiyelli kırılımlara pozisyon almaktadır.`;
+      if (bannerActionBtn) {
+        bannerActionBtn.style.display = 'none';
+      }
     }
   }
 
@@ -403,7 +419,7 @@ function renderDashboard(data) {
   const currentBinanceKey = document.getElementById('current-binance-key');
   if (badgeBinance && currentBinanceKey) {
     if (binance.configured) {
-      badgeBinance.textContent = binance.can_trade ? '✅ Doğrulandı (Spot Yetkili)' : '⚠️ Bağlı (Yetki Eksik)';
+      badgeBinance.textContent = binance.can_trade ? '✅ Doğrulandı (Spot Yetkili)' : '⚠️ Bağlı (Spot İzni Kapalı)';
       badgeBinance.style.color = binance.can_trade ? 'var(--profit)' : 'var(--warning)';
       currentBinanceKey.textContent = binance.masked_key || 'Tanımlı';
     } else {

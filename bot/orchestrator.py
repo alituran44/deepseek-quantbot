@@ -582,30 +582,33 @@ class BotOrchestrator:
         """
         executed = []
         radar_summary = self.radar.get_summary()
-        opportunities = radar_summary.get("opportunities", [])
+        opportunities = radar_summary.get("opportunities") or radar_summary.get("top_opportunities") or getattr(self.radar, "opportunities", [])
         pre_pumps = radar_summary.get("pre_pump_opportunities", [])
         watchlist = radar_summary.get("watchlist", [])
         
         # 1. Açık pozisyondaki coinleri tespit et (aynı coin tekrar alınmasın)
         open_syms = set()
         active_positions_count = 0
-        for p in self.wallet.open_positions:
-            s = p.get("symbol")
-            val = float(p.get("value_usd", p.get("position_value", 0.0)))
-            if s:
-                open_syms.add(s)
-                if val >= 2.0:
-                    active_positions_count += 1
-                
-        # 2. Canlı borsa açık pozisyonlarını da ekle
-        if config.TRADING_MODE == "LIVE" and self.binance_executor.enabled:
-            real_sum = self.binance_executor.get_real_portfolio_summary()
-            for p in real_sum.get("open_positions", []):
+        if config.TRADING_MODE == "LIVE":
+            # Canlı modda sadece borsa üzerindeki gerçek aktif varlıkları dikkate al (kağıt cüzdandaki eski test kayıtları canlıyı engellemesin)
+            if self.binance_executor.enabled:
+                real_sum = self.binance_executor.get_real_portfolio_summary()
+                for p in real_sum.get("open_positions", []):
+                    s = p.get("symbol")
+                    val = float(p.get("value_usd", p.get("position_value", 0.0)))
+                    if s and s != "USDT":
+                        # Yalnızca $5.00 ve üzeri varlıklar duplicate alımı engellesin (küsurat veya $1-$2 earn bakiyesi alımı tıkamasın)
+                        if val >= 5.0:
+                            open_syms.add(s)
+                        if val >= 2.0:
+                            active_positions_count += 1
+        else:
+            for p in self.wallet.open_positions:
                 s = p.get("symbol")
                 val = float(p.get("value_usd", p.get("position_value", 0.0)))
-                if s and s != "USDT":
-                    open_syms.add(s)
-                    # Sadece $2.00 ve üzeri varlıkları "aktif trade pozisyonu" kotası olarak say! (Dust / küsurat kotayı tıkamasın)
+                if s:
+                    if val >= 5.0:
+                        open_syms.add(s)
                     if val >= 2.0:
                         active_positions_count += 1
 
@@ -902,10 +905,13 @@ class BotOrchestrator:
                 if not self.binance_executor.enabled:
                     return {}, {}
                 b_sum = self.binance_executor.get_real_portfolio_summary()
+                can_trade = bool(b_sum.get("can_trade", False))
                 b_acc = {
                     "success": True,
                     "free_usdt": b_sum.get("free_usdt", 0.0),
-                    "can_trade": True if b_sum.get("open_positions") or not b_sum.get("error") else False,
+                    "can_trade": can_trade,
+                    "enable_spot": b_sum.get("enable_spot", False),
+                    "permission_warning": b_sum.get("permission_warning"),
                     "assets": {a["asset"]: {"free": a.get("free", 0), "locked": a.get("locked", 0), "total": a.get("units", 0)} for a in b_sum.get("live_assets", [])}
                 }
                 return b_acc, b_sum

@@ -491,6 +491,7 @@ class DailyBreakoutRadar:
             "opportunity_count": len(self.opportunities),
             "pre_pump_count": len(self.pre_pump_opportunities),
             "tracked_count": len(self.watchlist),
+            "opportunities": self.opportunities[:25],
             "top_opportunities": self.opportunities[:15],
             "pre_pump_opportunities": self.pre_pump_opportunities[:15],
             "pre_pump_candidates": self.pre_pump_opportunities[:15],

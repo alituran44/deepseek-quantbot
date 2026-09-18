@@ -23,6 +23,29 @@ class BinanceLiveExecutor:
         self.base_url = self.BASE_URL_TESTNET if self.testnet else self.BASE_URL_LIVE
         self.enabled = bool(self.api_key and self.secret_key)
         self._symbol_filters_cache: Dict[str, Dict[str, Any]] = {}
+        self._permissions_cache: Dict[str, Any] = {}
+        self._permissions_cache_time: float = 0.0
+
+    def check_api_permissions(self) -> Dict[str, Any]:
+        """Binance API anahtarının alım-satım izinlerini doğrular (60 sn önbellekli)."""
+        now = time.time()
+        if self._permissions_cache and (now - self._permissions_cache_time < 60.0):
+            return self._permissions_cache
+
+        ok, res = self._request("GET", "/sapi/v1/account/apiRestrictions", signed=True)
+        if ok and isinstance(res, dict):
+            can_spot = bool(res.get("enableSpotAndMarginTrading", False))
+            perms = {
+                "can_trade": can_spot,
+                "enable_reading": res.get("enableReading", True),
+                "ip_restrict": res.get("ipRestrict", False),
+                "enable_spot": can_spot,
+                "raw": res
+            }
+            self._permissions_cache = perms
+            self._permissions_cache_time = now
+            return perms
+        return {"can_trade": True, "enable_reading": True, "enable_spot": True}
 
     def _get_timestamp(self) -> int:
         """Milisaniye cinsinden geçerli zaman damgası."""
@@ -106,11 +129,16 @@ class BinanceLiveExecutor:
                 if asset == "USDT":
                     free_usdt = free
 
+        perms = self.check_api_permissions()
+        can_trade_final = bool(res.get("canTrade", False)) and bool(perms.get("can_trade", True))
+
         return {
             "success": True,
             "free_usdt": free_usdt,
             "assets": active_assets,
-            "can_trade": res.get("canTrade", False)
+            "can_trade": can_trade_final,
+            "enable_spot": perms.get("enable_spot", False),
+            "permission_warning": None if perms.get("enable_spot", False) else "Binance API anahtarınızda 'Spot ve Marjin Alım Satım' izni kapalı."
         }
 
     def get_real_portfolio_summary(self) -> Dict[str, Any]:
@@ -239,6 +267,9 @@ class BinanceLiveExecutor:
                         "thesis": f"Binance {wallet_name}'nda {tot} {asset} mevcut."
                     })
 
+        perms = self.check_api_permissions()
+        can_trade_final = bool(spot_res.get("canTrade", False)) and bool(perms.get("can_trade", True))
+
         return {
             "total_equity": round(total_equity, 6),
             "total_value_usd": round(total_equity, 6),
@@ -251,6 +282,9 @@ class BinanceLiveExecutor:
             "win_rate": 0.0,
             "total_trades": 0,
             "is_live": True,
+            "can_trade": can_trade_final,
+            "enable_spot": perms.get("enable_spot", False),
+            "permission_warning": None if perms.get("enable_spot", False) else "Binance API anahtarınızda 'Spot ve Marjin Alım Satım' izni kapalı.",
             "live_assets": holdings,
             "raw_balances": spot_res.get("balances", [])
         }
