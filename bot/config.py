@@ -36,7 +36,7 @@ class Config:
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
 
     # Hızlı Para / Kâr Stratejisi: FAST_SCALP (+%4.5 Hızlı Para), TREND (+%18 - +%35 Ralli), MEGA_RUNNER (+%40 - +%150+ Moonshot)
-    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "MEGA_RUNNER").upper()
+    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "FAST_SCALP").upper()
     FAST_SCALP_TP_PERCENT = float(os.getenv("FAST_SCALP_TP_PERCENT", "4.5"))
     FAST_SCALP_SL_PERCENT = float(os.getenv("FAST_SCALP_SL_PERCENT", "1.8"))
     FAST_SCALP_BREAKEVEN_PERCENT = float(os.getenv("FAST_SCALP_BREAKEVEN_PERCENT", "2.0"))

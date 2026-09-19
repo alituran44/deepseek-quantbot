@@ -3259,7 +3259,7 @@ function renderMacroClimate(macroData) {
 }
 
 function updateProfitStrategyUI(strat) {
-  const valid = (strat || 'MEGA_RUNNER').toUpperCase();
+  const valid = (strat || 'FAST_SCALP').toUpperCase();
   window.currentProfitStrategy = valid;
   const btnFast = document.getElementById('btn-strat-fast-scalp');
   const btnTrend = document.getElementById('btn-strat-trend');
@@ -3380,7 +3380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, 25000);
 
-  // Sayfa açıkken her 90 saniyede bir otonom sepet taraması ve dengelemesi yap
+  // Sayfa açıkken her 30 saniyede bir otonom sepet taraması ve dengelemesi yap
   setInterval(async () => {
     if (!localStorage.getItem('quant_admin_token')) return;
     try {
@@ -3393,6 +3393,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         fetchState();
       }
     } catch (e) {}
-  }, 90000);
+  }, 30000);
 });
 

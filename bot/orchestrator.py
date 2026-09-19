@@ -548,7 +548,7 @@ class BotOrchestrator:
         if valid in ["MOONSHOT", "RUNNER"]:
             valid = "MEGA_RUNNER"
         if valid not in ["FAST_SCALP", "TREND", "MEGA_RUNNER"]:
-            valid = "MEGA_RUNNER"
+            valid = "FAST_SCALP"
         config.PROFIT_STRATEGY = valid
         os.environ["PROFIT_STRATEGY"] = valid
         try:
@@ -625,7 +625,7 @@ class BotOrchestrator:
         budget_mult = macro_climate.get("budget_multiplier", 1.0)
         regime_title = macro_climate.get("regime_title", "DENGELİ")
 
-        current_strat = getattr(config, "PROFIT_STRATEGY", "MEGA_RUNNER").upper()
+        current_strat = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper()
         is_fast_scalp = current_strat == "FAST_SCALP"
         is_mega_runner = current_strat == "MEGA_RUNNER"
 
@@ -643,6 +643,16 @@ class BotOrchestrator:
         high_conviction_opps = [o for o in opportunities if float(o.get("breakout_score", 0.0)) >= 70.0]
         candidates_to_check = high_conviction_opps[:8] + pre_pumps[:8] + [w for w in watchlist if w.get("status") == "TETİKTE BEKLİYOR"]
         
+        # Canlı borsa serbest bakiyesini döngü öncesinde TEK SEFERDE al (64 gereksiz HTTP sorgusunu ve gecikmeyi sıfırlar)
+        live_free_usdt = 0.0
+        live_ex_id = "BINANCE"
+        if config.TRADING_MODE == "LIVE":
+            _, ex_id_found, free_u, _ = self.select_execution_exchange(symbol="BTCUSDT", required_amount_usd=0.0)
+            live_free_usdt = free_u
+            live_ex_id = ex_id_found or "BINANCE"
+            if live_free_usdt < 10.0:
+                return executed
+
         for cand in candidates_to_check:
             sym = cand.get("symbol")
             if not sym or sym in open_syms:
@@ -704,12 +714,11 @@ class BotOrchestrator:
 
                 # Dinamik serbest nakit tespiti ve agresif sermaye dağılımı
                 if config.TRADING_MODE == "LIVE":
-                    cand_executor, cand_ex_id, free_usdt, sel_msg = self.select_execution_exchange(symbol=sym, required_amount_usd=0.0)
-                    if free_usdt < 10.0:
-                        # Binance/Borsalarda min emir genellikle 5-10 USDT'dir.
-                        continue
+                    if live_free_usdt < 10.0:
+                        break
+                    free_usdt = live_free_usdt
                     
-                    # Agresif sermaye tahsisi: Serbest nakdi ($49.71 gibi) aktif kırılımlara dağıtır
+                    # Agresif sermaye tahsisi: Serbest nakdi aktif kırılımlara dağıtır
                     if free_usdt <= 65.0:
                         trade_budget_usd = round(min(free_usdt * 0.60, 32.0), 2)
                         # Kalan miktar min emir sınırı (10$) altına düşecekse tek seferde tüm uygun nakdi kullan
@@ -721,6 +730,8 @@ class BotOrchestrator:
                     trade_budget_usd = max(11.0, trade_budget_usd)
                     if trade_budget_usd > free_usdt:
                         trade_budget_usd = round(free_usdt * 0.95, 2)
+                    
+                    live_free_usdt = max(0.0, live_free_usdt - trade_budget_usd)
                 else:
                     trade_budget_usd = round(40.0 * budget_mult, 2)
 
@@ -1186,7 +1197,7 @@ class BotOrchestrator:
 
         return {
             "trading_mode": active_mode,
-            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "MEGA_RUNNER"),
+            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"),
             "fast_scalp_tp_percent": getattr(config, "FAST_SCALP_TP_PERCENT", 4.5),
             "fast_scalp_sl_percent": getattr(config, "FAST_SCALP_SL_PERCENT", 1.8),
             "fast_scalp_breakeven_percent": getattr(config, "FAST_SCALP_BREAKEVEN_PERCENT", 2.0),
