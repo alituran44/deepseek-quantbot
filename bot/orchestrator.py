@@ -1317,12 +1317,15 @@ class BotOrchestrator:
             "analyses": list(self.latest_analyses.values()),
             "breakout_radar": self.radar.get_summary(),
             "crypto_symbols": config.CRYPTO_SYMBOLS,
-            "basket_sectors": config.BASKET_SECTORS
+            "basket_sectors": config.BASKET_SECTORS,
+            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP")
         }
 
     def get_macro_climate(self) -> Dict[str, Any]:
         """Yahoo Finance ve Frankfurter üzerinden küresel makro iklimi döner."""
-        return MacroMarketFeed.get_macro_climate()
+        climate = dict(MacroMarketFeed.get_macro_climate())
+        climate["profit_strategy"] = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP")
+        return climate
 
 # Global singleton orkestratör örneği
 orchestrator = BotOrchestrator()
