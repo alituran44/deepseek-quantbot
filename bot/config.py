@@ -35,11 +35,40 @@ class Config:
     AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper() # SMART_AGGRESSIVE, ULTRA_DEGEN, AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
 
-    # Hızlı Para / Kâr Stratejisi: FAST_SCALP (+%4.5 Hızlı Para), TREND (+%18 - +%35 Ralli), MEGA_RUNNER (+%40 - +%150+ Moonshot)
-    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "FAST_SCALP").upper()
+    # Hızlı Para / Kâr Stratejisi: AUTO_SCHEDULE (22:00-07:00 Gece Hızlı Scalp, 07:00-22:00 Gündüz Bileşik Kâr), FAST_SCALP, TREND, MEGA_RUNNER
+    PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "AUTO_SCHEDULE").upper()
     FAST_SCALP_TP_PERCENT = float(os.getenv("FAST_SCALP_TP_PERCENT", "4.5"))
     FAST_SCALP_SL_PERCENT = float(os.getenv("FAST_SCALP_SL_PERCENT", "1.8"))
     FAST_SCALP_BREAKEVEN_PERCENT = float(os.getenv("FAST_SCALP_BREAKEVEN_PERCENT", "2.0"))
+
+    # Otomatik Gece / Gündüz Seans Ayarları: 22:00 - 07:00 FAST_SCALP, 07:00 - 22:00 TREND/COMPOUND
+    AUTO_SCHEDULE_ENABLED = os.getenv("AUTO_SCHEDULE_ENABLED", "true").lower() in ["true", "1", "yes"]
+    SCHEDULE_NIGHT_START_HOUR = int(os.getenv("SCHEDULE_NIGHT_START_HOUR", "22"))
+    SCHEDULE_NIGHT_END_HOUR = int(os.getenv("SCHEDULE_NIGHT_END_HOUR", "7"))
+
+    def get_effective_profit_strategy(self=None) -> str:
+        """
+        Kâr stratejisini döndürür.
+        Eğer PROFIT_STRATEGY == 'AUTO_SCHEDULE' ise:
+        Türkiye Saati (UTC+3) 22:00 - 07:00 arası -> 'FAST_SCALP' (Agresif Hızlı Kâr)
+        07:00 - 22:00 arası -> 'TREND' (Bileşik Kâr & Trend Büyümesi)
+        """
+        target = self if self is not None else Config
+        strat = (getattr(target, "PROFIT_STRATEGY", None) or getattr(Config, "PROFIT_STRATEGY", "AUTO_SCHEDULE")).upper()
+        if strat in ["AUTO", "AUTO_SCHEDULE", "SCHEDULE", "HYBRID"]:
+            try:
+                from datetime import datetime, timezone, timedelta
+                tr_now = datetime.now(timezone.utc) + timedelta(hours=3)
+                h = tr_now.hour
+                night_start = getattr(target, "SCHEDULE_NIGHT_START_HOUR", 22)
+                night_end = getattr(target, "SCHEDULE_NIGHT_END_HOUR", 7)
+                if h >= night_start or h < night_end:
+                    return "FAST_SCALP"
+                else:
+                    return "TREND"
+            except Exception:
+                return "FAST_SCALP"
+        return strat
 
     # Mega Kâr / Moonshot Runner Konfigürasyonu (Asimetrik Yüksek Kâr Marjı)
     MEGA_RUNNER_TP1_PERCENT = float(os.getenv("MEGA_RUNNER_TP1_PERCENT", "12.0"))   # 1. Kademede %40 nakde geç, başabaşa taşı (Sıfır Risk)

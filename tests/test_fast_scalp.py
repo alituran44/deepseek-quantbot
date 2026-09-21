@@ -28,6 +28,15 @@ class TestFastScalpEngine(unittest.TestCase):
         self.assertEqual(strat2, "FAST_SCALP")
         self.assertEqual(config.PROFIT_STRATEGY, "FAST_SCALP")
 
+        strat3 = self.orchestrator.set_profit_strategy("AUTO_SCHEDULE")
+        self.assertEqual(strat3, "AUTO_SCHEDULE")
+        self.assertEqual(config.PROFIT_STRATEGY, "AUTO_SCHEDULE")
+
+        sched = self.orchestrator.get_session_schedule_info()
+        self.assertIn(sched["effective_strategy"], ["FAST_SCALP", "TREND"])
+        self.assertTrue(sched["is_auto_schedule"])
+        self.assertIn("sa", sched["countdown"])
+
     def test_03_fast_scalp_breakeven_lock(self):
         """Fast Scalp modunda +%2.0 kârda başabaş kilidi (+%0.5 kâr) testi."""
         config.PROFIT_STRATEGY = "FAST_SCALP"

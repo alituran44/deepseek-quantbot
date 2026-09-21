@@ -584,11 +584,19 @@ async def arm_radar_trigger(req: Dict[str, Any]):
 
 @app.post("/api/settings/profit-strategy")
 async def set_profit_strategy_endpoint(req: ProfitStrategyRequest):
-    """Kâr stratejisini ayarlar: FAST_SCALP, TREND veya MEGA_RUNNER."""
+    """Kâr stratejisini ayarlar: AUTO_SCHEDULE, FAST_SCALP, TREND veya MEGA_RUNNER."""
     strat = orchestrator.set_profit_strategy(req.strategy)
+    sched = orchestrator.get_session_schedule_info()
 
-    if strat == "FAST_SCALP":
-        msg = "⚡ Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede"
+    if strat == "AUTO_SCHEDULE":
+        if sched["is_night"]:
+            msg = f"🌙 Otomatik Seans Devrede: 22:00-07:00 Gece Seansı -> ⚡ Agresif Hızlı Kâr (FAST_SCALP) aktif! ({sched['countdown']})"
+        else:
+            msg = f"☀️ Otomatik Seans Devrede: 07:00-22:00 Gündüz Seansı -> 📈 Bileşik Kâr & Trend (COMPOUND) aktif! ({sched['countdown']})"
+        target_tp = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5) if sched["is_night"] else 18.0
+        sl_pct = getattr(config, "FAST_SCALP_SL_PERCENT", 1.8) if sched["is_night"] else 2.5
+    elif strat == "FAST_SCALP":
+        msg = "⚡ Sabit Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede"
         target_tp = getattr(config, "FAST_SCALP_TP_PERCENT", 4.5)
         sl_pct = getattr(config, "FAST_SCALP_SL_PERCENT", 1.8)
     elif strat == "MEGA_RUNNER":
@@ -596,14 +604,16 @@ async def set_profit_strategy_endpoint(req: ProfitStrategyRequest):
         target_tp = 60.0
         sl_pct = getattr(config, "MEGA_RUNNER_SL_PERCENT", 3.5)
     else:
-        msg = "🚀 Trend / Ralli (+%18 - +%35) Modu Devrede"
+        msg = "🚀 Bileşik Kâr & Trend (+%18 - +%35) Modu Devrede"
         target_tp = 18.0
         sl_pct = 2.5
 
     return JSONResponse(content={
         "status": "SUCCESS",
         "strategy": strat,
+        "effective_strategy": sched["effective_strategy"],
         "message": msg,
+        "session_schedule": sched,
         "target_tp_pct": target_tp,
         "stop_loss_pct": sl_pct
     })
@@ -638,7 +648,9 @@ def get_config():
         "deepseek_masked_key": masked_deepseek,
         "deepseek_model": config.DEEPSEEK_MODEL,
         "trading_mode": config.TRADING_MODE,
-        "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"),
+        "profit_strategy": getattr(config, "PROFIT_STRATEGY", "AUTO_SCHEDULE"),
+        "effective_profit_strategy": config.get_effective_profit_strategy(),
+        "session_schedule": orchestrator.get_session_schedule_info(),
         "trading_exchange": getattr(config, "TRADING_EXCHANGE", "AUTO"),
         "ai_risk_profile": getattr(config, "AI_RISK_PROFILE", "SMART_AGGRESSIVE"),
         "max_risk_per_trade_percent": getattr(config, "MAX_RISK_PER_TRADE_PERCENT", 20.0),

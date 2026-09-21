@@ -3350,20 +3350,36 @@ function renderMacroClimate(macroData) {
   }
 
   // Kâr Stratejisi ve Dinamik Kâr Hedefi UI
-  const strat = window.currentProfitStrategy || macroData.profit_strategy || 'FAST_SCALP';
-  updateProfitStrategyUI(strat);
+  const strat = window.currentProfitStrategy || macroData.profit_strategy || 'AUTO_SCHEDULE';
+  updateProfitStrategyUI(strat, macroData.session_schedule);
 }
 
-function updateProfitStrategyUI(strat) {
-  const valid = (strat || 'FAST_SCALP').toUpperCase();
+function updateProfitStrategyUI(strat, sessionSchedule) {
+  const valid = (strat || 'AUTO_SCHEDULE').toUpperCase();
   window.currentProfitStrategy = valid;
+  const btnAuto = document.getElementById('btn-strat-auto-schedule');
   const btnFast = document.getElementById('btn-strat-fast-scalp');
   const btnTrend = document.getElementById('btn-strat-trend');
   const btnMega = document.getElementById('btn-strat-mega-runner');
   const tpPill = document.getElementById('pill-macro-tp');
+  const pillSession = document.getElementById('pill-session-schedule');
   const isTurbo = window.currentMacroRegime === 'TURBO_BULL';
   const isDef = window.currentMacroRegime === 'DEFENSIVE';
 
+  // Otomatik seans hesaplaması (TR saati UTC+3)
+  const now = new Date();
+  const trHour = (now.getUTCHours() + 3) % 24;
+  const isNightTime = (trHour >= 22 || trHour < 7);
+  const isNight = sessionSchedule ? sessionSchedule.is_night : isNightTime;
+
+  if (btnAuto) {
+    const isAct = valid === 'AUTO_SCHEDULE' || valid === 'AUTO' || valid === 'SCHEDULE';
+    btnAuto.classList.toggle('active', isAct);
+    btnAuto.style.color = isAct ? '#a855f7' : 'var(--text-muted)';
+    btnAuto.style.background = isAct ? 'rgba(168, 85, 247, 0.18)' : 'transparent';
+    btnAuto.style.borderColor = isAct ? 'rgba(168, 85, 247, 0.6)' : 'transparent';
+    btnAuto.style.fontWeight = isAct ? '700' : '500';
+  }
   if (btnFast) {
     const isAct = valid === 'FAST_SCALP';
     btnFast.classList.toggle('active', isAct);
@@ -3389,19 +3405,49 @@ function updateProfitStrategyUI(strat) {
     btnMega.style.fontWeight = isAct ? '700' : '500';
   }
 
+  // Seans Rozetini Güncelle (pill-session-schedule)
+  if (pillSession) {
+    if (valid === 'AUTO_SCHEDULE' || valid === 'AUTO' || valid === 'SCHEDULE') {
+      const countdownText = sessionSchedule ? sessionSchedule.countdown : (isNight ? "Sabah 07:00'de Bileşik Kâra geçer" : "Akşam 22:00'de Hızlı Scalp'a geçer");
+      pillSession.style.display = 'inline-flex';
+      if (isNight) {
+        pillSession.innerHTML = `🌙 <strong>Gece Seansı: Agresif Hızlı Scalp (22:00-07:00)</strong>`;
+        pillSession.style.color = '#38bdf8';
+        pillSession.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+        pillSession.style.background = 'rgba(56, 189, 248, 0.1)';
+      } else {
+        pillSession.innerHTML = `☀️ <strong>Gündüz Seansı: Bileşik Kâr (07:00-22:00)</strong>`;
+        pillSession.style.color = '#10b981';
+        pillSession.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        pillSession.style.background = 'rgba(16, 185, 129, 0.1)';
+      }
+      pillSession.title = countdownText;
+    } else {
+      pillSession.style.display = 'inline-flex';
+      pillSession.innerHTML = `⚙️ <strong>Sabit Mod (${valid})</strong>`;
+      pillSession.style.color = 'var(--text-muted)';
+      pillSession.style.borderColor = 'var(--border-subtle)';
+      pillSession.style.background = 'rgba(255, 255, 255, 0.03)';
+      pillSession.title = 'Manuel seçili strateji 7/24 kesintisiz çalışır';
+    }
+  }
+
   // Dinamik Kâr Hedefi Hapını (Pill) ANINDA Senkronize Et
   if (tpPill) {
-    if (valid === 'FAST_SCALP') {
+    const isEffectiveScalp = (valid === 'FAST_SCALP') || ((valid === 'AUTO_SCHEDULE' || valid === 'AUTO' || valid === 'SCHEDULE') && isNight);
+    const isEffectiveMega = (valid === 'MEGA_RUNNER');
+
+    if (isEffectiveScalp) {
       const scalpTp = isTurbo ? 6.0 : 4.5;
       if (isDef) {
         tpPill.innerHTML = `⚡ <strong>Hızlı Scalp: +%${scalpTp}</strong> <span style="font-size:10px; color:#f59e0b;">(Korumalı)</span>`;
       } else {
-        tpPill.innerHTML = `⚡ Kâr Hedefi: <strong>+${scalpTp}% (Hızlı Nakit)</strong>`;
+        tpPill.innerHTML = `⚡ Kâr Hedefi: <strong>+${scalpTp}% (Agresif Hızlı Nakit)</strong>`;
       }
       tpPill.style.color = '#38bdf8';
       tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
       tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
-    } else if (valid === 'MEGA_RUNNER') {
+    } else if (isEffectiveMega) {
       tpPill.innerHTML = `💎 Kâr Hedefi: <strong>+%40 - +%150+ (Kademeli Runner)</strong>`;
       tpPill.style.color = '#c084fc';
       tpPill.style.borderColor = 'rgba(192, 132, 252, 0.5)';
@@ -3413,7 +3459,7 @@ function updateProfitStrategyUI(strat) {
       } else if (isDef) {
         tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
       } else {
-        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}% (Ralli Koşusu)</strong>`;
+        tpPill.innerHTML = `📈 Kâr Hedefi: <strong>+${tpPct}% (Bileşik Kâr & Trend)</strong>`;
       }
       tpPill.style.color = '#10b981';
       tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
@@ -3423,7 +3469,7 @@ function updateProfitStrategyUI(strat) {
 }
 
 async function switchProfitStrategy(strategy) {
-  const valid = (strategy || 'FAST_SCALP').toUpperCase();
+  const valid = (strategy || 'AUTO_SCHEDULE').toUpperCase();
   updateProfitStrategyUI(valid);
 
   const token = localStorage.getItem('quant_admin_token') || '';
@@ -3439,6 +3485,9 @@ async function switchProfitStrategy(strategy) {
     });
     const d = await res.json();
     if (d.status === 'SUCCESS') {
+      if (d.session_schedule) {
+        updateProfitStrategyUI(d.strategy, d.session_schedule);
+      }
       if (typeof fetchMacroClimate === 'function') fetchMacroClimate();
       if (typeof fetchState === 'function') fetchState();
       if (typeof scanBreakoutRadar === 'function') scanBreakoutRadar();

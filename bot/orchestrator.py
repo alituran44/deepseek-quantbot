@@ -543,12 +543,16 @@ class BotOrchestrator:
         }
 
     def set_profit_strategy(self, strategy: str) -> str:
-        """Kâr stratejisini ayarlar: 'FAST_SCALP' (Hızlı Para), 'TREND' (Trend / Ralli) veya 'MEGA_RUNNER' (Mega Kâr / Moonshot)."""
+        """Kâr stratejisini ayarlar: 'AUTO_SCHEDULE' (Gece Hızlı Scalp / Gündüz Bileşik Kâr), 'FAST_SCALP', 'TREND', 'MEGA_RUNNER'."""
         valid = strategy.upper().strip()
         if valid in ["MOONSHOT", "RUNNER"]:
             valid = "MEGA_RUNNER"
-        if valid not in ["FAST_SCALP", "TREND", "MEGA_RUNNER"]:
-            valid = "FAST_SCALP"
+        elif valid in ["AUTO", "AUTO_SCHEDULE", "SCHEDULE", "HYBRID", "HIBRIZ", "HIBHIT"]:
+            valid = "AUTO_SCHEDULE"
+        elif valid in ["COMPOUND", "BILESIK"]:
+            valid = "TREND"
+        if valid not in ["AUTO_SCHEDULE", "FAST_SCALP", "TREND", "MEGA_RUNNER"]:
+            valid = "AUTO_SCHEDULE"
         config.PROFIT_STRATEGY = valid
         os.environ["PROFIT_STRATEGY"] = valid
         try:
@@ -558,6 +562,56 @@ class BotOrchestrator:
             pass
         print(f"[Orchestrator] Kâr Stratejisi Değiştirildi: {valid}")
         return valid
+
+    def get_session_schedule_info(self) -> Dict[str, Any]:
+        """
+        Gece / Gündüz otomatik seans detaylarını döndürür:
+        - 22:00 - 07:00 -> Agresif Hızlı Scalp (+%4.5 TP / -%1.8 SL)
+        - 07:00 - 22:00 -> Bileşik Kâr & Trend (+%18 TP / -%2.5 SL)
+        """
+        from datetime import datetime, timezone, timedelta
+        tr_now = datetime.now(timezone.utc) + timedelta(hours=3)
+        h = tr_now.hour
+        m = tr_now.minute
+
+        night_start = getattr(config, "SCHEDULE_NIGHT_START_HOUR", 22)
+        night_end = getattr(config, "SCHEDULE_NIGHT_END_HOUR", 7)
+        is_night = (h >= night_start or h < night_end)
+        effective_strat = config.get_effective_profit_strategy()
+
+        if is_night:
+            session_name = "NIGHT_SCALP"
+            session_badge = "🌙 Gece Seansı (22:00 - 07:00)"
+            session_mode_title = "⚡ Agresif Hızlı Kâr Toplama"
+            if h >= night_start:
+                hours_until = (night_end + 24) - h
+            else:
+                hours_until = night_end - h
+            mins_until = (60 - m) % 60
+            if mins_until != 0:
+                hours_until -= 1
+            countdown = f"{hours_until} sa {mins_until} dk sonra Gündüz Bileşik Kâr Moduna geçecek"
+        else:
+            session_name = "DAY_COMPOUND"
+            session_badge = "☀️ Gündüz Seansı (07:00 - 22:00)"
+            session_mode_title = "📈 Bileşik Kâr & Trend Büyümesi"
+            hours_until = night_start - h
+            mins_until = (60 - m) % 60
+            if mins_until != 0:
+                hours_until -= 1
+            countdown = f"{hours_until} sa {mins_until} dk sonra Gece Hızlı Scalp Moduna geçecek"
+
+        return {
+            "current_time": tr_now.strftime("%H:%M"),
+            "is_night": is_night,
+            "session_name": session_name,
+            "session_badge": session_badge,
+            "session_mode_title": session_mode_title,
+            "effective_strategy": effective_strat,
+            "configured_strategy": getattr(config, "PROFIT_STRATEGY", "AUTO_SCHEDULE"),
+            "is_auto_schedule": getattr(config, "PROFIT_STRATEGY", "AUTO_SCHEDULE") in ["AUTO_SCHEDULE", "AUTO", "SCHEDULE"],
+            "countdown": countdown
+        }
 
     def auto_trade_breakout_triggers(self) -> List[Dict[str, Any]]:
         """
@@ -625,7 +679,7 @@ class BotOrchestrator:
         budget_mult = macro_climate.get("budget_multiplier", 1.0)
         regime_title = macro_climate.get("regime_title", "DENGELİ")
 
-        current_strat = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper()
+        current_strat = config.get_effective_profit_strategy().upper()
         is_fast_scalp = current_strat == "FAST_SCALP"
         is_mega_runner = current_strat == "MEGA_RUNNER"
 
@@ -1318,13 +1372,17 @@ class BotOrchestrator:
             "breakout_radar": self.radar.get_summary(),
             "crypto_symbols": config.CRYPTO_SYMBOLS,
             "basket_sectors": config.BASKET_SECTORS,
-            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "FAST_SCALP")
+            "profit_strategy": getattr(config, "PROFIT_STRATEGY", "AUTO_SCHEDULE"),
+            "effective_profit_strategy": config.get_effective_profit_strategy(),
+            "session_schedule": self.get_session_schedule_info()
         }
 
     def get_macro_climate(self) -> Dict[str, Any]:
         """Yahoo Finance ve Frankfurter üzerinden küresel makro iklimi döner."""
         climate = dict(MacroMarketFeed.get_macro_climate())
-        climate["profit_strategy"] = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP")
+        climate["profit_strategy"] = getattr(config, "PROFIT_STRATEGY", "AUTO_SCHEDULE")
+        climate["effective_profit_strategy"] = config.get_effective_profit_strategy()
+        climate["session_schedule"] = self.get_session_schedule_info()
         return climate
 
 # Global singleton orkestratör örneği

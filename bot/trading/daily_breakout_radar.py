@@ -209,7 +209,7 @@ class DailyBreakoutRadar:
 
         candidates = []
         pre_pump_candidates = []
-        current_strat = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper()
+        current_strat = getattr(config, "get_effective_profit_strategy", lambda: getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"))().upper()
         is_fast_scalp = current_strat == "FAST_SCALP"
         is_mega_runner = current_strat == "MEGA_RUNNER"
 

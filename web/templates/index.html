@@ -119,21 +119,27 @@
             </div>
           </div>
 
-          <!-- Orta Kısım: Strateji Modu Seçici (⚡ Hızlı Scalp vs 🚀 Trend vs 💎 Mega Kâr) -->
+          <!-- Orta Kısım: Strateji Modu Seçici (🌙 Otomatik Gece/Gündüz vs ⚡ Hızlı Scalp vs 📈 Bileşik Kâr vs 💎 Mega Kâr) -->
           <div style="display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.4); padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-subtle); flex-wrap: wrap;" id="profit-strategy-switcher">
-            <button class="btn-filter active" id="btn-strat-fast-scalp" onclick="switchProfitStrategy('FAST_SCALP')" style="font-size: 11px; padding: 4px 8px; font-weight: 700; border-radius: 6px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="⚡ Hızlı Scalp Modu: %4.5 hızlı kâr alma, %1.8 sıkı stop, %2.0 başabaş (Sermayeyi dakikalar içinde nakde çevirir)">
+            <button class="btn-filter active" id="btn-strat-auto-schedule" onclick="switchProfitStrategy('AUTO_SCHEDULE')" style="font-size: 11px; padding: 4px 8px; font-weight: 700; border-radius: 6px; color: #a855f7; border-color: rgba(168, 85, 247, 0.4);" title="🌙 Otomatik Seans (Önerilen): 22:00-07:00 Gece Hızlı Scalp (+%4.5), 07:00-22:00 Gündüz Bileşik Kâr (+%18)">
+              🌙 22:00-07:00 Otomatik Hibrit
+            </button>
+            <button class="btn-filter" id="btn-strat-fast-scalp" onclick="switchProfitStrategy('FAST_SCALP')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="⚡ Sabit Hızlı Scalp Modu: %4.5 hızlı kâr alma, %1.8 sıkı stop, %2.0 başabaş (Sermayeyi dakikalar içinde nakde çevirir)">
               ⚡ Hızlı Scalp (+%4.5)
             </button>
-            <button class="btn-filter" id="btn-strat-trend" onclick="switchProfitStrategy('TREND')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="🚀 Trend / Ralli Modu: %18-%35 büyük hedefli koşu, %2.5 stop">
-              🚀 Trend (+%18)
+            <button class="btn-filter" id="btn-strat-trend" onclick="switchProfitStrategy('TREND')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="📈 Bileşik Kâr & Trend Modu: %18-%35 büyük hedefli koşu, %2.5 stop">
+              📈 Bileşik Kâr (+%18)
             </button>
             <button class="btn-filter" id="btn-strat-mega-runner" onclick="switchProfitStrategy('MEGA_RUNNER')" style="font-size: 11px; padding: 4px 8px; font-weight: 600; border-radius: 6px; color: var(--text-muted);" title="💎 Mega Kâr / Moonshot: Kademeli kâr alma (+%12 TP1 %40 satış, +%35 TP2 %35 satış, +%40-%150+ Sonsuz Runner)">
-              💎 Mega Kâr (+%40 - +%150+)
+              💎 Mega Kâr (+%40+)
             </button>
           </div>
 
           <!-- Sağ Kısım: DXY, Nasdaq, ECB USD/TRY Metrikleri & Dinamik Kâr Hedefi -->
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="macro-metrics-pills">
+            <span class="indicator-pill" id="pill-session-schedule" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; color: #a855f7; border-color: rgba(168, 85, 247, 0.4); font-weight: 700; background: rgba(168, 85, 247, 0.08);" title="Otomatik seans durumu ve sonraki mod geçişi">
+              🌙 Gece Seansı (Agresif Hızlı Scalp)
+            </span>
             <span class="indicator-pill" id="pill-dxy" style="font-family: var(--font-mono); font-size: 11px; padding: 3px 8px; background: rgba(255,255,255,0.03);" title="Dolar Endeksi (Ters Korelasyon)">
               💵 DXY: <strong>--</strong>
             </span>

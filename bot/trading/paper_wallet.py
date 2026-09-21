@@ -197,7 +197,7 @@ class PaperWallet:
                 pos["unrealized_pnl"] = round(unrealized, 2)
                 pos["unrealized_pnl_pct"] = round(unrealized_pct, 2)
                 # Stratejiye göre dinamik eşikler: Hızlı Scalp, Trend veya Mega Runner (+%40-%150+)
-                current_strat = getattr(config, "PROFIT_STRATEGY", "FAST_SCALP").upper()
+                current_strat = getattr(config, "get_effective_profit_strategy", lambda: getattr(config, "PROFIT_STRATEGY", "FAST_SCALP"))().upper()
 
                 if current_strat == "MEGA_RUNNER":
                     # -------------------------------------------------------------
