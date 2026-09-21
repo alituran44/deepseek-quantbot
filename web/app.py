@@ -586,11 +586,6 @@ async def arm_radar_trigger(req: Dict[str, Any]):
 async def set_profit_strategy_endpoint(req: ProfitStrategyRequest):
     """Kâr stratejisini ayarlar: FAST_SCALP, TREND veya MEGA_RUNNER."""
     strat = orchestrator.set_profit_strategy(req.strategy)
-    # Radarı da hemen yeni stratejiyle güncelle
-    try:
-        orchestrator.radar.scan_all_exchanges()
-    except Exception:
-        pass
 
     if strat == "FAST_SCALP":
         msg = "⚡ Hızlı Scalp (+%4.5 Hızlı Para) Modu Devrede"

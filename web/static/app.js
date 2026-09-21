@@ -3166,6 +3166,7 @@ function renderMacroClimate(macroData) {
   const tpPill = document.getElementById('pill-macro-tp');
 
   const regime = macroData.regime || 'BALANCED';
+  window.currentMacroRegime = regime;
   const score = macroData.score || 60;
   const color = macroData.color || '#0284c7';
 
@@ -3211,51 +3212,9 @@ function renderMacroClimate(macroData) {
     ecbPill.innerHTML = `🇹🇷 ECB: <strong>₺${macroData.usd_try_ecb}</strong>`;
   }
 
-  // Kâr Stratejisi ve Dinamik Kâr Hedefi Pill
+  // Kâr Stratejisi ve Dinamik Kâr Hedefi UI
   const strat = window.currentProfitStrategy || macroData.profit_strategy || 'FAST_SCALP';
   updateProfitStrategyUI(strat);
-
-  if (tpPill) {
-    const isTurbo = regime === 'TURBO_BULL';
-    const isDef = regime === 'DEFENSIVE';
-    if (strat === 'FAST_SCALP') {
-      const scalpTp = isTurbo ? 6.0 : 4.5;
-      if (isDef) {
-        tpPill.innerHTML = `⚡ <strong>Hızlı Scalp: +%${scalpTp}</strong> <span style="font-size:10px; color:#f59e0b;">(Korumalı Sıkışma)</span>`;
-        tpPill.style.color = '#38bdf8';
-        tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
-        tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
-      } else {
-        tpPill.innerHTML = `⚡ Kâr Hedefi: <strong>+${scalpTp}% (Hızlı Nakit)</strong>`;
-        tpPill.style.color = '#38bdf8';
-        tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
-        tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
-      }
-    } else if (strat === 'MEGA_RUNNER') {
-      tpPill.innerHTML = `💎 Kâr Hedefi: <strong>+%40 - +%150+ (Kademeli Runner)</strong>`;
-      tpPill.style.color = '#c084fc';
-      tpPill.style.borderColor = 'rgba(192, 132, 252, 0.5)';
-      tpPill.style.background = 'rgba(192, 132, 252, 0.12)';
-    } else {
-      const tpPct = macroData.target_tp_pct || 18;
-      if (isTurbo) {
-        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}% (2x Turbo)</strong>`;
-        tpPill.style.color = 'var(--profit)';
-        tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-        tpPill.style.background = 'rgba(16, 185, 129, 0.12)';
-      } else if (isDef) {
-        tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
-        tpPill.style.color = '#ef4444';
-        tpPill.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-        tpPill.style.background = 'rgba(239, 68, 68, 0.12)';
-      } else {
-        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}%</strong>`;
-        tpPill.style.color = 'var(--accent-cyan)';
-        tpPill.style.borderColor = 'rgba(2, 132, 199, 0.4)';
-        tpPill.style.background = 'rgba(2, 132, 199, 0.08)';
-      }
-    }
-  }
 }
 
 function updateProfitStrategyUI(strat) {
@@ -3264,24 +3223,65 @@ function updateProfitStrategyUI(strat) {
   const btnFast = document.getElementById('btn-strat-fast-scalp');
   const btnTrend = document.getElementById('btn-strat-trend');
   const btnMega = document.getElementById('btn-strat-mega-runner');
+  const tpPill = document.getElementById('pill-macro-tp');
+  const isTurbo = window.currentMacroRegime === 'TURBO_BULL';
+  const isDef = window.currentMacroRegime === 'DEFENSIVE';
 
   if (btnFast) {
     const isAct = valid === 'FAST_SCALP';
     btnFast.classList.toggle('active', isAct);
     btnFast.style.color = isAct ? '#38bdf8' : 'var(--text-muted)';
-    btnFast.style.borderColor = isAct ? 'rgba(56, 189, 248, 0.4)' : '';
+    btnFast.style.background = isAct ? 'rgba(56, 189, 248, 0.18)' : 'transparent';
+    btnFast.style.borderColor = isAct ? 'rgba(56, 189, 248, 0.6)' : 'transparent';
+    btnFast.style.fontWeight = isAct ? '700' : '500';
   }
   if (btnTrend) {
     const isAct = valid === 'TREND';
     btnTrend.classList.toggle('active', isAct);
     btnTrend.style.color = isAct ? '#10b981' : 'var(--text-muted)';
-    btnTrend.style.borderColor = isAct ? 'rgba(16, 185, 129, 0.4)' : '';
+    btnTrend.style.background = isAct ? 'rgba(16, 185, 129, 0.18)' : 'transparent';
+    btnTrend.style.borderColor = isAct ? 'rgba(16, 185, 129, 0.6)' : 'transparent';
+    btnTrend.style.fontWeight = isAct ? '700' : '500';
   }
   if (btnMega) {
     const isAct = valid === 'MEGA_RUNNER';
     btnMega.classList.toggle('active', isAct);
     btnMega.style.color = isAct ? '#c084fc' : 'var(--text-muted)';
-    btnMega.style.borderColor = isAct ? 'rgba(192, 132, 252, 0.4)' : '';
+    btnMega.style.background = isAct ? 'rgba(192, 132, 252, 0.18)' : 'transparent';
+    btnMega.style.borderColor = isAct ? 'rgba(192, 132, 252, 0.6)' : 'transparent';
+    btnMega.style.fontWeight = isAct ? '700' : '500';
+  }
+
+  // Dinamik Kâr Hedefi Hapını (Pill) ANINDA Senkronize Et
+  if (tpPill) {
+    if (valid === 'FAST_SCALP') {
+      const scalpTp = isTurbo ? 6.0 : 4.5;
+      if (isDef) {
+        tpPill.innerHTML = `⚡ <strong>Hızlı Scalp: +%${scalpTp}</strong> <span style="font-size:10px; color:#f59e0b;">(Korumalı)</span>`;
+      } else {
+        tpPill.innerHTML = `⚡ Kâr Hedefi: <strong>+${scalpTp}% (Hızlı Nakit)</strong>`;
+      }
+      tpPill.style.color = '#38bdf8';
+      tpPill.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+      tpPill.style.background = 'rgba(56, 189, 248, 0.12)';
+    } else if (valid === 'MEGA_RUNNER') {
+      tpPill.innerHTML = `💎 Kâr Hedefi: <strong>+%40 - +%150+ (Kademeli Runner)</strong>`;
+      tpPill.style.color = '#c084fc';
+      tpPill.style.borderColor = 'rgba(192, 132, 252, 0.5)';
+      tpPill.style.background = 'rgba(192, 132, 252, 0.12)';
+    } else {
+      const tpPct = isTurbo ? 35 : 18;
+      if (isTurbo) {
+        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}% (2x Turbo)</strong>`;
+      } else if (isDef) {
+        tpPill.innerHTML = `🛡️ <strong>Tuzak Kalkanı Aktif (Alımlar Askıda)</strong>`;
+      } else {
+        tpPill.innerHTML = `🚀 Kâr Hedefi: <strong>+${tpPct}% (Ralli Koşusu)</strong>`;
+      }
+      tpPill.style.color = '#10b981';
+      tpPill.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      tpPill.style.background = 'rgba(16, 185, 129, 0.12)';
+    }
   }
 }
 
