@@ -1223,10 +1223,10 @@ function setExchangeFilter(ex, btn) {
   const thCurrent = document.getElementById('th-pos-current');
   const thVal = document.getElementById('th-pos-val');
   const thPnl = document.getElementById('th-pos-pnl');
-  if (thEntry) thEntry.innerHTML = isTr ? 'Giriş Fiyatı <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Alış)</span>' : 'Giriş Fiyatı <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Alış)</span>';
-  if (thCurrent) thCurrent.innerHTML = isTr ? 'Anlık Fiyat & Değişim <span style="font-size: 10px; font-weight: 600; color: var(--accent-cyan);">(Net Fark)</span>' : 'Anlık Fiyat & Değişim <span style="font-size: 10px; font-weight: 600; color: var(--accent-cyan);">(Net Fark)</span>';
-  if (thVal) thVal.textContent = isTr ? 'Toplam Değer (TL)' : 'Toplam Değer';
-  if (thPnl) thPnl.textContent = isTr ? 'Açık PnL / Bakiye (TL)' : 'Açık PnL / Bakiye';
+  if (thEntry) thEntry.innerHTML = isTr ? 'Alış Değeri <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Maliyet)</span>' : 'Alış Değeri <span style="font-size: 10px; font-weight: normal; color: var(--text-muted);">(Maliyet)</span>';
+  if (thCurrent) thCurrent.innerHTML = isTr ? 'Birim Fiyat & Değişim' : 'Birim Fiyat & Değişim';
+  if (thVal) thVal.textContent = isTr ? 'Şu Anki Değer (TL)' : 'Şu Anki Değer';
+  if (thPnl) thPnl.textContent = isTr ? 'Aradaki Net Kâr (TL)' : 'Aradaki Net Kâr';
 
   const statusLabel = document.getElementById('positions-active-filter-label');
   if (statusLabel) {
@@ -1386,28 +1386,112 @@ function renderPositions(positions, isLive = true) {
       const displayName = isTry ? 'Türk Lirası (Nakit)' : (pos.asset || pos.symbol);
       const displaySymbol = isTry ? 'TRY' : (pos.symbol || pos.asset);
 
-      // Kâr / Zarar (PnL) Göstergesi
+      // Toplam Alış Maliyeti
+      let totalCostUsd = calculatedValUsd;
+      if (isTry || pos.asset === 'USDT') {
+        totalCostUsd = calculatedValUsd;
+      } else {
+        let entryPrice = Number(pos.entry_price || pos.current_price || 0);
+        let curPrice = Number(pos.current_price || 0);
+        let pnlPct = (pos.unrealized_pnl_pct !== undefined && !isNaN(pos.unrealized_pnl_pct)) ? Number(pos.unrealized_pnl_pct) : 0;
+        if (Math.abs(entryPrice - curPrice) < 0.00001 && Math.abs(pnlPct) > 0.001 && curPrice > 0) {
+          entryPrice = curPrice / (1.0 + (pnlPct / 100.0));
+        }
+
+        if (entryPrice > 0 && rawUnits > 0) {
+          totalCostUsd = entryPrice * rawUnits;
+        } else if (pos.unrealized_pnl !== undefined && pos.unrealized_pnl !== null && !isNaN(pos.unrealized_pnl) && Number(pos.unrealized_pnl) !== 0) {
+          totalCostUsd = calculatedValUsd - Number(pos.unrealized_pnl);
+        } else {
+          totalCostUsd = calculatedValUsd;
+        }
+      }
+
+      let costStr;
+      if (showInTry) {
+        costStr = formatTryPrice(totalCostUsd * usdRate);
+      } else {
+        costStr = `$${totalCostUsd.toFixed(2)} USD`;
+      }
+
+      // Aradaki Net Kâr (PnL) Göstergesi
       let pnlHtml = '';
       if (isTry || pos.asset === 'USDT') {
-        pnlHtml = `<span class="indicator-pill" style="color: var(--accent-cyan); font-weight: 600;">Nakit Rezervi</span>`;
-      } else if (pos.unrealized_pnl !== undefined && pos.unrealized_pnl !== 0) {
-        const pnlUsd = pos.unrealized_pnl;
-        const pnlPct = pos.unrealized_pnl_pct || 0;
-        const pnlClass = pnlUsd >= 0 ? 'text-profit' : 'text-loss';
-        const sign = pnlUsd >= 0 ? '+' : '-';
-        if (showInTry) {
-          const pnlTry = pnlUsd * usdRate;
-          const absTry = Math.abs(pnlTry).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${sign}₺${absTry} TL (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
-        } else {
-          pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">${sign}$${Math.abs(pnlUsd).toFixed(2)} (%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)})</span>`;
-        }
-      } else if (pos.unrealized_pnl_pct !== undefined && pos.unrealized_pnl_pct !== 0) {
-        const pnlPct = pos.unrealized_pnl_pct;
-        const pnlClass = pnlPct >= 0 ? 'text-profit' : 'text-loss';
-        pnlHtml = `<span class="${pnlClass}" style="font-weight: 700; font-family: var(--font-mono); font-size: 12px;">%${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}</span>`;
+        pnlHtml = `
+          <div style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-muted);">${showInTry ? '₺0,00 TL' : '$0.00 USD'}</div>
+          <div style="margin-top: 3px;">
+            <span class="indicator-pill" style="color: var(--accent-cyan); border-color: rgba(2, 132, 199, 0.35); font-size: 10px; font-weight: 700;">● Sabit Nakit</span>
+          </div>
+        `;
       } else {
-        pnlHtml = `<span class="text-profit" style="font-weight: 600; font-family: var(--font-mono); font-size: 11px;">Kullanılabilir (Başabaş)</span>`;
+        let netPnlUsd = (pos.unrealized_pnl !== undefined && pos.unrealized_pnl !== null && !isNaN(pos.unrealized_pnl) && Math.abs(Number(pos.unrealized_pnl)) > 0.0001)
+          ? Number(pos.unrealized_pnl)
+          : (calculatedValUsd - totalCostUsd);
+
+        let netPnlPct = (totalCostUsd > 0.0001)
+          ? ((calculatedValUsd - totalCostUsd) / totalCostUsd) * 100
+          : ((pos.unrealized_pnl_pct !== undefined && !isNaN(pos.unrealized_pnl_pct)) ? Number(pos.unrealized_pnl_pct) : 0);
+
+        if (Math.abs(netPnlPct) < 0.001 && pos.unrealized_pnl_pct !== undefined && !isNaN(pos.unrealized_pnl_pct)) {
+          netPnlPct = Number(pos.unrealized_pnl_pct);
+        }
+
+        if (netPnlPct > 0.01) {
+          if (showInTry) {
+            const pnlTry = Math.abs(netPnlUsd * usdRate);
+            pnlHtml = `
+              <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--profit);">+${formatTryPrice(pnlTry)}</div>
+              <div style="margin-top: 3px;">
+                <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--profit); background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 4px; padding: 1px 6px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                  +%${netPnlPct.toFixed(2)} KÂR
+                </span>
+              </div>
+            `;
+          } else {
+            pnlHtml = `
+              <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--profit);">+$${Math.abs(netPnlUsd).toFixed(2)} USD</div>
+              <div style="margin-top: 3px;">
+                <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--profit); background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 4px; padding: 1px 6px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                  +%${netPnlPct.toFixed(2)} KÂR
+                </span>
+              </div>
+            `;
+          }
+        } else if (netPnlPct < -0.01) {
+          if (showInTry) {
+            const pnlTry = Math.abs(netPnlUsd * usdRate);
+            pnlHtml = `
+              <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--loss);">-${formatTryPrice(pnlTry)}</div>
+              <div style="margin-top: 3px;">
+                <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--loss); background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 4px; padding: 1px 6px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  -%${Math.abs(netPnlPct).toFixed(2)} ZARAR
+                </span>
+              </div>
+            `;
+          } else {
+            pnlHtml = `
+              <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--loss);">-$${Math.abs(netPnlUsd).toFixed(2)} USD</div>
+              <div style="margin-top: 3px;">
+                <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--loss); background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 4px; padding: 1px 6px;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  -%${Math.abs(netPnlPct).toFixed(2)} ZARAR
+                </span>
+              </div>
+            `;
+          }
+        } else {
+          pnlHtml = `
+            <div style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-muted);">${showInTry ? '₺0,00 TL' : '$0.00 USD'}</div>
+            <div style="margin-top: 3px;">
+              <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); background: rgba(255, 255, 255, 0.05); border-radius: 4px; padding: 1px 5px;">
+                ● %0.00 Başabaş
+              </span>
+            </div>
+          `;
+        }
       }
 
       // Stop-Loss & Take-Profit Göstergesi
@@ -1452,10 +1536,10 @@ function renderPositions(positions, isLive = true) {
           <td><span class="badge badge-buy">CÜZDANDA</span></td>
           <td style="font-family: var(--font-mono); vertical-align: middle;">
             <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">
-              ${entryPxStr}
+              ${costStr}
             </div>
             <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 4px;">
-              <span style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); padding: 1px 4px; border-radius: 3px; font-weight: 600;">Alış Maliyeti</span>
+              <span style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-subtle); padding: 1px 4px; border-radius: 3px; font-weight: 500;">Birim: ${entryPxStr}</span>
               ${!isTry ? `<button type="button" onclick="event.stopPropagation(); promptEditEntryPrice('${displaySymbol}', ${showInTry ? 'true' : 'false'})" title="Alış maliyetini düzenle" style="background: none; border: none; cursor: pointer; padding: 0 2px; font-size: 11px; opacity: 0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✏️</button>` : ''}
             </div>
           </td>
@@ -1471,8 +1555,15 @@ function renderPositions(positions, isLive = true) {
             </span>
             ${slTpHtml}
           </td>
-          <td style="font-family: var(--font-mono); font-weight: 700; color: var(--profit);">${valStr}</td>
-          <td>${pnlHtml}</td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 800; font-size: 13px; color: var(--profit);">
+              ${valStr}
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+              Güncel Değer
+            </div>
+          </td>
+          <td style="vertical-align: middle;">${pnlHtml}</td>
           <td style="text-align: right;">
             <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 8px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}', '${rowEx}')">
               Grafik & Al-Sat ↗
@@ -1486,6 +1577,41 @@ function renderPositions(positions, isLive = true) {
       const pnlPct = pos.unrealized_pnl_pct || 0;
       const pnlClass = pnl >= 0 ? 'text-profit' : 'text-loss';
       const badgeClass = pos.action === 'BUY' ? 'badge-buy' : 'badge-sell';
+      const posUnits = Number(pos.units || 0);
+      const entryPx = Number(pos.entry_price || 0);
+      const curPx = Number(pos.current_price || 0);
+      const totalCost = (posUnits > 0 && entryPx > 0) ? (posUnits * entryPx) : (Number(pos.position_value || 0) - pnl);
+      const totalVal = Number(pos.position_value || (posUnits * curPx) || 0);
+
+      let paperPnlBadge = '';
+      if (pnl > 0.001) {
+        paperPnlBadge = `
+          <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--profit);">+$${pnl.toFixed(2)} USD</div>
+          <div style="margin-top: 3px;">
+            <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--profit); background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 4px; padding: 1px 6px;">
+              ▲ +%${Math.abs(pnlPct).toFixed(2)} KÂR
+            </span>
+          </div>
+        `;
+      } else if (pnl < -0.001) {
+        paperPnlBadge = `
+          <div style="font-family: var(--font-mono); font-weight: 800; font-size: 13px; color: var(--loss);">-$${Math.abs(pnl).toFixed(2)} USD</div>
+          <div style="margin-top: 3px;">
+            <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; font-family: var(--font-mono); color: var(--loss); background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 4px; padding: 1px 6px;">
+              ▼ -%${Math.abs(pnlPct).toFixed(2)} ZARAR
+            </span>
+          </div>
+        `;
+      } else {
+        paperPnlBadge = `
+          <div style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-muted);">$0.00 USD</div>
+          <div style="margin-top: 3px;">
+            <span style="display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); background: rgba(255, 255, 255, 0.05); border-radius: 4px; padding: 1px 5px;">
+              ● %0.00 Başabaş
+            </span>
+          </div>
+        `;
+      }
 
       html += `
         <tr style="cursor: pointer;" onclick="openAssetModal('${lookupSym}')" title="Canlı grafiği ve detayları açmak için tıklayın">
@@ -1495,15 +1621,26 @@ function renderPositions(positions, isLive = true) {
           </td>
           <td><span class="indicator-pill" style="color: var(--accent-cyan);">${pos.symbol.includes('BTC') || pos.symbol.includes('ETH') ? 'CORE' : 'ALTCOIN'}</span></td>
           <td><span class="badge ${badgeClass}">${pos.action}</span></td>
-          <td>${formatCryptoMoney(pos.entry_price)}</td>
-          <td>${formatCryptoMoney(pos.current_price)}</td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 13px;">$${totalCost.toFixed(2)} USD</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Birim: ${formatCryptoMoney(entryPx)}</div>
+          </td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 800; font-size: 13px; color: ${pnl >= 0 ? 'var(--profit)' : 'var(--loss)'};">${formatCryptoMoney(curPx)}</div>
+          </td>
           <td>
-            <span style="color: var(--loss); font-size: 11px;">SL: ${formatCryptoMoney(pos.stop_loss)}</span><br>
+            <span style="color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); font-weight: 700;">
+              ${posUnits.toFixed(4)} ${pos.symbol.replace('USDT', '')}
+            </span><br>
+            <span style="color: var(--loss); font-size: 11px;">SL: ${formatCryptoMoney(pos.stop_loss)}</span> | 
             <span style="color: var(--profit); font-size: 11px;">TP: ${formatCryptoMoney(pos.take_profit)}</span>
             ${pos.is_trailing_active ? `<span class="indicator-pill" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); font-size: 9px; display: block; margin-top: 2px;">⚡ İz Süren Stop</span>` : (pos.is_risk_free ? `<span class="indicator-pill" style="color: var(--profit); border-color: rgba(16, 185, 129, 0.4); font-size: 9px; display: block; margin-top: 2px;">🛡️ Başabaş Kilit</span>` : '')}
           </td>
-          <td>${formatCryptoMoney(pos.position_value)}</td>
-          <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (%${pnlPct.toFixed(2)})</td>
+          <td style="font-family: var(--font-mono); vertical-align: middle;">
+            <div style="font-weight: 800; font-size: 13px; color: var(--profit);">$${totalVal.toFixed(2)} USD</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Güncel Değer</div>
+          </td>
+          <td style="vertical-align: middle;">${paperPnlBadge}</td>
           <td style="text-align: right; display: flex; gap: 4px; justify-content: flex-end;">
             <button class="btn btn-secondary" style="font-size: 11px; height: 26px; padding: 0 6px;" onclick="event.stopPropagation(); openAssetModal('${lookupSym}')">Grafik ↗</button>
             <button class="btn-danger-sm" onclick="event.stopPropagation(); closePosition('${pos.id}', ${pos.current_price})">Kapat</button>
