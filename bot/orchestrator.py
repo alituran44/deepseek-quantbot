@@ -707,7 +707,7 @@ class BotOrchestrator:
             live_free_usdt = max(0.0, free_u - cash_reserve)
             live_ex_id = ex_id_found or "BINANCE"
             if live_free_usdt < 10.0:
-                print(f"[AutoTradeBreakout] 🛡️ Nakit Koruma Kilidi Aktif: Serbest bakiye {free_u:.2f} USDT, minimum rezerv {cash_reserve:.2f} USDT altında kaldığı için otonom alım yapılmıyor.")
+                print(f"[AutoTradeBreakout] [KORUMA] Nakit Koruma Kilidi Aktif: Serbest bakiye {free_u:.2f} USDT, minimum rezerv {cash_reserve:.2f} USDT altinda kaldigi icin otonom alim yapilmiyor.")
                 return executed
 
         for cand in candidates_to_check:
