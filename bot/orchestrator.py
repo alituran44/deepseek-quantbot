@@ -350,7 +350,8 @@ class BotOrchestrator:
             cand_executor, cand_ex_id, free_usdt, sel_msg = self.select_execution_exchange(symbol=symbol, required_amount_usd=0.0)
             target_executor = cand_executor
             target_ex_id = cand_ex_id
-            current_balance = free_usdt if cand_executor else 0.0
+            cash_reserve = getattr(config, "MIN_CASH_RESERVE_USD", 25.0)
+            current_balance = max(0.0, free_usdt - cash_reserve) if cand_executor else 0.0
 
         is_valid_risk, risk_reason, order_params = self.risk_guard.validate_and_size_position(
             signal=signal,
@@ -702,9 +703,11 @@ class BotOrchestrator:
         live_ex_id = "BINANCE"
         if config.TRADING_MODE == "LIVE":
             _, ex_id_found, free_u, _ = self.select_execution_exchange(symbol="BTCUSDT", required_amount_usd=0.0)
-            live_free_usdt = free_u
+            cash_reserve = getattr(config, "MIN_CASH_RESERVE_USD", 25.0)
+            live_free_usdt = max(0.0, free_u - cash_reserve)
             live_ex_id = ex_id_found or "BINANCE"
             if live_free_usdt < 10.0:
+                print(f"[AutoTradeBreakout] 🛡️ Nakit Koruma Kilidi Aktif: Serbest bakiye {free_u:.2f} USDT, minimum rezerv {cash_reserve:.2f} USDT altında kaldığı için otonom alım yapılmıyor.")
                 return executed
 
         for cand in candidates_to_check:

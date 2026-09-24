@@ -32,8 +32,11 @@ class Config:
     TRADING_EXCHANGE = os.getenv("TRADING_EXCHANGE", "AUTO").upper() # AUTO, BINANCE, MEXC, OKX
     INITIAL_BALANCE = float(os.getenv("INITIAL_BALANCE", "10000.0"))
     MAX_RISK_PER_TRADE_PERCENT = float(os.getenv("MAX_RISK_PER_TRADE_PERCENT", "20.0"))
-    AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper() # SMART_AGGRESSIVE, ULTRA_DEGEN, AGGRESSIVE_ALPHA, BALANCED, CONSERVATIVE
+    AI_RISK_PROFILE = os.getenv("AI_RISK_PROFILE", "SMART_AGGRESSIVE").upper()
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
+    # Nakit Koruma Kilidi (Cash Reserve Guard)
+    # Bu tutarın altındaki nakit (USDT) otonom bot tarafından harcanmaz, kasada hazır cephane olarak tutulur.
+    MIN_CASH_RESERVE_USD = float(os.getenv("MIN_CASH_RESERVE_USD", "25.0"))
 
     # Hızlı Para / Kâr Stratejisi: AUTO_SCHEDULE (22:00-07:00 Gece Hızlı Scalp, 07:00-22:00 Gündüz Bileşik Kâr), FAST_SCALP, TREND, MEGA_RUNNER
     PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "AUTO_SCHEDULE").upper()
