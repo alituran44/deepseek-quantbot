@@ -380,6 +380,29 @@ class BinanceLiveExecutor:
         ok, res = self._request("POST", "/api/v3/order", params=params, signed=True)
         return ok, res
 
+    def place_limit_order(self, symbol: str, side: str, quantity: float, price: float) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Gerçek Borsa Belirlenen Fiyattan Limit (LIMIT) Alım veya Satım Emri.
+        side: BUY veya SELL
+        """
+        rules = self.get_symbol_rules(symbol)
+        tick = rules.get("tickSize", 0.01)
+        tick_str = f"{tick:.8f}".rstrip("0")
+        price_decimals = len(tick_str.split(".")[1]) if "." in tick_str else 2
+        px_str = f"{price:.{price_decimals}f}"
+
+        qty_formatted = self.format_quantity(symbol, quantity)
+        params = {
+            "symbol": symbol.upper(),
+            "side": side.upper(),
+            "type": "LIMIT",
+            "timeInForce": "GTC",
+            "quantity": qty_formatted,
+            "price": px_str
+        }
+        ok, res = self._request("POST", "/api/v3/order", params=params, signed=True)
+        return ok, res
+
     def place_oco_order(
         self, 
         symbol: str, 
