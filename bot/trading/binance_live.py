@@ -149,6 +149,8 @@ class BinanceLiveExecutor:
         """
         ok_spot, spot_res = self._request("GET", "/api/v3/account", signed=True)
         ok_fund, fund_res = self._request("POST", "/sapi/v1/asset/get-funding-asset", signed=True)
+        ok_earn, earn_res = self._request("GET", "/sapi/v1/simple-earn/flexible/position", signed=True)
+        ok_lock, lock_res = self._request("GET", "/sapi/v1/simple-earn/locked/position", signed=True)
 
         if not ok_spot:
             return {
@@ -179,11 +181,14 @@ class BinanceLiveExecutor:
             pass
 
         def _get_asset_price(asset_name: str) -> float:
-            if asset_name == "USDT":
+            if asset_name in ("USDT", "USD"):
                 return 1.0
             pair = f"{asset_name}USDT"
             if pair in price_map and price_map[pair] > 0:
                 return price_map[pair]
+            btc_pair = f"{asset_name}BTC"
+            if btc_pair in price_map and "BTCUSDT" in price_map:
+                return price_map[btc_pair] * price_map["BTCUSDT"]
             try:
                 resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={pair}", timeout=1.5)
                 if resp.status_code == 200:
@@ -194,27 +199,71 @@ class BinanceLiveExecutor:
                 pass
             return 0.0
 
-        # 1. Spot ve Simple Earn (Kazan) Cüzdanındaki Varlıkları Tara
+        # 1. Spot Cüzdanı (Earn API aktifse, eski/senkronize olmayan LD... sentetik tokenlarını atla)
+        use_earn_api = bool(ok_earn and isinstance(earn_res, dict) and "rows" in earn_res)
+        raw_items = []
         for item in spot_res.get("balances", []):
+            raw_asset = item.get("asset", "").upper()
+            is_ld = raw_asset.startswith("LD") and len(raw_asset) > 3
+            if use_earn_api and is_ld:
+                # Simple Earn API'si doğrudan sorgulandığı için Spot'taki eski LD token kopyasını atla
+                continue
+
             free = float(item.get("free", 0.0))
             locked = float(item.get("locked", 0.0))
             tot = free + locked
             if tot > 0.00000001:
-                raw_asset = item.get("asset", "").upper()
-                is_earn = raw_asset.startswith("LD") and len(raw_asset) > 3
-                asset = raw_asset[2:] if is_earn else raw_asset
-                wallet_name = "Kazan (Earn) Cüzdanı" if is_earn else "Spot Cüzdanı"
+                asset = raw_asset[2:] if is_ld else raw_asset
+                wallet_name = "Kazan (Earn) Cüzdanı" if is_ld else "Spot Cüzdanı"
+                raw_items.append((asset, free, locked, tot, wallet_name, is_ld))
 
-                px = _get_asset_price(asset)
-                if asset == "USDT":
-                    total_usdt += tot
-                val = tot * px
-                total_equity += val
-                holdings.append({
-                    "id": f"{'earn' if is_earn else 'spot'}_{asset.lower()}",
+        # 2. Fonlama (Funding) Cüzdanındaki Varlıkları Tara
+        if ok_fund and isinstance(fund_res, list):
+            for item in fund_res:
+                raw_asset = item.get("asset", "").upper()
+                is_ld = raw_asset.startswith("LD") and len(raw_asset) > 3
+                if use_earn_api and is_ld:
+                    continue
+                free = float(item.get("free", 0.0))
+                locked = float(item.get("locked", 0.0))
+                tot = free + locked
+                if tot > 0.00000001:
+                    asset = raw_asset[2:] if is_ld else raw_asset
+                    wallet_name = "Kazan (Earn) Cüzdanı" if is_ld else "Fonlama Cüzdanı"
+                    raw_items.append((asset, free, locked, tot, wallet_name, is_ld))
+
+        # 3. Simple Earn Esnek (Flexible Earn) Cüzdanı (Gerçek zamanlı faizli bakiyeler)
+        if use_earn_api:
+            for item in earn_res.get("rows", []):
+                asset = item.get("asset", "").upper()
+                tot = float(item.get("totalAmount", 0.0))
+                if tot > 0.00000001:
+                    raw_items.append((asset, tot, 0.0, tot, "Kazan (Earn) Cüzdanı", True))
+
+        # 4. Simple Earn Kilitli (Locked Staking) Cüzdanı
+        if ok_lock and isinstance(lock_res, dict) and "rows" in lock_res:
+            for item in lock_res.get("rows", []):
+                asset = item.get("asset", "").upper()
+                tot = float(item.get("totalAmount", 0.0))
+                if tot > 0.00000001:
+                    raw_items.append((asset, 0.0, tot, tot, "Kazan (Kilitli)", True))
+
+        # 5. Varlıkları Varlık Adına Göre Konsolide Et (Spot + Kazan birleştirilir)
+        consolidated_map: Dict[str, Dict[str, Any]] = {}
+        for asset, free, locked, tot, wallet_name, is_earn in raw_items:
+            px = _get_asset_price(asset)
+            if asset == "USDT":
+                total_usdt += tot
+            val = tot * px
+            total_equity += val
+
+            if asset not in consolidated_map:
+                action_name = "NAKİT (REZERV)" if asset == "USDT" else (f"VARLIK ({'EARN' if is_earn else 'SPOT'})")
+                consolidated_map[asset] = {
+                    "id": f"pos_{asset.lower()}",
                     "symbol": asset if asset == "USDT" else f"{asset}USDT",
                     "asset": asset,
-                    "action": f"VARLIK ({'EARN' if is_earn else 'SPOT'})",
+                    "action": action_name,
                     "units": tot,
                     "free": free,
                     "locked": locked,
@@ -227,45 +276,32 @@ class BinanceLiveExecutor:
                     "unrealized_pnl": 0.0,
                     "unrealized_pnl_pct": 0.0,
                     "wallet_type": wallet_name,
-                    "thesis": f"Binance {wallet_name}'nda {tot} {asset} mevcut."
-                })
+                    "wallets": [wallet_name],
+                    "thesis": f"Binance {wallet_name}'nda {tot:.4f} {asset} mevcut."
+                }
+            else:
+                entry = consolidated_map[asset]
+                entry["units"] += tot
+                entry["free"] += free
+                entry["locked"] += locked
+                entry["position_value"] += val
+                entry["value_usd"] += val
+                if wallet_name not in entry["wallets"]:
+                    entry["wallets"].append(wallet_name)
+                    entry["wallet_type"] = " + ".join(entry["wallets"])
+                    if "Spot" in entry["wallet_type"] and "Kazan" in entry["wallet_type"]:
+                        entry["action"] = "VARLIK (SPOT + EARN)"
+                entry["thesis"] = f"Binance genelinde toplam {entry['units']:.4f} {asset} mevcut ({entry['wallet_type']})."
 
-        # 2. Fonlama (Funding) Cüzdanındaki Varlıkları Tara
-        if ok_fund and isinstance(fund_res, list):
-            for item in fund_res:
-                free = float(item.get("free", 0.0))
-                locked = float(item.get("locked", 0.0))
-                tot = free + locked
-                if tot > 0.00000001:
-                    raw_asset = item.get("asset", "").upper()
-                    is_earn = raw_asset.startswith("LD") and len(raw_asset) > 3
-                    asset = raw_asset[2:] if is_earn else raw_asset
-                    wallet_name = "Kazan (Earn) Cüzdanı" if is_earn else "Fonlama Cüzdanı"
+        # 6. Kırıntı / Toz Temizliği: 1.0 USD altındaki kırıntıları tablodan gizle (Total equity içinde korunur)
+        for asset, data in consolidated_map.items():
+            val = data["value_usd"]
+            if val < 1.0 and asset not in ["USDT", "TRY"]:
+                continue
+            holdings.append(data)
 
-                    px = _get_asset_price(asset)
-                    if asset == "USDT":
-                        total_usdt += tot
-                    val = tot * px
-                    total_equity += val
-                    holdings.append({
-                        "id": f"fund_{asset.lower()}",
-                        "symbol": asset if asset == "USDT" else f"{asset}USDT",
-                        "asset": asset,
-                        "action": "VARLIK (FONLAMA)",
-                        "units": tot,
-                        "free": free,
-                        "locked": locked,
-                        "entry_price": px,
-                        "current_price": px,
-                        "stop_loss": px * 0.95 if px > 0 else 0.0,
-                        "take_profit": px * 1.10 if px > 0 else 0.0,
-                        "position_value": val,
-                        "value_usd": val,
-                        "unrealized_pnl": 0.0,
-                        "unrealized_pnl_pct": 0.0,
-                        "wallet_type": wallet_name,
-                        "thesis": f"Binance {wallet_name}'nda {tot} {asset} mevcut."
-                    })
+        # En büyük varlıklar en üstte görünsün (Büyükten küçüğe sırala)
+        holdings.sort(key=lambda x: x.get("value_usd", 0.0), reverse=True)
 
         perms = self.check_api_permissions()
         can_trade_final = bool(spot_res.get("canTrade", False)) and bool(perms.get("can_trade", True))

@@ -1253,6 +1253,12 @@ function renderPositions(positions, isLive = true) {
       return pEx === curEx;
     });
   }
+  // 1.0 USD altındaki kırıntı/toz varlıkları gizle (USDT ve TRY hariç)
+  filtered = filtered.filter(p => {
+    if (p.asset === 'USDT' || p.asset === 'TRY') return true;
+    const v = (p.value_usd !== undefined) ? p.value_usd : ((p.position_value !== undefined) ? p.position_value : 0);
+    return v >= 1.0;
+  });
 
   if (!filtered || filtered.length === 0) {
     const msg = currentExchangeFilter !== 'ALL' 
