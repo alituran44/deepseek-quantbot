@@ -8,9 +8,10 @@ class CryptoFeed:
     API anahtarı gerektirmez.
     """
     BASE_URLS = [
-        "https://data-api.binance.vision/api/v3",
         "https://api.binance.com/api/v3",
         "https://api1.binance.com/api/v3",
+        "https://api3.binance.com/api/v3",
+        "https://data-api.binance.vision/api/v3",
         "https://api.binance.us/api/v3"
     ]
     BASE_URL = BASE_URLS[0]

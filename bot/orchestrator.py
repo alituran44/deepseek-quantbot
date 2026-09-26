@@ -1000,26 +1000,26 @@ class BotOrchestrator:
                 f_mexc = executor.submit(_fetch_mexc)
 
                 try:
-                    res_acc, res_sum = f_bin.result(timeout=15)
+                    res_acc, res_sum = f_bin.result(timeout=25)
                     if res_sum or not self._cached_binance_summary:
                         self._cached_binance_acc = res_acc
                         self._cached_binance_summary = res_sum
                 except Exception as e:
                     print(f"[Orchestrator] Binance fetch exception: {e}")
                 try:
-                    res_bintr = f_bintr.result(timeout=15)
+                    res_bintr = f_bintr.result(timeout=25)
                     if res_bintr or not self._cached_binance_tr_summary:
                         self._cached_binance_tr_summary = res_bintr
                 except Exception as e:
                     print(f"[Orchestrator] Binance TR fetch exception: {e}")
                 try:
-                    res_okx = f_okx.result(timeout=15)
+                    res_okx = f_okx.result(timeout=25)
                     if res_okx or not self._cached_okx_summary:
                         self._cached_okx_summary = res_okx
                 except Exception as e:
                     print(f"[Orchestrator] OKX fetch exception: {e}")
                 try:
-                    res_mexc = f_mexc.result(timeout=15)
+                    res_mexc = f_mexc.result(timeout=25)
                     if res_mexc or not self._cached_mexc_summary:
                         self._cached_mexc_summary = res_mexc
                 except Exception as e:

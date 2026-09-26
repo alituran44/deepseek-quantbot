@@ -13,7 +13,7 @@ class MacroMarketFeed:
 
     _cache: Dict[str, Any] = {}
     _cache_time: float = 0.0
-    CACHE_DURATION: float = 45.0  # 45 saniyelik önbellek
+    CACHE_DURATION: float = 300.0  # 5 dakikalık akıllı önbellek
 
     @classmethod
     def get_macro_climate(cls, force_refresh: bool = False) -> Dict[str, Any]:
@@ -29,15 +29,15 @@ class MacroMarketFeed:
                 "https://api.frankfurter.app/latest?from=USD&to=TRY,EUR",
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"}
             )
-            with urllib.request.urlopen(req, timeout=5) as res:
+            with urllib.request.urlopen(req, timeout=2) as res:
                 f_data = json.loads(res.read().decode("utf-8"))
                 rates = f_data.get("rates", {})
                 usd_try = float(rates.get("TRY", usd_try))
                 eur_rate = float(rates.get("EUR", 0.92))
                 if eur_rate > 0:
                     eur_usd = round(1.0 / eur_rate, 4)
-        except Exception as e:
-            print(f"[MacroMarketFeed] Frankfurter kur çekme uyarısı: {e}")
+        except Exception:
+            pass
 
         # 2. Yahoo Finance (DXY, Nasdaq, Altın)
         tickers = {
@@ -54,7 +54,7 @@ class MacroMarketFeed:
                     url,
                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
                 )
-                with urllib.request.urlopen(req, timeout=5) as res:
+                with urllib.request.urlopen(req, timeout=2) as res:
                     d = json.loads(res.read().decode("utf-8"))
                     meta = d["chart"]["result"][0]["meta"]
                     px = float(meta.get("regularMarketPrice", 0.0))

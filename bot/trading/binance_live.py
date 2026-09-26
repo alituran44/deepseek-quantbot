@@ -147,10 +147,32 @@ class BinanceLiveExecutor:
         adetleri, canlı fiyatları ve toplam portföy değerini kuruşu kuruşuna,
         eksiksiz hesaplar. Hiçbir varlığı filtrelemez.
         """
-        ok_spot, spot_res = self._request("GET", "/api/v3/account", signed=True)
-        ok_fund, fund_res = self._request("POST", "/sapi/v1/asset/get-funding-asset", signed=True)
-        ok_earn, earn_res = self._request("GET", "/sapi/v1/simple-earn/flexible/position", signed=True)
-        ok_lock, lock_res = self._request("GET", "/sapi/v1/simple-earn/locked/position", signed=True)
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _fetch_spot():
+            return self._request("GET", "/api/v3/account", signed=True)
+        def _fetch_fund():
+            return self._request("POST", "/sapi/v1/asset/get-funding-asset", signed=True)
+        def _fetch_earn_flex():
+            return self._request("GET", "/sapi/v1/simple-earn/flexible/position", signed=True)
+        def _fetch_earn_lock():
+            return self._request("GET", "/sapi/v1/simple-earn/locked/position", signed=True)
+
+        try:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                f_spot = pool.submit(_fetch_spot)
+                f_fund = pool.submit(_fetch_fund)
+                f_flex = pool.submit(_fetch_earn_flex)
+                f_lock = pool.submit(_fetch_earn_lock)
+                ok_spot, spot_res = f_spot.result(timeout=10)
+                ok_fund, fund_res = f_fund.result(timeout=10)
+                ok_earn, earn_res = f_flex.result(timeout=10)
+                ok_lock, lock_res = f_lock.result(timeout=10)
+        except Exception:
+            ok_spot, spot_res = self._request("GET", "/api/v3/account", signed=True)
+            ok_fund, fund_res = False, []
+            ok_earn, earn_res = False, {}
+            ok_lock, lock_res = False, {}
 
         if not ok_spot:
             return {
@@ -190,7 +212,7 @@ class BinanceLiveExecutor:
             if btc_pair in price_map and "BTCUSDT" in price_map:
                 return price_map[btc_pair] * price_map["BTCUSDT"]
             try:
-                resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={pair}", timeout=1.5)
+                resp = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={pair}", timeout=1.5)
                 if resp.status_code == 200:
                     p = float(resp.json().get("price", 0.0))
                     price_map[pair] = p
@@ -293,11 +315,9 @@ class BinanceLiveExecutor:
                         entry["action"] = "VARLIK (SPOT + EARN)"
                 entry["thesis"] = f"Binance genelinde toplam {entry['units']:.4f} {asset} mevcut ({entry['wallet_type']})."
 
-        # 6. Kırıntı / Toz Temizliği: 1.0 USD altındaki kırıntıları tablodan gizle (Total equity içinde korunur)
+        # 6. Tüm Cüzdan Varlıklarını Ekle (Kırıntılar dahil hiçbir varlık gizlenmez)
         for asset, data in consolidated_map.items():
-            val = data["value_usd"]
-            if val < 1.0 and asset not in ["USDT", "TRY"]:
-                continue
+            data["is_dust"] = bool(data["value_usd"] < 1.0 and asset not in ["USDT", "TRY"])
             holdings.append(data)
 
         # En büyük varlıklar en üstte görünsün (Büyükten küçüğe sırala)
