@@ -36,7 +36,7 @@ class Config:
     AUTO_TRADE_BREAKOUTS = os.getenv("AUTO_TRADE_BREAKOUTS", "true").lower() in ["true", "1", "yes"]
     # Nakit Koruma Kilidi (Cash Reserve Guard)
     # Bu tutarın altındaki nakit (USDT) otonom bot tarafından harcanmaz, kasada hazır cephane olarak tutulur.
-    MIN_CASH_RESERVE_USD = float(os.getenv("MIN_CASH_RESERVE_USD", "25.0"))
+    MIN_CASH_RESERVE_USD = float(os.getenv("MIN_CASH_RESERVE_USD", "5.0"))
 
     # Hızlı Para / Kâr Stratejisi: AUTO_SCHEDULE (22:00-07:00 Gece Hızlı Scalp, 07:00-22:00 Gündüz Bileşik Kâr), FAST_SCALP, TREND, MEGA_RUNNER
     PROFIT_STRATEGY = os.getenv("PROFIT_STRATEGY", "AUTO_SCHEDULE").upper()
